@@ -1,6 +1,7 @@
 <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{{ label() }}</label>
 
 <input
+  #input
   type="text"
   autocomplete="off"
   role="combobox"
@@ -32,7 +33,7 @@
       <li
         role="option"
         [attr.aria-selected]="i === activeIndex()"
-        (mousedown)="select(option)"
+        (mousedown)="$event.preventDefault(); select(option)"
         class="cursor-pointer px-3 py-2 text-sm"
         [class.bg-sky-100]="i === activeIndex()"
         [class.dark:bg-sky-900]="i === activeIndex()"

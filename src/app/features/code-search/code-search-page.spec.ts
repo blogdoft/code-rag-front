@@ -49,6 +49,26 @@ describe('CodeSearchPage', () => {
     fixture.detectChanges();
   }
 
+  it('focuses the project combobox as soon as the page loads', async () => {
+    setup();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('app-combobox input'));
+  });
+
+  it('moves focus to the question field once a project is selected', () => {
+    setup();
+
+    const combobox = fixture.debugElement.query((debugEl) => debugEl.name === 'app-combobox').componentInstance;
+    combobox.selected.emit({ id: 1, label: 'alpha' });
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(
+      fixture.nativeElement.querySelector('input[placeholder="Where is the retry logic for failed payments?"]'),
+    );
+  });
+
   it('loads projects into the combobox on construction', () => {
     setup();
     expect(projectsService.list).toHaveBeenCalled();
@@ -142,7 +162,7 @@ describe('CodeSearchPage', () => {
     expect(fixture.nativeElement.textContent).toContain('No results.');
   });
 
-  it('renders result cards and opens the popup when one is clicked', () => {
+  it('renders a results table row and opens the popup when it is clicked', () => {
     setup();
     component['selectedProjectId'].set(1);
     component['question'].set('Where is retry logic?');
@@ -150,12 +170,31 @@ describe('CodeSearchPage', () => {
     component['submit']();
     fixture.detectChanges();
 
-    const button = fixture.nativeElement.querySelector('article button') as HTMLButtonElement;
-    expect(button.textContent).toContain('src/foo.ts');
+    const row = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
+    expect(row.textContent).toContain('src/foo.ts');
+    expect(row.textContent).toContain('90%');
 
-    button.click();
+    row.click();
 
     expect(popupService.open).toHaveBeenCalled();
+  });
+
+  it('removes a history entry when its close button is clicked', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['question'].set('Where is retry logic?');
+
+    component['submit']();
+    fixture.detectChanges();
+
+    expect(component['history']().length).toBe(1);
+
+    const closeButton = fixture.nativeElement.querySelector('article button[aria-label="Close"]') as HTMLButtonElement;
+    closeButton.click();
+    fixture.detectChanges();
+
+    expect(component['history']()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('article')).toBeNull();
   });
 
   it('updates the question from real typing and clears it via Escape', () => {

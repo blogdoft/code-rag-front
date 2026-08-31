@@ -9,6 +9,7 @@ import { Combobox, type ComboboxOption } from './combobox';
     [options]="options()"
     [disabled]="disabled()"
     [(value)]="value"
+    (selected)="onSelected($event)"
   />`,
 })
 class HostComponent {
@@ -18,6 +19,11 @@ class HostComponent {
   ]);
   readonly disabled = signal(false);
   value: number | null = null;
+  selectedOption: ComboboxOption | null = null;
+
+  onSelected(option: ComboboxOption): void {
+    this.selectedOption = option;
+  }
 }
 
 describe('Combobox', () => {
@@ -120,6 +126,29 @@ describe('Combobox', () => {
     pressKey('Escape');
 
     expect(fixture.componentInstance.value).toBeNull();
+  });
+
+  it('emits selected when an option is chosen via mousedown', () => {
+    focus();
+    options()[1].dispatchEvent(new Event('mousedown', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedOption).toEqual({ id: 2, label: 'beta' });
+  });
+
+  it('emits selected when an option is chosen via keyboard', () => {
+    focus();
+    pressKey('ArrowDown');
+    pressKey('Enter');
+
+    expect(fixture.componentInstance.selectedOption).toEqual({ id: 2, label: 'beta' });
+  });
+
+  it('exposes a focus() method that focuses the input', () => {
+    const combobox = fixture.debugElement.children[0].componentInstance as Combobox;
+    combobox.focus();
+
+    expect(document.activeElement).toBe(input);
   });
 
   it('marks the input disabled when the disabled input is true', () => {

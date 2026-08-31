@@ -1,4 +1,4 @@
-import { Component, computed, model, signal, input } from '@angular/core';
+import { Component, ElementRef, computed, model, output, signal, input, viewChild } from '@angular/core';
 import { EscClearableDirective } from '../../directives/esc-clearable.directive';
 
 export interface ComboboxOption {
@@ -23,6 +23,9 @@ export class Combobox {
   readonly disabled = input(false);
 
   readonly value = model<number | null>(null);
+  readonly selected = output<ComboboxOption>();
+
+  private readonly inputElement = viewChild.required<ElementRef<HTMLInputElement>>('input');
 
   protected readonly query = signal('');
   protected readonly isOpen = signal(false);
@@ -94,6 +97,11 @@ export class Combobox {
     this.value.set(option.id);
     this.query.set(option.label);
     this.isOpen.set(false);
+    this.selected.emit(option);
+  }
+
+  focus(): void {
+    this.inputElement().nativeElement.focus();
   }
 
   protected clear(): void {

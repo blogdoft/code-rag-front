@@ -61,4 +61,15 @@ describe('ResultDetailDialog', () => {
     fixture.nativeElement.querySelector('button[aria-label="Close"]').click();
     expect(dialogRef.close).toHaveBeenCalled();
   });
+
+  it('closes the dialog when the OK button is clicked', () => {
+    setup(result);
+    const okButton = Array.from(fixture.nativeElement.querySelectorAll('footer button')).find(
+      (button) => (button as HTMLButtonElement).textContent?.trim() === 'OK',
+    ) as HTMLButtonElement;
+
+    okButton.click();
+
+    expect(dialogRef.close).toHaveBeenCalled();
+  });
 });

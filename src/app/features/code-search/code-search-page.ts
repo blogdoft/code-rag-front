@@ -1,5 +1,5 @@
-import { DecimalPipe } from '@angular/common';
-import { Component, inject, model, signal } from '@angular/core';
+import { PercentPipe } from '@angular/common';
+import { Component, ElementRef, afterNextRender, inject, model, signal, viewChild } from '@angular/core';
 import { CodeQueriesService } from '../../core/services/code-queries.service';
 import type { CodeQueryResult } from '../../core/models/code-query-result';
 import type { Project } from '../../core/models/project';
@@ -18,7 +18,7 @@ interface QueryHistoryEntry {
 
 @Component({
   selector: 'app-code-search-page',
-  imports: [Combobox, EscClearableDirective, DecimalPipe],
+  imports: [Combobox, EscClearableDirective, PercentPipe],
   templateUrl: './code-search-page.html',
 })
 export class CodeSearchPage {
@@ -32,6 +32,9 @@ export class CodeSearchPage {
   protected readonly isSubmitting = signal(false);
   protected readonly history = signal<QueryHistoryEntry[]>([]);
 
+  private readonly projectCombobox = viewChild.required(Combobox);
+  private readonly questionInput = viewChild.required<ElementRef<HTMLInputElement>>('questionInput');
+
   private nextHistoryId = 0;
 
   constructor() {
@@ -40,6 +43,8 @@ export class CodeSearchPage {
         this.projectOptions.set(projects.map((project) => ({ id: project.id, label: project.name })));
       },
     });
+
+    afterNextRender(() => this.projectCombobox().focus());
   }
 
   protected get canSubmit(): boolean {
@@ -79,5 +84,13 @@ export class CodeSearchPage {
 
   protected openResult(result: CodeQueryResult): void {
     this.popupService.open(ResultDetailDialog, { data: result });
+  }
+
+  protected removeHistoryEntry(id: number): void {
+    this.history.update((entries) => entries.filter((entry) => entry.id !== id));
+  }
+
+  protected focusQuestion(): void {
+    this.questionInput().nativeElement.focus();
   }
 }
