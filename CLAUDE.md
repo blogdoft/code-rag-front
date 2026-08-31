@@ -22,6 +22,11 @@ Product requirements are in `SPEC.md` (Portuguese); the backend contract is docu
   `NODE_PATH="$(pwd)/node_modules" node your-script.js` (a bare `node script.js` outside the project dir
   won't resolve the `playwright` module). Requires a running dev server (`npm start`).
 
+## Commit messages
+
+Always follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc., with a `!` or
+`BREAKING CHANGE:` footer for breaking changes).
+
 ## API contract — trust the live response over the OpenAPI docs
 
 Both `v1.json` and `openapi.generated.json` document **camelCase** response fields (`sourceFile`,
