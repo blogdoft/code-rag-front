@@ -11,16 +11,19 @@
 #
 # Requires a repo secret ARGO_DEPLOY_SSH_KEY: an SSH private key
 # registered as a deploy key (with write access) on argo-local-apps.git.
+#
+# No `permissions:` block: Forgejo Actions ignores that GitHub-Actions-only
+# field entirely (it logs a warning and does nothing). The token used below
+# (secrets.GITHUB_TOKEN, Forgejo's automatic per-job token) already has
+# package write access to this repo's own container registry by default; if
+# a push to the registry is ever denied, the fix is a Forgejo "Authorized
+# Integration" (Settings > Authorized Integrations), not this file.
 
 name: Docker publish
 
 on:
   push:
     tags: ["v*.*.*"]
-
-permissions:
-  contents: read
-  packages: write
 
 jobs:
   test:
