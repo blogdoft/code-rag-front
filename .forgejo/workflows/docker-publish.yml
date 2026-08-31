@@ -59,6 +59,7 @@ jobs:
       - name: Build image
         run: |
           docker build \
+            --build-arg APP_VERSION="${{ steps.tag.outputs.tag }}" \
             -t "${{ vars.REGISTRY }}/${{ vars.REGISTRY_IMAGE }}:${{ steps.tag.outputs.tag }}" \
             -f .eng/docker/Dockerfile .
 

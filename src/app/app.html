@@ -14,4 +14,12 @@
   <router-outlet />
 </div>
 
+@if (version()) {
+  <span
+    class="pointer-events-none fixed right-0 top-0 z-40 rounded-bl-md bg-white/90 px-2 py-1 font-mono text-xs text-slate-400 shadow-sm dark:bg-slate-800/90 dark:text-slate-500"
+  >
+    Versão: {{ version() }}
+  </span>
+}
+
 <app-toast-container />

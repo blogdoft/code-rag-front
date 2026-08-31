@@ -1,8 +1,8 @@
-import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ToastService } from '../services/toast.service';
-import { errorToastInterceptor } from './error-toast.interceptor';
+import { SUPPRESS_ERROR_TOAST, errorToastInterceptor } from './error-toast.interceptor';
 
 describe('errorToastInterceptor', () => {
   let httpClient: HttpClient;
@@ -58,6 +58,16 @@ describe('errorToastInterceptor', () => {
     httpMock.expectOne('/api/v1/projects/999').error(new ProgressEvent('error'));
 
     expect(toast.error).toHaveBeenCalledWith('Something went wrong talking to the API. Please try again.');
+  });
+
+  it('does not toast when the request opts out via SUPPRESS_ERROR_TOAST', () => {
+    httpClient
+      .get('/version.json', { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true) })
+      .subscribe({ error: () => {} });
+
+    httpMock.expectOne('/version.json').flush('not found', { status: 404, statusText: 'Not Found' });
+
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('re-throws the error after toasting it', () => {
