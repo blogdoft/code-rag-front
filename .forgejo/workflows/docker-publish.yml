@@ -58,6 +58,7 @@ jobs:
           host="${GITHUB_SERVER_URL#http://}"
           host="${host#https://}"
           repo_lower="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "host=$host" >> "$GITHUB_OUTPUT"
           echo "ref=$host/$repo_lower" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Forgejo Container Registry
@@ -68,6 +69,17 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/setup-buildx-action@v3
+        with:
+          # forgejo.home.arpa serves a certificate from this homelab's private
+          # CA (see CLAUDE.md's TLS note); buildx's containerized builder
+          # doesn't inherit the runner host's trust store, so it needs to be
+          # told explicitly to skip verification for this registry - the
+          # same tradeoff nginx.conf.template's proxy_ssl_verify off and
+          # proxy.conf.json's secure:false already make for other .home.arpa
+          # hosts.
+          buildkitd-config-inline: |
+            [registry."${{ steps.image.outputs.host }}"]
+              insecure = true
 
       - name: Build and push image
         uses: docker/build-push-action@v6
