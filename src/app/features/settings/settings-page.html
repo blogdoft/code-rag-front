@@ -1,0 +1,31 @@
+<div class="mx-auto max-w-xl px-4 py-8">
+  <section class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">API settings</h1>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">API base URL</label>
+      <p class="mb-2 text-xs text-slate-500 dark:text-slate-400">
+        Leave empty to call <code>/api</code> on this same origin (recommended when a proxy sits in front
+        of the app), or set an absolute URL such as https://code-rag-api.home.arpa.
+      </p>
+      <input
+        type="text"
+        placeholder="https://code-rag-api.home.arpa"
+        [value]="apiBaseUrl()"
+        [appEscClearable]="apiBaseUrl()"
+        (cleared)="clear()"
+        (input)="onInput($any($event.target).value)"
+        (keydown.enter)="save()"
+        class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+      />
+    </div>
+
+    <button
+      type="button"
+      (click)="save()"
+      class="self-start rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+    >
+      Save
+    </button>
+  </section>
+</div>

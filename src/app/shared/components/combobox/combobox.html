@@ -1,0 +1,50 @@
+<label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{{ label() }}</label>
+
+<input
+  type="text"
+  autocomplete="off"
+  role="combobox"
+  aria-autocomplete="list"
+  aria-haspopup="listbox"
+  [attr.aria-expanded]="isOpen()"
+  [attr.aria-controls]="listboxId"
+  [disabled]="disabled()"
+  [placeholder]="placeholder()"
+  [value]="displayValue()"
+  [appEscClearable]="displayValue()"
+  (cleared)="clear()"
+  (input)="onInput($any($event.target).value)"
+  (focus)="onFocus()"
+  (blur)="onBlur()"
+  (keydown.arrowdown)="onArrowDown($event)"
+  (keydown.arrowup)="onArrowUp($event)"
+  (keydown.enter)="onEnter($event)"
+  class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+/>
+
+@if (isOpen() && filteredOptions().length > 0) {
+  <ul
+    [id]="listboxId"
+    role="listbox"
+    class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+  >
+    @for (option of filteredOptions(); track option.id; let i = $index) {
+      <li
+        role="option"
+        [attr.aria-selected]="i === activeIndex()"
+        (mousedown)="select(option)"
+        class="cursor-pointer px-3 py-2 text-sm"
+        [class.bg-sky-100]="i === activeIndex()"
+        [class.dark:bg-sky-900]="i === activeIndex()"
+      >
+        {{ option.label }}
+      </li>
+    }
+  </ul>
+} @else if (isOpen()) {
+  <div
+    class="absolute z-10 mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+  >
+    No matches
+  </div>
+}
