@@ -1,0 +1,33 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Angular routing (app.routes.ts) is client-side; unmatched paths fall
+    # back to index.html instead of a raw 404.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Reverse proxy for the CodeRAG API. No path is appended to the upstream
+    # in proxy_pass, so nginx forwards the request URI (/api/v1/...)
+    # unchanged, matching what proxy.conf.json does for the Angular CLI dev
+    # server.
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+
+        # The default upstream (.home.arpa) serves a self-signed certificate
+        # (see CLAUDE.md's TLS note). Browsers can't be told to trust that,
+        # but nginx here is the proxy, not the browser, so it can skip
+        # verification the same way proxy.conf.json's "secure: false" does
+        # for the dev server.
+        proxy_ssl_verify off;
+
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

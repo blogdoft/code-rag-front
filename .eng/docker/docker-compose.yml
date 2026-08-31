@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build:
+      context: ../..
+      dockerfile: .eng/docker/Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      # Where nginx reverse-proxies /api/... requests to. Override with an
+      # .env file next to this compose file, or `API_UPSTREAM=... docker
+      # compose up`, e.g. to point at a local API instance instead
+      # (http://host.docker.internal:5002, matching proxy.conf.local.example.json).
+      API_UPSTREAM: ${API_UPSTREAM:-https://code-rag-api.home.arpa}
+    restart: unless-stopped
