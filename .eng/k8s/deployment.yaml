@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-rag-front
+  labels:
+    app: code-rag-front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: code-rag-front
+  template:
+    metadata:
+      labels:
+        app: code-rag-front
+    spec:
+      containers:
+        - name: code-rag-front
+          # image name/tag is stamped by the docker-publish.yml workflow (kustomize edit
+          # set image) before this directory is synced to argo-local-apps - the value
+          # here is never actually deployed as-is.
+          image: code-rag-front
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            # Where nginx reverse-proxies /api/... to, same variable as
+            # .eng/docker/docker-compose.yml (see nginx.conf.template).
+            - name: API_UPSTREAM
+              value: https://code-rag-api.home.arpa
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20

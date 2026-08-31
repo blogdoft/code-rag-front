@@ -1,0 +1,18 @@
+# This directory is not applied directly - docker-publish.yml stamps the real image
+# name/tag onto it (kustomize edit set image) and copies the result into
+# manifests/code-rag-front/ in the argo-local-apps GitOps repo on every version tag
+# push. ArgoCD then renders it with kustomize from there.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: code-rag-front
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+
+images:
+  - name: code-rag-front
+    newName: forgejo.home.arpa/sauron/code-rag-front
+    newTag: latest

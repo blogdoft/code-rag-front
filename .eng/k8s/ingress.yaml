@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: code-rag-front
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - code-rag.home.arpa
+      secretName: wildcard-tls
+  rules:
+    - host: code-rag.home.arpa
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: code-rag-front
+                port:
+                  name: http

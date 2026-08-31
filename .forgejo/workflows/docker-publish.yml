@@ -1,0 +1,113 @@
+# Builds the frontend Docker image (.eng/docker/Dockerfile), publishes it to
+# this repo's Forgejo Container Registry, and deploys it by stamping the
+# version onto .eng/k8s/ and pushing the result into the argo-local-apps
+# GitOps repo (manifests/code-rag-front/) - ArgoCD takes it from there.
+# Everything below triggers on a `vX.Y.Z` tag push.
+#
+# Versioning is entirely manual: the app's version IS whatever tag you create
+# and push (`git tag v1.2.3 && git push origin v1.2.3`). The workflow never
+# computes or pushes a version itself - it only reads the tag that triggered
+# it and publishes the image as `:X.Y.Z` and `:latest`.
+#
+# Requires a repo secret ARGO_DEPLOY_SSH_KEY: an SSH private key
+# registered as a deploy key (with write access) on argo-local-apps.git.
+
+name: Docker publish
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm test -- --watch=false
+
+  build-and-push:
+    needs: test
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from tag
+        id: version
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve registry host and image name
+        id: image
+        run: |
+          host="${GITHUB_SERVER_URL#http://}"
+          host="${host#https://}"
+          repo_lower="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "ref=$host/$repo_lower" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Forgejo Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.image.outputs.ref }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .eng/docker/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.ref }}:${{ steps.version.outputs.version }}
+            ${{ steps.image.outputs.ref }}:latest
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Configure SSH for argo-local-apps
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.ARGO_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p 2222 forgejo.home.arpa >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy to argo-local-apps
+        run: |
+          set -euo pipefail
+
+          workdir="$(mktemp -d)"
+          git clone --depth 1 ssh://git@forgejo.home.arpa:2222/sauron/argo-local-apps.git "$workdir"
+
+          dest="$workdir/manifests/code-rag-front"
+          mkdir -p "$dest"
+          cp .eng/k8s/*.yaml "$dest/"
+          sed -i "s/newTag: .*/newTag: ${{ steps.version.outputs.version }}/" "$dest/kustomization.yaml"
+
+          cd "$workdir"
+          if git diff --quiet; then
+            echo "Manifests unchanged; nothing to deploy."
+            exit 0
+          fi
+
+          git config user.name "code-rag-front CI"
+          git config user.email "ci@forgejo.home.arpa"
+          git add manifests/code-rag-front
+          git commit -m "chore(code-rag-front): deploy v${{ steps.version.outputs.version }}"
+          git push origin main
