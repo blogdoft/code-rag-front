@@ -1,0 +1,71 @@
+# Builds the frontend Docker image (.eng/docker/Dockerfile) and publishes it to this
+# repo's own GitHub Container Registry (ghcr.io/blogdoft/code-rag-front), tagged with the
+# pushed git tag. This runs on GitHub itself (unlike .forgejo/workflows/docker-publish.yml,
+# which publishes to the private Forgejo registry and deploys via GitOps) - this workflow
+# only builds and hosts the image, no deploy step.
+#
+# Requires no extra secrets: GITHUB_TOKEN is provided automatically by Actions and is
+# granted package-write scope by the `permissions:` block below. The published package
+# defaults to private, inheriting this repo's visibility; make it public under
+# https://github.com/users/blogdoft/packages/container/code-rag-front/settings if you
+# want anonymous pulls.
+
+name: Docker publish
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm test -- --watch=false
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine image tag
+        id: tag
+        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .eng/docker/Dockerfile
+          push: true
+          build-args: |
+            APP_VERSION=${{ steps.tag.outputs.tag }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
