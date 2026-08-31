@@ -1,6 +1,9 @@
 <div class="min-h-full">
   <nav class="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-    <div class="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
+    <div
+      class="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-3"
+      [class.max-lg:pr-20]="version()"
+    >
       <a routerLink="/" class="text-sm font-semibold text-slate-900 dark:text-slate-100">CodeRAG</a>
       <a
         routerLink="/settings"
