@@ -1,0 +1,106 @@
+<div class="flex h-full w-full flex-col bg-white shadow-xl dark:bg-slate-800">
+  <header class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+    <p class="text-base font-medium text-slate-900 dark:text-slate-100">Filters</p>
+    <button
+      type="button"
+      (click)="apply()"
+      class="shrink-0 rounded-md p-1 text-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+      aria-label="Close"
+    >
+      &times;
+    </button>
+  </header>
+
+  <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
+    <div class="flex flex-col gap-5">
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Namespace</label>
+        <div class="flex gap-2">
+          <select
+            [value]="data.namespaceFilter().operator"
+            (change)="updateFilter(data.namespaceFilter, { operator: $any($event.target).value })"
+            class="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          >
+            @for (op of data.namespaceOperators; track op) {
+              <option [value]="op">{{ op.replace('_', ' ') }}</option>
+            }
+          </select>
+          <input
+            type="text"
+            placeholder="e.g. *Billing*"
+            [value]="data.namespaceFilter().value"
+            [appEscClearable]="data.namespaceFilter().value"
+            (cleared)="updateFilter(data.namespaceFilter, { value: '' })"
+            (input)="updateFilter(data.namespaceFilter, { value: $any($event.target).value })"
+            class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Kind</label>
+        <div class="flex gap-2">
+          <select
+            [value]="data.kindFilter().operator"
+            (change)="updateFilter(data.kindFilter, { operator: $any($event.target).value })"
+            class="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          >
+            @for (op of data.kindOperators; track op) {
+              <option [value]="op">{{ op.replace('_', ' ') }}</option>
+            }
+          </select>
+          <input
+            type="text"
+            placeholder="e.g. fun*"
+            [value]="data.kindFilter().value"
+            [appEscClearable]="data.kindFilter().value"
+            (cleared)="updateFilter(data.kindFilter, { value: '' })"
+            (input)="updateFilter(data.kindFilter, { value: $any($event.target).value })"
+            class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Type</label>
+        <div class="flex gap-2">
+          <select
+            [value]="data.typeNameFilter().operator"
+            (change)="updateFilter(data.typeNameFilter, { operator: $any($event.target).value })"
+            class="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          >
+            @for (op of data.typeNameOperators; track op) {
+              <option [value]="op">{{ op.replace('_', ' ') }}</option>
+            }
+          </select>
+          <input
+            type="text"
+            placeholder="e.g. *Controller"
+            [value]="data.typeNameFilter().value"
+            [appEscClearable]="data.typeNameFilter().value"
+            (cleared)="updateFilter(data.typeNameFilter, { value: '' })"
+            (input)="updateFilter(data.typeNameFilter, { value: $any($event.target).value })"
+            class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-700">
+    <button
+      type="button"
+      (click)="clearAll()"
+      class="rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+    >
+      Clear
+    </button>
+    <button
+      type="button"
+      (click)="apply()"
+      class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+    >
+      Filter
+    </button>
+  </footer>
+</div>

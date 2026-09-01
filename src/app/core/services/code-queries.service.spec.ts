@@ -84,4 +84,39 @@ describe('CodeQueriesService', () => {
       },
     ]);
   });
+
+  it('sends active filters using snake_case keys and trimmed values', () => {
+    service
+      .ask(3, 'q', {
+        kind: { operator: 'contains', value: ' method ' },
+        namespace: { operator: 'not_contains', value: 'Legacy' },
+        typeName: { operator: 'equals', value: 'Foo' },
+      })
+      .subscribe();
+
+    const req = httpMock.expectOne('/api/v1/projects/3/code-queries');
+    expect(req.request.body).toEqual({
+      question: 'q',
+      kind: { operator: 'contains', value: 'method' },
+      namespace: { operator: 'not_contains', value: 'Legacy' },
+      type_name: { operator: 'equals', value: 'Foo' },
+    });
+    req.flush([]);
+  });
+
+  it('omits a filter whose value is blank', () => {
+    service.ask(3, 'q', { kind: { operator: 'contains', value: '   ' } }).subscribe();
+
+    const req = httpMock.expectOne('/api/v1/projects/3/code-queries');
+    expect(req.request.body).toEqual({ question: 'q' });
+    req.flush([]);
+  });
+
+  it('omits all filter keys when an empty filters object is passed', () => {
+    service.ask(3, 'q', {}).subscribe();
+
+    const req = httpMock.expectOne('/api/v1/projects/3/code-queries');
+    expect(req.request.body).toEqual({ question: 'q' });
+    req.flush([]);
+  });
 });

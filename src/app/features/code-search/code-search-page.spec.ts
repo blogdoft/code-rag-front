@@ -6,6 +6,7 @@ import { CodeQueriesService } from '../../core/services/code-queries.service';
 import { ProjectsService } from '../../core/services/projects.service';
 import { PopupService } from '../../shared/services/popup.service';
 import { CodeSearchPage } from './code-search-page';
+import { QueryFiltersDrawer } from './query-filters-drawer';
 
 describe('CodeSearchPage', () => {
   let fixture: ComponentFixture<CodeSearchPage>;
@@ -99,19 +100,33 @@ describe('CodeSearchPage', () => {
     expect(component['canSubmit']).toBe(true);
   });
 
-  it('submits a question, records history, and clears the input', () => {
+  it('submits a question and records history, leaving the question field populated', () => {
     setup();
     component['selectedProjectId'].set(1);
     component['question'].set('Where is retry logic?');
 
     component['submit']();
 
-    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?');
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {});
     expect(component['history']()).toEqual([
-      { id: 0, projectName: 'alpha', projectGitUrl: null, question: 'Where is retry logic?', results },
+      { id: 0, projectName: 'alpha', projectGitUrl: null, question: 'Where is retry logic?', filters: {}, results },
     ]);
-    expect(component['question']()).toBe('');
+    expect(component['question']()).toBe('Where is retry logic?');
     expect(component['isSubmitting']()).toBe(false);
+  });
+
+  it('keeps the question field populated across consecutive searches', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['question'].set('first question');
+
+    component['submit']();
+    expect(component['question']()).toBe('first question');
+
+    component['question'].set('second question');
+    component['submit']();
+    expect(component['question']()).toBe('second question');
+    expect(component['history']().length).toBe(2);
   });
 
   it('renders the card title as a link to the project git repository when one is set', () => {
@@ -276,7 +291,7 @@ describe('CodeSearchPage', () => {
     component['question'].set('Where is retry logic?');
     fixture.detectChanges();
 
-    const button = fixture.nativeElement.querySelector('button[type="button"]') as HTMLButtonElement;
+    const button = fixture.nativeElement.querySelector('button.self-start') as HTMLButtonElement;
     button.click();
     fixture.detectChanges();
     expect(button.disabled).toBe(true);
@@ -287,5 +302,109 @@ describe('CodeSearchPage', () => {
     fixture.detectChanges();
 
     expect(button.textContent).toContain('Ask');
+  });
+
+  it('opens the filters drawer with the filter signals and operator lists as data', () => {
+    setup();
+
+    const filtersButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+      (button) => (button as HTMLButtonElement).textContent?.trim().startsWith('Filters'),
+    ) as HTMLButtonElement;
+    filtersButton.click();
+
+    expect(popupService.open).toHaveBeenCalledWith(
+      QueryFiltersDrawer,
+      expect.objectContaining({
+        panelClass: 'filter-drawer-panel',
+        data: expect.objectContaining({
+          kindFilter: component['kindFilter'],
+          namespaceFilter: component['namespaceFilter'],
+          typeNameFilter: component['typeNameFilter'],
+          kindOperators: component['kindOperators'],
+          namespaceOperators: component['namespaceOperators'],
+          typeNameOperators: component['typeNameOperators'],
+        }),
+      }),
+    );
+  });
+
+  it('shows an active-filter count badge on the Filters button that updates as filters change', () => {
+    setup();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toMatch(/Filters\s*\d/);
+
+    component['kindFilter'].set({ operator: 'equals', value: 'method' });
+    component['namespaceFilter'].set({ operator: 'contains', value: 'Billing' });
+    fixture.detectChanges();
+
+    const filtersButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+      (button) => (button as HTMLButtonElement).textContent?.trim().startsWith('Filters'),
+    ) as HTMLButtonElement;
+    expect(filtersButton.textContent).toContain('2');
+  });
+
+  it('persists filter values across searches without reopening the drawer', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['kindFilter'].set({ operator: 'equals', value: 'method' });
+
+    component['question'].set('first question');
+    component['submit']();
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'first question', {
+      kind: { operator: 'equals', value: 'method' },
+    });
+
+    component['question'].set('second question');
+    component['submit']();
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'second question', {
+      kind: { operator: 'equals', value: 'method' },
+    });
+  });
+
+  it('submits active filter values and records them on the history entry', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['question'].set('Where is retry logic?');
+    component['kindFilter'].set({ operator: 'equals', value: 'method' });
+    component['typeNameFilter'].set({ operator: 'contains', value: '  *Controller  ' });
+
+    component['submit']();
+
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {
+      kind: { operator: 'equals', value: 'method' },
+      typeName: { operator: 'contains', value: '*Controller' },
+    });
+    expect(component['history']()[0].filters).toEqual({
+      kind: { operator: 'equals', value: 'method' },
+      typeName: { operator: 'contains', value: '*Controller' },
+    });
+  });
+
+  it('omits a filter left blank (or only whitespace) from the request', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['question'].set('Where is retry logic?');
+    component['kindFilter'].set({ operator: 'equals', value: '   ' });
+
+    component['submit']();
+
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {});
+  });
+
+  it('renders active filters as badges on the history entry', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['question'].set('Where is retry logic?');
+    component['kindFilter'].set({ operator: 'equals', value: 'method' });
+    component['namespaceFilter'].set({ operator: 'not_contains', value: 'Legacy' });
+
+    component['submit']();
+    fixture.detectChanges();
+
+    const badges = fixture.nativeElement.querySelectorAll('article p + div span');
+    expect(badges.length).toBe(2);
+    expect(badges[0].textContent).toContain('namespace not contains "Legacy"');
+    expect(badges[1].textContent).toContain('kind equals "method"');
   });
 });

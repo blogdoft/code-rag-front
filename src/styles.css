@@ -14,3 +14,21 @@ body {
 body {
   @apply bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100;
 }
+
+/* Docks a CDK dialog to the right edge of the viewport instead of the default centered modal. */
+.filter-drawer-panel {
+  position: fixed !important;
+  inset: 0 0 0 auto;
+  width: 50vw;
+  min-width: 50vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 !important;
+}
+
+@media (max-width: 639px) {
+  .filter-drawer-panel {
+    width: 100vw;
+    min-width: 100vw;
+  }
+}
