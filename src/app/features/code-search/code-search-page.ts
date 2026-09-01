@@ -12,6 +12,7 @@ import { ResultDetailDialog } from './result-detail-dialog';
 interface QueryHistoryEntry {
   id: number;
   projectName: string;
+  projectGitUrl: string | null;
   question: string;
   results: CodeQueryResult[];
 }
@@ -27,6 +28,7 @@ export class CodeSearchPage {
   private readonly popupService = inject(PopupService);
 
   protected readonly projectOptions = signal<ComboboxOption[]>([]);
+  private readonly projects = signal<Project[]>([]);
   protected readonly selectedProjectId = model<number | null>(null);
   protected readonly question = signal('');
   protected readonly isSubmitting = signal(false);
@@ -40,6 +42,7 @@ export class CodeSearchPage {
   constructor() {
     this.projectsService.list().subscribe({
       next: (projects: Project[]) => {
+        this.projects.set(projects);
         this.projectOptions.set(projects.map((project) => ({ id: project.id, label: project.name })));
       },
     });
@@ -66,13 +69,15 @@ export class CodeSearchPage {
       return;
     }
 
-    const projectName = this.projectOptions().find((option) => option.id === projectId)?.label ?? '';
+    const selectedProject = this.projects().find((project) => project.id === projectId);
+    const projectName = selectedProject?.name ?? '';
+    const projectGitUrl = selectedProject?.gitUrl ?? null;
 
     this.isSubmitting.set(true);
     this.codeQueriesService.ask(projectId, question).subscribe({
       next: (results) => {
         this.history.update((entries) => [
-          { id: this.nextHistoryId++, projectName, question, results },
+          { id: this.nextHistoryId++, projectName, projectGitUrl, question, results },
           ...entries,
         ]);
         this.question.set('');

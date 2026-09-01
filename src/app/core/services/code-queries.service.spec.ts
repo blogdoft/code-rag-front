@@ -19,7 +19,7 @@ describe('CodeQueriesService', () => {
     httpMock.verify();
   });
 
-  it('posts the question to the project-scoped endpoint and maps the snake_case DTOs', () => {
+  it('posts the question to the project-scoped endpoint and maps the DTOs (snake_case, except the camelCase gitRawUrl)', () => {
     let result: unknown;
     service.ask(7, 'where is retry logic?').subscribe((results) => (result = results));
 
@@ -31,6 +31,7 @@ describe('CodeQueriesService', () => {
       {
         id: 1,
         source_file: 'src/foo.ts',
+        gitRawUrl: 'https://forgejo.home.arpa/sauron/repo/raw/branch/main/src/foo.ts',
         kind: 'method',
         type_name: 'Foo',
         member: 'bar',
@@ -43,6 +44,7 @@ describe('CodeQueriesService', () => {
       {
         id: 1,
         sourceFile: 'src/foo.ts',
+        gitRawUrl: 'https://forgejo.home.arpa/sauron/repo/raw/branch/main/src/foo.ts',
         kind: 'method',
         typeName: 'Foo',
         member: 'bar',
@@ -52,7 +54,7 @@ describe('CodeQueriesService', () => {
     ]);
   });
 
-  it('maps null sourceFile, typeName, and member through unchanged', () => {
+  it('maps null sourceFile, gitRawUrl, typeName, and member through unchanged', () => {
     let result: unknown;
     service.ask(1, 'q').subscribe((results) => (result = results));
 
@@ -60,6 +62,7 @@ describe('CodeQueriesService', () => {
       {
         id: 2,
         source_file: null,
+        gitRawUrl: null,
         kind: 'file',
         type_name: null,
         member: null,
@@ -69,7 +72,16 @@ describe('CodeQueriesService', () => {
     ]);
 
     expect(result).toEqual([
-      { id: 2, sourceFile: null, kind: 'file', typeName: null, member: null, embeddingText: 'text', similarity: 0.5 },
+      {
+        id: 2,
+        sourceFile: null,
+        gitRawUrl: null,
+        kind: 'file',
+        typeName: null,
+        member: null,
+        embeddingText: 'text',
+        similarity: 0.5,
+      },
     ]);
   });
 });

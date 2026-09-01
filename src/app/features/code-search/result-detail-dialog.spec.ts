@@ -10,6 +10,7 @@ describe('ResultDetailDialog', () => {
   const result: CodeQueryResult = {
     id: 1,
     sourceFile: 'src/foo.ts',
+    gitRawUrl: null,
     kind: 'method',
     typeName: 'Foo',
     member: 'bar',

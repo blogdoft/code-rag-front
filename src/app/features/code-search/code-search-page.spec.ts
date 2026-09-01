@@ -16,13 +16,20 @@ describe('CodeSearchPage', () => {
 
   const projects: Project[] = [
     { id: 1, name: 'alpha', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-01T00:00:00Z' },
-    { id: 2, name: 'beta', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-02T00:00:00Z' },
+    {
+      id: 2,
+      name: 'beta',
+      gitUrl: 'https://forgejo.home.arpa/sauron/beta/',
+      gitRawUrl: null,
+      createdAt: '2026-01-02T00:00:00Z',
+    },
   ];
 
   const results: CodeQueryResult[] = [
     {
       id: 1,
       sourceFile: 'src/foo.ts',
+      gitRawUrl: 'https://forgejo.home.arpa/sauron/code-rag-api/raw/branch/main/src/foo.ts',
       kind: 'method',
       typeName: 'Foo',
       member: 'bar',
@@ -101,10 +108,37 @@ describe('CodeSearchPage', () => {
 
     expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?');
     expect(component['history']()).toEqual([
-      { id: 0, projectName: 'alpha', question: 'Where is retry logic?', results },
+      { id: 0, projectName: 'alpha', projectGitUrl: null, question: 'Where is retry logic?', results },
     ]);
     expect(component['question']()).toBe('');
     expect(component['isSubmitting']()).toBe(false);
+  });
+
+  it('renders the card title as a link to the project git repository when one is set', () => {
+    setup();
+    component['selectedProjectId'].set(2);
+    component['question'].set('Where is retry logic?');
+
+    component['submit']();
+    fixture.detectChanges();
+
+    const titleLink = fixture.nativeElement.querySelector('article p a') as HTMLAnchorElement;
+    expect(titleLink.textContent?.trim()).toBe('beta');
+    expect(titleLink.href).toBe('https://forgejo.home.arpa/sauron/beta/');
+    expect(titleLink.target).toBe('_blank');
+  });
+
+  it('renders the card title as plain text when the project has no git repository', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['question'].set('Where is retry logic?');
+
+    component['submit']();
+    fixture.detectChanges();
+
+    const title = fixture.nativeElement.querySelector('article p') as HTMLParagraphElement;
+    expect(title.querySelector('a')).toBeNull();
+    expect(title.textContent).toContain('alpha');
   });
 
   it('does not submit when no project is selected', () => {
@@ -171,12 +205,31 @@ describe('CodeSearchPage', () => {
     fixture.detectChanges();
 
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
-    expect(row.textContent).toContain('src/foo.ts');
+    expect(row.textContent).toContain('method');
     expect(row.textContent).toContain('90%');
+
+    const gitRawLink = row.querySelector('a') as HTMLAnchorElement;
+    expect(gitRawLink.textContent?.trim()).toBe('View Raw');
+    expect(gitRawLink.href).toBe(results[0].gitRawUrl);
+    expect(gitRawLink.target).toBe('_blank');
 
     row.click();
 
     expect(popupService.open).toHaveBeenCalled();
+  });
+
+  it('does not open the popup when the GitRaw link is clicked', () => {
+    setup();
+    component['selectedProjectId'].set(1);
+    component['question'].set('Where is retry logic?');
+
+    component['submit']();
+    fixture.detectChanges();
+
+    const gitRawLink = fixture.nativeElement.querySelector('tbody tr a') as HTMLAnchorElement;
+    gitRawLink.click();
+
+    expect(popupService.open).not.toHaveBeenCalled();
   });
 
   it('removes a history entry when its close button is clicked', () => {

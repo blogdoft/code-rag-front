@@ -5,13 +5,13 @@ import type { CodeQueryResult } from '../models/code-query-result';
 
 /**
  * Wire shape of `POST /api/v1/projects/{projectId}/code-queries`. The API
- * serializes snake_case despite `openapi.generated.json` documenting camelCase —
- * confirmed against the live response, which is authoritative over the (stale)
- * generated schema doc.
+ * serializes snake_case, except `gitRawUrl`, which stays camelCase — confirmed
+ * against the live response.
  */
 interface CodeQueryResultDto {
   id: number;
   source_file: string | null;
+  gitRawUrl: string | null;
   kind: string;
   type_name: string | null;
   member: string | null;
@@ -34,6 +34,7 @@ function toCodeQueryResult(dto: CodeQueryResultDto): CodeQueryResult {
   return {
     id: dto.id,
     sourceFile: dto.source_file,
+    gitRawUrl: dto.gitRawUrl,
     kind: dto.kind,
     typeName: dto.type_name,
     member: dto.member,
