@@ -5,12 +5,20 @@
       [class.max-lg:pr-20]="version()"
     >
       <a routerLink="/" class="text-sm font-semibold text-slate-900 dark:text-slate-100">CodeRAG</a>
-      <a
-        routerLink="/settings"
-        class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
-      >
-        Settings
-      </a>
+      <div class="flex items-center gap-4">
+        <a
+          routerLink="/projects"
+          class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
+        >
+          Projects
+        </a>
+        <a
+          routerLink="/settings"
+          class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
+        >
+          Settings
+        </a>
+      </div>
     </div>
   </nav>
 

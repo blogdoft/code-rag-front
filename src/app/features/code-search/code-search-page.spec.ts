@@ -15,8 +15,8 @@ describe('CodeSearchPage', () => {
   let popupService: { open: ReturnType<typeof vi.fn> };
 
   const projects: Project[] = [
-    { id: 1, name: 'alpha', createdAt: '2026-01-01T00:00:00Z' },
-    { id: 2, name: 'beta', createdAt: '2026-01-02T00:00:00Z' },
+    { id: 1, name: 'alpha', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-01T00:00:00Z' },
+    { id: 2, name: 'beta', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-02T00:00:00Z' },
   ];
 
   const results: CodeQueryResult[] = [

@@ -28,6 +28,7 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('nav')?.textContent).toContain('CodeRAG');
+    expect(compiled.querySelector('nav')?.textContent).toContain('Projects');
     expect(compiled.querySelector('nav')?.textContent).toContain('Settings');
   });
 
