@@ -39,3 +39,26 @@ describe('ConfirmDialog', () => {
     expect(dialogRef.close).toHaveBeenCalledWith(false);
   });
 });
+
+describe('ConfirmDialog with a custom confirmLabel', () => {
+  let fixture: ComponentFixture<ConfirmDialog>;
+  let dialogRef: { close: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    dialogRef = { close: vi.fn() };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DIALOG_DATA, useValue: { message: 'Delete project "demo"?', confirmLabel: 'Delete' } },
+        { provide: DialogRef, useValue: dialogRef },
+      ],
+    });
+    fixture = TestBed.createComponent(ConfirmDialog);
+    fixture.detectChanges();
+  });
+
+  it('renders the custom label instead of the default', () => {
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    expect(buttons.some((b) => b.textContent?.trim() === 'Delete')).toBe(true);
+    expect(buttons.some((b) => b.textContent?.trim() === 'Discard changes')).toBe(false);
+  });
+});
