@@ -1,34 +1,35 @@
-<div class="min-h-full">
-  <nav class="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-    <div
-      class="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-3"
-      [class.max-lg:pr-20]="version()"
-    >
-      <a routerLink="/" class="text-sm font-semibold text-slate-900 dark:text-slate-100">CodeRAG</a>
-      <div class="flex items-center gap-4">
-        <a
-          routerLink="/projects"
-          class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
-        >
-          Projects
-        </a>
-        <a
-          routerLink="/settings"
-          class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
-        >
-          Settings
-        </a>
-        <a
-          routerLink="/reports"
-          class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
-        >
-          Reports
-        </a>
-      </div>
+<div class="flex min-h-full flex-col">
+  <nav class="sticky top-0 z-30 border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+    <div class="flex h-14 items-center gap-3 px-4" [class.max-lg:pr-20]="version()">
+      <button
+        #menuToggle
+        type="button"
+        (click)="toggleSidebar()"
+        class="shrink-0 rounded-md p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+        aria-label="Toggle navigation menu"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      <a routerLink="/" class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <img src="favicon-32x32.png" alt="" class="h-5 w-5" />
+        CodeRAG
+      </a>
     </div>
   </nav>
 
-  <router-outlet />
+  <div class="flex flex-1">
+    <app-nav-sidebar
+      #sidebarContainer
+      [expanded]="sidebarExpanded()"
+      (linkClicked)="onSidebarLinkClicked()"
+    />
+    <main class="min-w-0 flex-1">
+      <router-outlet />
+    </main>
+  </div>
 </div>
 
 @if (version()) {

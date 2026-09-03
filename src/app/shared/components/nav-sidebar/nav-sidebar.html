@@ -1,0 +1,52 @@
+<aside [class]="asideClasses()">
+  <nav aria-label="Main navigation" class="flex flex-col gap-1 px-2 py-4">
+    @for (link of links; track link.id) {
+      <a
+        [routerLink]="link.path"
+        routerLinkActive="bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+        [class.justify-center]="!expanded()"
+        [attr.title]="expanded() ? null : link.label"
+        (click)="linkClicked.emit()"
+      >
+        @switch (link.id) {
+          @case ('rag') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 shrink-0">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 12c0 4.418-4.03 8-9 8-1.03 0-2.02-.146-2.94-.416L3 21l1.5-4.5C3.552 15.19 3 13.65 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+          }
+          @case ('projects') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 shrink-0">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+              />
+            </svg>
+          }
+          @case ('reports') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 19V10M10 19V4M16 19v-7" />
+            </svg>
+          }
+          @case ('settings') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5 shrink-0">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                stroke-linecap="round"
+                d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"
+              />
+            </svg>
+          }
+        }
+        @if (expanded()) {
+          <span>{{ link.label }}</span>
+        }
+      </a>
+    }
+  </nav>
+</aside>

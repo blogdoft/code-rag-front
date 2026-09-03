@@ -1,0 +1,22 @@
+<div class="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-12">
+  <section class="flex flex-col items-center gap-3 text-center">
+    <img src="logo-200.png" alt="" />
+    <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Welcome to CodeRAG</h1>
+    <p class="max-w-md text-sm text-slate-600 dark:text-slate-300">
+      Ask natural-language questions about your codebase, manage indexed projects, and review feedback — all in one
+      place.
+    </p>
+  </section>
+
+  <section class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    @for (link of quickLinks; track link.path) {
+      <a
+        [routerLink]="link.path"
+        class="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-sky-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-sky-500"
+      >
+        <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ link.label }}</span>
+        <span class="text-sm text-slate-600 dark:text-slate-300">{{ link.description }}</span>
+      </a>
+    }
+  </section>
+</div>
