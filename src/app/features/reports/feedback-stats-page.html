@@ -1,0 +1,64 @@
+<div class="flex w-full flex-col gap-6 px-4 py-8">
+  <section class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Feedback stats</h1>
+
+    <div class="flex flex-wrap items-end gap-4">
+      <div class="min-w-48 flex-1">
+        <app-combobox
+          label="Project"
+          placeholder="Search projects..."
+          [options]="projectOptions()"
+          [(value)]="selectedProjectId"
+        />
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Start date</label>
+        <input
+          type="date"
+          [value]="startDate()"
+          [appEscClearable]="startDate()"
+          (cleared)="clearStartDate()"
+          (input)="startDate.set($any($event.target).value)"
+          class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        />
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">End date</label>
+        <input
+          type="date"
+          [value]="endDate()"
+          [appEscClearable]="endDate()"
+          (cleared)="clearEndDate()"
+          (input)="endDate.set($any($event.target).value)"
+          class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        />
+      </div>
+
+      <button
+        type="button"
+        [disabled]="isLoading()"
+        (click)="fetchStats()"
+        class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {{ isLoading() ? 'Loading...' : 'Refresh' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    @if (chartLabels().length === 0) {
+      <p class="text-sm text-slate-500 dark:text-slate-400">No data for this range.</p>
+    } @else {
+      <app-feedback-trend-chart
+        [labels]="chartLabels()"
+        [totalCounts]="totalCounts()"
+        [usefulCounts]="usefulCounts()"
+        [notUsefulCounts]="notUsefulCounts()"
+        [usefulPercentages]="usefulPercentages()"
+        [notUsefulPercentages]="notUsefulPercentages()"
+      />
+    }
+  </section>
+</div>
