@@ -39,7 +39,9 @@ export class CodeQueriesService {
   ask(projectId: number, question: string, filters?: CodeQueryFilters): Observable<CodeQueryResult[]> {
     return this.http
       .post<CodeQueryResultDto[]>(`/api/v1/projects/${projectId}/code-queries`, toRequestBody(question, filters))
-      .pipe(map((dtos) => dtos.map(toCodeQueryResult)));
+      .pipe(
+        map((dtos) => dtos.map(toCodeQueryResult).sort((a, b) => b.similarity - a.similarity)),
+      );
   }
 }
 

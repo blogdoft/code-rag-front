@@ -119,4 +119,43 @@ describe('CodeQueriesService', () => {
     expect(req.request.body).toEqual({ question: 'q' });
     req.flush([]);
   });
+
+  it('sorts results by similarity, highest first, regardless of API order', () => {
+    let result: { id: number; similarity: number }[] | undefined;
+    service.ask(1, 'q').subscribe((results) => (result = results));
+
+    httpMock.expectOne('/api/v1/projects/1/code-queries').flush([
+      dto(1, 0.4),
+      dto(2, 0.9),
+      dto(3, 0.6),
+    ]);
+
+    expect(result?.map((r) => r.id)).toEqual([2, 3, 1]);
+  });
+
+  it('keeps original relative order for results with equal similarity (stable sort)', () => {
+    let result: { id: number; similarity: number }[] | undefined;
+    service.ask(1, 'q').subscribe((results) => (result = results));
+
+    httpMock.expectOne('/api/v1/projects/1/code-queries').flush([
+      dto(1, 0.5),
+      dto(2, 0.9),
+      dto(3, 0.5),
+    ]);
+
+    expect(result?.map((r) => r.id)).toEqual([2, 1, 3]);
+  });
 });
+
+function dto(id: number, similarity: number) {
+  return {
+    id,
+    source_file: 'src/foo.ts',
+    gitRawUrl: null,
+    kind: 'method',
+    type_name: null,
+    member: null,
+    embedding_text: 'text',
+    similarity,
+  };
+}
