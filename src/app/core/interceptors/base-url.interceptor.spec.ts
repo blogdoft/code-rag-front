@@ -47,4 +47,20 @@ describe('baseUrlInterceptor', () => {
 
     httpMock.expectOne('/assets/foo.json').flush({});
   });
+
+  it('prefixes /version requests with the configured base URL, despite not being /api-prefixed', () => {
+    setup('https://example.com');
+
+    httpClient.get('/version').subscribe();
+
+    httpMock.expectOne('https://example.com/version').flush({});
+  });
+
+  it('leaves /version requests untouched when the base URL is empty', () => {
+    setup('');
+
+    httpClient.get('/version').subscribe();
+
+    httpMock.expectOne('/version').flush({});
+  });
 });

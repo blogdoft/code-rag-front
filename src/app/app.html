@@ -1,6 +1,6 @@
 <div class="flex min-h-full flex-col">
   <nav class="sticky top-0 z-30 border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-    <div class="flex h-14 items-center gap-3 px-4" [class.max-lg:pr-20]="version()">
+    <div class="flex h-14 items-center gap-3 px-4">
       <button
         #menuToggle
         type="button"
@@ -24,6 +24,8 @@
     <app-nav-sidebar
       #sidebarContainer
       [expanded]="sidebarExpanded()"
+      [frontVersion]="version()"
+      [apiVersion]="apiVersion()"
       (linkClicked)="onSidebarLinkClicked()"
     />
     <main class="min-w-0 flex-1">
@@ -31,13 +33,5 @@
     </main>
   </div>
 </div>
-
-@if (version()) {
-  <span
-    class="pointer-events-none fixed right-0 top-0 z-40 rounded-bl-md bg-white/90 px-2 py-1 font-mono text-xs text-slate-400 shadow-sm dark:bg-slate-800/90 dark:text-slate-500"
-  >
-    Versão: {{ version() }}
-  </span>
-}
 
 <app-toast-container />

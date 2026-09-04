@@ -3,5 +3,10 @@
     "target": "https://code-rag-api.home.arpa",
     "secure": false,
     "changeOrigin": true
+  },
+  "/version": {
+    "target": "https://code-rag-api.home.arpa",
+    "secure": false,
+    "changeOrigin": true
   }
 }

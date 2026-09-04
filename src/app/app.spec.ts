@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { App } from './app';
+import { ApiVersionService } from './core/services/api-version.service';
 import { PopupCoordinatorService } from './core/services/popup-coordinator.service';
 import { VersionService } from './core/services/version.service';
 
@@ -11,9 +12,11 @@ class StubPage {}
 
 describe('App', () => {
   let versionService: { get: ReturnType<typeof vi.fn> };
+  let apiVersionService: { get: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     versionService = { get: vi.fn(() => of('v1.2.3')) };
+    apiVersionService = { get: vi.fn(() => of('0.1.3-1')) };
 
     await TestBed.configureTestingModule({
       imports: [App],
@@ -25,6 +28,7 @@ describe('App', () => {
           { path: 'settings', component: StubPage },
         ]),
         { provide: VersionService, useValue: versionService },
+        { provide: ApiVersionService, useValue: apiVersionService },
       ],
     }).compileComponents();
   });
@@ -63,7 +67,7 @@ describe('App', () => {
 
     const aside = fixture.nativeElement.querySelector('aside') as HTMLElement;
     expect(aside.className).toContain('w-16');
-    expect(aside.textContent?.trim()).toBe('');
+    expect(aside.querySelector('nav')?.textContent?.trim()).toBe('');
   });
 
   it('collapses the sidebar when clicking anywhere outside it', async () => {
@@ -89,20 +93,15 @@ describe('App', () => {
     expect(aside.className).toContain('w-56');
   });
 
-  it('shows the app version fetched from VersionService, anchored to the top-right corner of the window', async () => {
+  it('passes the front and API versions fetched from their services down to the sidebar', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
     expect(versionService.get).toHaveBeenCalled();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const versionEl = Array.from(compiled.querySelectorAll('span')).find((el) =>
-      el.textContent?.includes('v1.2.3'),
-    ) as HTMLElement;
-
-    expect(versionEl.textContent?.trim()).toBe('Versão: v1.2.3');
-    expect(versionEl.className).toContain('fixed');
-    expect(versionEl.className).toContain('right-0');
-    expect(versionEl.className).toContain('top-0');
+    expect(apiVersionService.get).toHaveBeenCalled();
+    const aside = fixture.nativeElement.querySelector('aside') as HTMLElement;
+    expect(aside.textContent).toContain('v1.2.3');
+    expect(aside.textContent).toContain('0.1.3-1');
   });
 
   it('delegates document-level Escape key presses to the popup coordinator', async () => {

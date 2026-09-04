@@ -50,4 +50,18 @@
       </a>
     }
   </nav>
+
+  @if (frontVersion() || apiVersion()) {
+    <div [class]="versionFooterClasses()">
+      @if (frontVersion()) {
+        <span title="Front-end version">{{ frontVersion() }}</span>
+      }
+      @if (showVersionSeparator()) {
+        <span aria-hidden="true" class="text-slate-300 dark:text-slate-600">|</span>
+      }
+      @if (apiVersion()) {
+        <span title="API version">{{ apiVersion() }}</span>
+      }
+    </div>
+  }
 </aside>

@@ -3,5 +3,10 @@
     "target": "http://localhost:5002",
     "secure": false,
     "changeOrigin": true
+  },
+  "/version": {
+    "target": "http://localhost:5002",
+    "secure": false,
+    "changeOrigin": true
   }
 }
