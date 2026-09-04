@@ -24,7 +24,12 @@ jobs:
 
       - name: Fetch all branches and tags
         run: |
-          git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*' --tags
+          # Force-refspec (not the --tags shorthand) for tags: actions/checkout@v4, when
+          # triggered by a tag push, already leaves a local refs/tags/<tag> pointing straight
+          # at the commit. Our tags are annotated, so origin's real tag object has a different
+          # SHA - a plain `--tags` fetch treats that as a non-fast-forward update and refuses
+          # it ("would clobber existing tag") instead of updating the local ref.
+          git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
           git update-ref -d refs/remotes/origin/HEAD 2>/dev/null || true
 
       - name: Push mirror to GitHub
