@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { ConfigService } from './core/services/config.service';
 import { PopupCoordinatorService } from './core/services/popup-coordinator.service';
 import { ThemeService } from './core/services/theme.service';
 import { VersionService } from './core/services/version.service';
@@ -13,6 +14,7 @@ import { ToastContainer } from './shared/components/toast/toast-container';
 })
 export class App implements OnInit {
   private readonly theme = inject(ThemeService);
+  private readonly configService = inject(ConfigService);
   private readonly popupCoordinator = inject(PopupCoordinatorService);
   private readonly versionService = inject(VersionService);
 
@@ -25,7 +27,7 @@ export class App implements OnInit {
   protected readonly sidebarExpanded = signal(true);
 
   ngOnInit(): void {
-    this.theme.init();
+    this.theme.apply(this.configService.theme());
     this.versionService.get().subscribe((version) => this.version.set(version));
 
     if (this.isMobileViewport()) {

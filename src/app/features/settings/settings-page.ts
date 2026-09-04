@@ -1,7 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { ConfigService } from '../../core/services/config.service';
+import { ThemeService, type ThemePreference } from '../../core/services/theme.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EscClearableDirective } from '../../shared/directives/esc-clearable.directive';
+
+interface ThemeOption {
+  value: ThemePreference;
+  label: string;
+}
 
 @Component({
   selector: 'app-settings-page',
@@ -10,11 +16,19 @@ import { EscClearableDirective } from '../../shared/directives/esc-clearable.dir
 })
 export class SettingsPage {
   private readonly configService = inject(ConfigService);
+  private readonly themeService = inject(ThemeService);
   private readonly toast = inject(ToastService);
 
   protected readonly apiBaseUrl = signal(this.configService.apiBaseUrl());
   protected readonly userName = signal(this.configService.userName());
   protected readonly exportTimezone = signal(this.configService.exportTimezone());
+  protected readonly themePreference = signal(this.configService.theme());
+
+  protected readonly themeOptions: ThemeOption[] = [
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+    { value: 'system', label: 'Match device' },
+  ];
 
   protected onInput(value: string): void {
     this.apiBaseUrl.set(value);
@@ -71,6 +85,14 @@ export class SettingsPage {
 
     this.configService.setExportTimezone(value);
     this.toast.success('Export timezone saved.');
+  }
+
+  /** Unlike the other fields, theme has no Save button - selecting it is the save. */
+  protected selectTheme(preference: ThemePreference): void {
+    this.themePreference.set(preference);
+    this.configService.setTheme(preference);
+    this.themeService.apply(preference);
+    this.toast.success('Theme updated.');
   }
 }
 

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ConfigService } from '../../core/services/config.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { ToastService } from '../../core/services/toast.service';
 import { SettingsPage } from './settings-page';
 
@@ -12,13 +13,17 @@ describe('SettingsPage', () => {
     setUserName: ReturnType<typeof vi.fn>;
     exportTimezone: ReturnType<typeof vi.fn>;
     setExportTimezone: ReturnType<typeof vi.fn>;
+    theme: ReturnType<typeof vi.fn>;
+    setTheme: ReturnType<typeof vi.fn>;
   };
+  let themeService: { apply: ReturnType<typeof vi.fn> };
   let toastService: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   function setup(
     initialUrl = '',
     initialUserName = '',
     initialTimezone = 'America/Sao_Paulo',
+    initialTheme = 'system',
   ): void {
     configService = {
       apiBaseUrl: vi.fn(() => initialUrl),
@@ -27,11 +32,15 @@ describe('SettingsPage', () => {
       setUserName: vi.fn(),
       exportTimezone: vi.fn(() => initialTimezone),
       setExportTimezone: vi.fn(),
+      theme: vi.fn(() => initialTheme),
+      setTheme: vi.fn(),
     };
+    themeService = { apply: vi.fn() };
     toastService = { success: vi.fn(), error: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         { provide: ConfigService, useValue: configService },
+        { provide: ThemeService, useValue: themeService },
         { provide: ToastService, useValue: toastService },
       ],
     });
@@ -202,5 +211,29 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
 
     expect(exportTimezoneInput().value).toBe('');
+  });
+
+  function themeButtons(): HTMLButtonElement[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('[role="radio"]'));
+  }
+
+  it('marks the theme button matching the current config as checked', () => {
+    setup('', '', 'America/Sao_Paulo', 'dark');
+
+    const checked = themeButtons().find((button) => button.getAttribute('aria-checked') === 'true');
+    expect(checked?.textContent?.trim()).toBe('Dark');
+  });
+
+  it('saves and applies the theme immediately when a theme button is clicked', () => {
+    setup();
+
+    const darkButton = themeButtons().find((button) => button.textContent?.trim() === 'Dark');
+    darkButton?.click();
+    fixture.detectChanges();
+
+    expect(configService.setTheme).toHaveBeenCalledWith('dark');
+    expect(themeService.apply).toHaveBeenCalledWith('dark');
+    expect(toastService.success).toHaveBeenCalledWith('Theme updated.');
+    expect(darkButton?.getAttribute('aria-checked')).toBe('true');
   });
 });

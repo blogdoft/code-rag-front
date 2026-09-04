@@ -94,4 +94,43 @@
       Save
     </button>
   </section>
+
+  <section
+    class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+  >
+    <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Appearance</h1>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Theme</label>
+      <p class="mb-2 text-xs text-slate-500 dark:text-slate-400">
+        Applied immediately and remembered on this device.
+      </p>
+      <div
+        role="radiogroup"
+        aria-label="Theme"
+        class="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600"
+      >
+        @for (option of themeOptions; track option.value; let first = $first) {
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="themePreference() === option.value"
+            (click)="selectTheme(option.value)"
+            [class.border-l]="!first"
+            [class.border-slate-300]="!first"
+            [class.dark:border-slate-600]="!first"
+            [class.bg-sky-600]="themePreference() === option.value"
+            [class.text-white]="themePreference() === option.value"
+            [class.text-slate-700]="themePreference() !== option.value"
+            [class.dark:text-slate-300]="themePreference() !== option.value"
+            [class.hover:bg-slate-100]="themePreference() !== option.value"
+            [class.dark:hover:bg-slate-700]="themePreference() !== option.value"
+            class="px-4 py-2 text-sm font-medium"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </section>
 </div>

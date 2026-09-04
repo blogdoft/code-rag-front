@@ -79,4 +79,28 @@ describe('ConfigService', () => {
     expect(service.exportTimezone()).toBe('');
     expect(localStorage.getItem('code-rag.exportTimezone')).toBe('');
   });
+
+  it('defaults to "system" theme when nothing is stored', () => {
+    const service = TestBed.inject(ConfigService);
+    expect(service.theme()).toBe('system');
+  });
+
+  it('reads a previously stored theme on construction', () => {
+    localStorage.setItem('code-rag.theme', 'dark');
+    const service = TestBed.inject(ConfigService);
+    expect(service.theme()).toBe('dark');
+  });
+
+  it('falls back to "system" for a corrupted stored theme value', () => {
+    localStorage.setItem('code-rag.theme', 'not-a-theme');
+    const service = TestBed.inject(ConfigService);
+    expect(service.theme()).toBe('system');
+  });
+
+  it('persists a theme change', () => {
+    const service = TestBed.inject(ConfigService);
+    service.setTheme('light');
+    expect(service.theme()).toBe('light');
+    expect(localStorage.getItem('code-rag.theme')).toBe('light');
+  });
 });

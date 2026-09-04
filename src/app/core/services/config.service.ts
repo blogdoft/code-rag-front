@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { ThemePreference } from './theme.service';
 
 const API_BASE_URL_KEY = 'code-rag.apiBaseUrl';
 /**
@@ -25,15 +26,21 @@ const EXPORT_TIMEZONE_KEY = 'code-rag.exportTimezone';
  */
 const DEFAULT_EXPORT_TIMEZONE = 'America/Sao_Paulo';
 
+const THEME_KEY = 'code-rag.theme';
+const DEFAULT_THEME: ThemePreference = 'system';
+const VALID_THEMES: ThemePreference[] = ['light', 'dark', 'system'];
+
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
   private readonly apiBaseUrlSignal = signal(this.readApiBaseUrl());
   private readonly userNameSignal = signal(this.readUserName());
   private readonly exportTimezoneSignal = signal(this.readExportTimezone());
+  private readonly themeSignal = signal(this.readTheme());
 
   readonly apiBaseUrl = this.apiBaseUrlSignal.asReadonly();
   readonly userName = this.userNameSignal.asReadonly();
   readonly exportTimezone = this.exportTimezoneSignal.asReadonly();
+  readonly theme = this.themeSignal.asReadonly();
 
   setApiBaseUrl(value: string): void {
     const trimmed = value.trim().replace(/\/+$/, '');
@@ -53,6 +60,11 @@ export class ConfigService {
     this.exportTimezoneSignal.set(trimmed);
   }
 
+  setTheme(value: ThemePreference): void {
+    localStorage.setItem(THEME_KEY, value);
+    this.themeSignal.set(value);
+  }
+
   private readApiBaseUrl(): string {
     return localStorage.getItem(API_BASE_URL_KEY) ?? DEFAULT_API_BASE_URL;
   }
@@ -63,5 +75,10 @@ export class ConfigService {
 
   private readExportTimezone(): string {
     return localStorage.getItem(EXPORT_TIMEZONE_KEY) ?? DEFAULT_EXPORT_TIMEZONE;
+  }
+
+  private readTheme(): ThemePreference {
+    const stored = localStorage.getItem(THEME_KEY) as ThemePreference | null;
+    return stored && VALID_THEMES.includes(stored) ? stored : DEFAULT_THEME;
   }
 }
