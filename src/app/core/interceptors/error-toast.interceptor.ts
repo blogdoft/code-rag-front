@@ -19,18 +19,40 @@ export const errorToastInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: unknown) => {
       if (!req.context.get(SUPPRESS_ERROR_TOAST)) {
-        toast.error(extractMessage(error));
+        reportError(error, toast);
       }
       return throwError(() => error);
     }),
   );
 };
 
-function extractMessage(error: unknown): string {
+function reportError(error: unknown, toast: ToastService): void {
   if (!(error instanceof HttpErrorResponse)) {
-    return GENERIC_ERROR_MESSAGE;
+    toast.error(GENERIC_ERROR_MESSAGE);
+    return;
   }
 
-  const problem = error.error as ProblemDetails | null;
+  if (error.error instanceof Blob) {
+    // responseType: 'blob' requests (e.g. the feedback CSV export) also deliver error bodies as a
+    // Blob, even when the server sent application/problem+json for this response - read + parse it.
+    error.error
+      .text()
+      .then((text) => toast.error(pickMessage(parseProblemSafely(text))))
+      .catch(() => toast.error(GENERIC_ERROR_MESSAGE));
+    return;
+  }
+
+  toast.error(pickMessage(error.error as ProblemDetails | null));
+}
+
+function pickMessage(problem: ProblemDetails | null): string {
   return problem?.detail || problem?.title || GENERIC_ERROR_MESSAGE;
+}
+
+function parseProblemSafely(text: string): ProblemDetails | null {
+  try {
+    return JSON.parse(text) as ProblemDetails;
+  } catch {
+    return null;
+  }
 }

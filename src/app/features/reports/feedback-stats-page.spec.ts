@@ -1,8 +1,12 @@
+import { HttpHeaders, HttpResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, Subject, of } from 'rxjs';
 import type { FeedbackStats } from '../../core/models/feedback-stats';
 import type { Project } from '../../core/models/project';
-import { FeedbackStatsService, type FeedbackStatsQuery } from '../../core/services/feedback-stats.service';
+import {
+  FeedbackStatsService,
+  type FeedbackStatsQuery,
+} from '../../core/services/feedback-stats.service';
 import { ProjectsService } from '../../core/services/projects.service';
 import { ToastService } from '../../core/services/toast.service';
 import { FeedbackStatsPage } from './feedback-stats-page';
@@ -30,7 +34,10 @@ vi.mock('chartjs-plugin-datalabels', () => ({ default: {} }));
 describe('FeedbackStatsPage', () => {
   let fixture: ComponentFixture<FeedbackStatsPage>;
   let projectsService: { list: ReturnType<typeof vi.fn> };
-  let feedbackStatsService: { getStats: ReturnType<typeof vi.fn> };
+  let feedbackStatsService: {
+    getStats: ReturnType<typeof vi.fn>;
+    exportCsv: ReturnType<typeof vi.fn>;
+  };
   let toastService: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   const projects: Project[] = [
@@ -69,9 +76,13 @@ describe('FeedbackStatsPage', () => {
     ],
   };
 
-  function setup(getStats: (query: FeedbackStatsQuery) => Observable<FeedbackStats> = () => of(stats)): void {
+  function setup(
+    getStats: (query: FeedbackStatsQuery) => Observable<FeedbackStats> = () => of(stats),
+    exportCsv: (query: FeedbackStatsQuery) => Observable<HttpResponse<Blob>> = () =>
+      of(new HttpResponse({ body: new Blob(['csv,data']), headers: new HttpHeaders() })),
+  ): void {
     projectsService = { list: vi.fn(() => of(projects)) };
-    feedbackStatsService = { getStats: vi.fn(getStats) };
+    feedbackStatsService = { getStats: vi.fn(getStats), exportCsv: vi.fn(exportCsv) };
     toastService = { success: vi.fn(), error: vi.fn() };
 
     TestBed.configureTestingModule({
@@ -86,8 +97,12 @@ describe('FeedbackStatsPage', () => {
     fixture.detectChanges();
   }
 
-  function combobox(): { options: () => { id: number; label: string }[]; value: { set: (v: number | null) => void } } {
-    return fixture.debugElement.query((debugEl) => debugEl.name === 'app-combobox').componentInstance;
+  function combobox(): {
+    options: () => { id: number; label: string }[];
+    value: { set: (v: number | null) => void };
+  } {
+    return fixture.debugElement.query((debugEl) => debugEl.name === 'app-combobox')
+      .componentInstance;
   }
 
   function chart(): {
@@ -103,7 +118,9 @@ describe('FeedbackStatsPage', () => {
   }
 
   function projectNamesInLabels(): unknown[] {
-    return chart()!.labels().map((label) => (Array.isArray(label) ? label[1] : label));
+    return chart()!
+      .labels()
+      .map((label) => (Array.isArray(label) ? label[1] : label));
   }
 
   function dateInputs(): HTMLInputElement[] {
@@ -117,7 +134,11 @@ describe('FeedbackStatsPage', () => {
   }
 
   function refreshButton(): HTMLButtonElement {
-    return fixture.nativeElement.querySelector('button');
+    return fixture.nativeElement.querySelectorAll('button')[0];
+  }
+
+  function exportButton(): HTMLButtonElement {
+    return fixture.nativeElement.querySelectorAll('button')[1];
   }
 
   function toDateInput(date: Date): string {
@@ -159,7 +180,7 @@ describe('FeedbackStatsPage', () => {
     }
   });
 
-  it('flattens each week\'s per-project breakdown into its own chart entry, labeled by project', () => {
+  it("flattens each week's per-project breakdown into its own chart entry, labeled by project", () => {
     setup();
 
     expect(chart()!.totalCounts()).toEqual([10, 5]);
@@ -170,7 +191,7 @@ describe('FeedbackStatsPage', () => {
     expect(projectNamesInLabels()).toEqual(['alpha', 'beta']);
   });
 
-  it('keeps every week\'s projects broken out separately across multiple weeks', () => {
+  it("keeps every week's projects broken out separately across multiple weeks", () => {
     const twoWeeks: FeedbackStats = {
       startDate: stats.startDate,
       endDate: stats.endDate,
@@ -196,7 +217,9 @@ describe('FeedbackStatsPage', () => {
     const alphaOnly: FeedbackStats = {
       startDate: stats.startDate,
       endDate: stats.endDate,
-      weeks: [{ weekStart: '2026-07-27', weekEnd: '2026-08-02', projects: [stats.weeks[0].projects[0]] }],
+      weeks: [
+        { weekStart: '2026-07-27', weekEnd: '2026-08-02', projects: [stats.weeks[0].projects[0]] },
+      ],
     };
     setup((query) => of(query.projectId === 1 ? alphaOnly : stats));
 
@@ -277,8 +300,119 @@ describe('FeedbackStatsPage', () => {
   });
 
   it('shows an empty-state message when there are no weeks in range', () => {
-    setup(() => of({ startDate: '2026-08-01T00:00:00Z', endDate: '2026-08-02T00:00:00Z', weeks: [] }));
+    setup(() =>
+      of({ startDate: '2026-08-01T00:00:00Z', endDate: '2026-08-02T00:00:00Z', weeks: [] }),
+    );
 
     expect(fixture.nativeElement.textContent).toContain('No data for this range.');
+  });
+
+  describe('Export CSV', () => {
+    let createObjectUrl: ReturnType<typeof vi.fn>;
+    let revokeObjectUrl: ReturnType<typeof vi.fn>;
+    let clickSpy: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      // jsdom doesn't implement these at all - stub them directly on the real global URL
+      // constructor (not a stubbed-in replacement object) so `new URL(...)` elsewhere keeps working.
+      createObjectUrl = vi.fn(() => 'blob:mock-url');
+      revokeObjectUrl = vi.fn();
+      URL.createObjectURL = createObjectUrl as unknown as typeof URL.createObjectURL;
+      URL.revokeObjectURL = revokeObjectUrl as unknown as typeof URL.revokeObjectURL;
+
+      clickSpy = vi.fn();
+      const originalCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = originalCreateElement(tag);
+        if (tag === 'a') {
+          el.click = clickSpy as unknown as () => void;
+        }
+        return el;
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('exports with the currently selected filters', () => {
+      setup();
+      combobox().value.set(2);
+      const [start, end] = dateInputs();
+      setDate(start, '2026-08-01');
+      setDate(end, '2026-08-31');
+      feedbackStatsService.exportCsv.mockClear();
+
+      exportButton().click();
+
+      expect(feedbackStatsService.exportCsv).toHaveBeenCalledWith({
+        startDate: '2026-08-01T00:00:00Z',
+        endDate: '2026-08-31T23:59:59Z',
+        projectId: 2,
+      });
+    });
+
+    it('is blocked by the same date-range validation as Refresh, and does not call the service', () => {
+      setup();
+      const [start, end] = dateInputs();
+      setDate(start, '2026-08-31');
+      setDate(end, '2026-08-01');
+      feedbackStatsService.exportCsv.mockClear();
+
+      exportButton().click();
+
+      expect(toastService.error).toHaveBeenCalledWith('Start date must be on or before End date.');
+      expect(feedbackStatsService.exportCsv).not.toHaveBeenCalled();
+    });
+
+    it('downloads using the filename from Content-Disposition when present', () => {
+      setup(undefined, () =>
+        of(
+          new HttpResponse({
+            body: new Blob(['csv,data']),
+            headers: new HttpHeaders({
+              'content-disposition': 'attachment; filename=feedback_export_20260801_20260831.csv',
+            }),
+          }),
+        ),
+      );
+
+      exportButton().click();
+
+      expect(clickSpy).toHaveBeenCalled();
+      expect(toastService.success).toHaveBeenCalledWith('CSV export downloaded.');
+    });
+
+    it('falls back to a client-built filename when Content-Disposition is absent', () => {
+      setup(undefined, () =>
+        of(new HttpResponse({ body: new Blob(['csv,data']), headers: new HttpHeaders() })),
+      );
+      const [start, end] = dateInputs();
+      setDate(start, '2026-08-01');
+      setDate(end, '2026-08-31');
+
+      exportButton().click();
+
+      expect(clickSpy).toHaveBeenCalled();
+      expect(toastService.success).toHaveBeenCalledWith('CSV export downloaded.');
+    });
+
+    it('toggles the exporting flag around the request', () => {
+      const subject = new Subject<HttpResponse<Blob>>();
+      setup(undefined, () => subject.asObservable());
+
+      exportButton().click();
+      fixture.detectChanges();
+      expect(exportButton().textContent.trim()).toBe('Exporting...');
+      expect(exportButton().disabled).toBe(true);
+      expect(refreshButton().disabled).toBe(true);
+
+      subject.next(new HttpResponse({ body: new Blob(['csv,data']), headers: new HttpHeaders() }));
+      subject.complete();
+      fixture.detectChanges();
+
+      expect(exportButton().textContent.trim()).toBe('Export CSV');
+      expect(exportButton().disabled).toBe(false);
+    });
   });
 });

@@ -1,4 +1,10 @@
-import { HttpClient, HttpContext, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpContext,
+  HttpErrorResponse,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ToastService } from '../services/toast.service';
@@ -31,7 +37,10 @@ describe('errorToastInterceptor', () => {
 
     httpMock
       .expectOne('/api/v1/projects/999')
-      .flush({ detail: 'Project not found', title: 'Not Found' }, { status: 404, statusText: 'Not Found' });
+      .flush(
+        { detail: 'Project not found', title: 'Not Found' },
+        { status: 404, statusText: 'Not Found' },
+      );
 
     expect(toast.error).toHaveBeenCalledWith('Project not found');
   });
@@ -39,7 +48,9 @@ describe('errorToastInterceptor', () => {
   it('falls back to the title when detail is missing', () => {
     httpClient.get('/api/v1/projects/999').subscribe({ error: () => {} });
 
-    httpMock.expectOne('/api/v1/projects/999').flush({ title: 'Not Found' }, { status: 404, statusText: 'Not Found' });
+    httpMock
+      .expectOne('/api/v1/projects/999')
+      .flush({ title: 'Not Found' }, { status: 404, statusText: 'Not Found' });
 
     expect(toast.error).toHaveBeenCalledWith('Not Found');
   });
@@ -47,9 +58,13 @@ describe('errorToastInterceptor', () => {
   it('falls back to a generic message when neither detail nor title are present', () => {
     httpClient.get('/api/v1/projects/999').subscribe({ error: () => {} });
 
-    httpMock.expectOne('/api/v1/projects/999').flush({}, { status: 500, statusText: 'Server Error' });
+    httpMock
+      .expectOne('/api/v1/projects/999')
+      .flush({}, { status: 500, statusText: 'Server Error' });
 
-    expect(toast.error).toHaveBeenCalledWith('Something went wrong talking to the API. Please try again.');
+    expect(toast.error).toHaveBeenCalledWith(
+      'Something went wrong talking to the API. Please try again.',
+    );
   });
 
   it('falls back to a generic message for a non-HttpErrorResponse failure', () => {
@@ -57,7 +72,9 @@ describe('errorToastInterceptor', () => {
 
     httpMock.expectOne('/api/v1/projects/999').error(new ProgressEvent('error'));
 
-    expect(toast.error).toHaveBeenCalledWith('Something went wrong talking to the API. Please try again.');
+    expect(toast.error).toHaveBeenCalledWith(
+      'Something went wrong talking to the API. Please try again.',
+    );
   });
 
   it('does not toast when the request opts out via SUPPRESS_ERROR_TOAST', () => {
@@ -65,7 +82,9 @@ describe('errorToastInterceptor', () => {
       .get('/version.json', { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true) })
       .subscribe({ error: () => {} });
 
-    httpMock.expectOne('/version.json').flush('not found', { status: 404, statusText: 'Not Found' });
+    httpMock
+      .expectOne('/version.json')
+      .flush('not found', { status: 404, statusText: 'Not Found' });
 
     expect(toast.error).not.toHaveBeenCalled();
   });
@@ -74,8 +93,42 @@ describe('errorToastInterceptor', () => {
     let captured: unknown;
     httpClient.get('/api/v1/projects/999').subscribe({ error: (err: unknown) => (captured = err) });
 
-    httpMock.expectOne('/api/v1/projects/999').flush({ detail: 'boom' }, { status: 400, statusText: 'Bad Request' });
+    httpMock
+      .expectOne('/api/v1/projects/999')
+      .flush({ detail: 'boom' }, { status: 400, statusText: 'Bad Request' });
 
     expect(captured).toBeInstanceOf(HttpErrorResponse);
+  });
+
+  it('parses a Blob-bodied error (e.g. a responseType: "blob" request) containing valid problem+json', async () => {
+    httpClient
+      .get('/api/v1/code-queries/feedback/export', { responseType: 'blob' })
+      .subscribe({ error: () => {} });
+
+    const blob = new Blob([JSON.stringify({ detail: 'Window too large' })], {
+      type: 'application/problem+json',
+    });
+    httpMock
+      .expectOne('/api/v1/code-queries/feedback/export')
+      .flush(blob, { status: 400, statusText: 'Bad Request' });
+
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Window too large'));
+  });
+
+  it('falls back to the generic message when a Blob-bodied error is not valid JSON', async () => {
+    httpClient
+      .get('/api/v1/code-queries/feedback/export', { responseType: 'blob' })
+      .subscribe({ error: () => {} });
+
+    const blob = new Blob([''], { type: 'text/plain' });
+    httpMock
+      .expectOne('/api/v1/code-queries/feedback/export')
+      .flush(blob, { status: 404, statusText: 'Not Found' });
+
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Something went wrong talking to the API. Please try again.',
+      ),
+    );
   });
 });

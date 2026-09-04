@@ -10,15 +10,23 @@ describe('SettingsPage', () => {
     setApiBaseUrl: ReturnType<typeof vi.fn>;
     userName: ReturnType<typeof vi.fn>;
     setUserName: ReturnType<typeof vi.fn>;
+    exportTimezone: ReturnType<typeof vi.fn>;
+    setExportTimezone: ReturnType<typeof vi.fn>;
   };
   let toastService: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
-  function setup(initialUrl = '', initialUserName = ''): void {
+  function setup(
+    initialUrl = '',
+    initialUserName = '',
+    initialTimezone = 'America/Sao_Paulo',
+  ): void {
     configService = {
       apiBaseUrl: vi.fn(() => initialUrl),
       setApiBaseUrl: vi.fn(),
       userName: vi.fn(() => initialUserName),
       setUserName: vi.fn(),
+      exportTimezone: vi.fn(() => initialTimezone),
+      setExportTimezone: vi.fn(),
     };
     toastService = { success: vi.fn(), error: vi.fn() };
     TestBed.configureTestingModule({
@@ -43,6 +51,10 @@ describe('SettingsPage', () => {
     return inputs()[1];
   }
 
+  function exportTimezoneInput(): HTMLInputElement {
+    return inputs()[2];
+  }
+
   function typeValue(el: HTMLInputElement, text: string): void {
     el.value = text;
     el.dispatchEvent(new Event('input'));
@@ -60,6 +72,11 @@ describe('SettingsPage', () => {
 
   function saveUserName(): void {
     buttons()[1].click();
+    fixture.detectChanges();
+  }
+
+  function saveExportTimezone(): void {
+    buttons()[2].click();
     fixture.detectChanges();
   }
 
@@ -109,7 +126,9 @@ describe('SettingsPage', () => {
   it('clears the URL field via the Escape-clearable directive', () => {
     setup('https://example.com');
 
-    urlInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    urlInput().dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
     fixture.detectChanges();
 
     expect(urlInput().value).toBe('');
@@ -132,9 +151,56 @@ describe('SettingsPage', () => {
   it('clears the name field via the Escape-clearable directive', () => {
     setup('', 'Ada Lovelace');
 
-    userNameInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    userNameInput().dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
     fixture.detectChanges();
 
     expect(userNameInput().value).toBe('');
+  });
+
+  it('initializes the export timezone field from the current config', () => {
+    setup('', '', 'America/Manaus');
+    expect(exportTimezoneInput().value).toBe('America/Manaus');
+  });
+
+  it('saves a valid IANA export timezone', () => {
+    setup();
+    typeValue(exportTimezoneInput(), 'America/Rio_Branco');
+    saveExportTimezone();
+
+    expect(configService.setExportTimezone).toHaveBeenCalledWith('America/Rio_Branco');
+    expect(toastService.success).toHaveBeenCalledWith('Export timezone saved.');
+  });
+
+  it('saves an empty export timezone without validation', () => {
+    setup('', '', 'America/Sao_Paulo');
+    typeValue(exportTimezoneInput(), '');
+    saveExportTimezone();
+
+    expect(configService.setExportTimezone).toHaveBeenCalledWith('');
+    expect(toastService.success).toHaveBeenCalled();
+  });
+
+  it('rejects an export timezone that clearly is not an IANA name', () => {
+    setup();
+    typeValue(exportTimezoneInput(), 'brt');
+    saveExportTimezone();
+
+    expect(configService.setExportTimezone).not.toHaveBeenCalled();
+    expect(toastService.error).toHaveBeenCalledWith(
+      'Enter a valid IANA timezone name (e.g. America/Sao_Paulo), or leave it empty for UTC.',
+    );
+  });
+
+  it('clears the export timezone field via the Escape-clearable directive', () => {
+    setup('', '', 'America/Manaus');
+
+    exportTimezoneInput().dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    fixture.detectChanges();
+
+    expect(exportTimezoneInput().value).toBe('');
   });
 });

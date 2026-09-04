@@ -54,4 +54,29 @@ describe('ConfigService', () => {
     expect(service.userName()).toBe('');
     expect(localStorage.getItem('code-rag.userName')).toBe('');
   });
+
+  it('defaults to America/Sao_Paulo when no export timezone is stored', () => {
+    const service = TestBed.inject(ConfigService);
+    expect(service.exportTimezone()).toBe('America/Sao_Paulo');
+  });
+
+  it('reads a previously stored export timezone on construction', () => {
+    localStorage.setItem('code-rag.exportTimezone', 'America/Manaus');
+    const service = TestBed.inject(ConfigService);
+    expect(service.exportTimezone()).toBe('America/Manaus');
+  });
+
+  it('trims whitespace when saving an export timezone', () => {
+    const service = TestBed.inject(ConfigService);
+    service.setExportTimezone('  America/Rio_Branco  ');
+    expect(service.exportTimezone()).toBe('America/Rio_Branco');
+    expect(localStorage.getItem('code-rag.exportTimezone')).toBe('America/Rio_Branco');
+  });
+
+  it('persists an empty export timezone', () => {
+    const service = TestBed.inject(ConfigService);
+    service.setExportTimezone('   ');
+    expect(service.exportTimezone()).toBe('');
+    expect(localStorage.getItem('code-rag.exportTimezone')).toBe('');
+  });
 });

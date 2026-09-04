@@ -14,6 +14,7 @@ export class SettingsPage {
 
   protected readonly apiBaseUrl = signal(this.configService.apiBaseUrl());
   protected readonly userName = signal(this.configService.userName());
+  protected readonly exportTimezone = signal(this.configService.exportTimezone());
 
   protected onInput(value: string): void {
     this.apiBaseUrl.set(value);
@@ -48,6 +49,29 @@ export class SettingsPage {
     this.configService.setUserName(this.userName());
     this.toast.success('Name saved.');
   }
+
+  protected onExportTimezoneInput(value: string): void {
+    this.exportTimezone.set(value);
+  }
+
+  protected clearExportTimezone(): void {
+    this.exportTimezone.set('');
+  }
+
+  protected saveExportTimezone(): void {
+    const value = this.exportTimezone().trim();
+    // Empty is valid on purpose, same as the API base URL field: it means "no preference",
+    // and the export endpoint falls back to UTC when the timezone param is omitted/empty.
+    if (value.length > 0 && !isLikelyIanaTimezone(value)) {
+      this.toast.error(
+        'Enter a valid IANA timezone name (e.g. America/Sao_Paulo), or leave it empty for UTC.',
+      );
+      return;
+    }
+
+    this.configService.setExportTimezone(value);
+    this.toast.success('Export timezone saved.');
+  }
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -57,4 +81,12 @@ function isValidHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+// Best-effort only - the API is the real authority on valid IANA names
+// (TimeZoneInfo.TryFindSystemTimeZoneById), and rejects an unrecognized one with a 400 when the
+// export is actually requested. This just catches obviously wrong input early (e.g. "brt", a
+// bare offset, or a typo missing the "/").
+function isLikelyIanaTimezone(value: string): boolean {
+  return value === 'UTC' || /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){1,2}$/.test(value);
 }
