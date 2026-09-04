@@ -69,7 +69,7 @@ describe('FeedbackTrendChart', () => {
     expect(notUseful.datalabels.formatter(4, { dataIndex: 0 })).toBe('4 (40%)');
   });
 
-  it('computes the trend line from useful counts', () => {
+  it('computes the trend line from useful counts (one slot per week)', () => {
     fixture.componentRef.setInput('labels', ['a', 'b', 'c']);
     fixture.componentRef.setInput('usefulCounts', [1, 2, 3]);
     fixture.componentRef.setInput('totalCounts', [1, 2, 3]);
@@ -81,6 +81,28 @@ describe('FeedbackTrendChart', () => {
     const [, config] = chartConstructor.mock.calls[0];
     const [, , , trend] = config.data.datasets;
     expect(trend.data).toEqual([1, 2, 3]);
+  });
+
+  it('fits the trend line to each week\'s total useful count across all projects, not per-slot values', () => {
+    // Two weeks, two projects each: week "08/01" totals 6+5=11, week "08/08" totals 2+0=2.
+    fixture.componentRef.setInput('labels', [
+      ['08/01', 'alpha'],
+      ['08/01', 'beta'],
+      ['08/08', 'alpha'],
+      ['08/08', 'beta'],
+    ]);
+    fixture.componentRef.setInput('totalCounts', [10, 5, 3, 1]);
+    fixture.componentRef.setInput('usefulCounts', [6, 5, 2, 0]);
+    fixture.componentRef.setInput('notUsefulCounts', [4, 0, 1, 1]);
+    fixture.componentRef.setInput('usefulPercentages', [60, 100, 67, 0]);
+    fixture.componentRef.setInput('notUsefulPercentages', [40, 0, 33, 100]);
+    fixture.detectChanges();
+
+    const [, config] = chartConstructor.mock.calls[0];
+    const [, , , trend] = config.data.datasets;
+    // Weekly totals [11, 2] fit a line through those two points: 11 then 2. Each week's slots
+    // share that week's fitted value, so it's flat within a week and slopes between weeks.
+    expect(trend.data).toEqual([11, 11, 2, 2]);
   });
 
   it('rebuilds the chart (destroying the previous instance) when inputs change', () => {

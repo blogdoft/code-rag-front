@@ -106,6 +106,33 @@ export function computeWeekBandRanges(labels: ChartCategoryLabel[]): WeekBandRan
   return ranges;
 }
 
+/**
+ * The trend line should follow each week's *total* useful count across all projects, not the
+ * per-(week, project) slot values it's plotted against - otherwise the regression is skewed by
+ * how many projects happen to have data in a given week rather than the week-over-week volume.
+ * Sums `usefulCounts` within each week's range, fits the line through those weekly totals, then
+ * broadcasts each week's fitted value back out to every slot in that week so the line still has
+ * one point per x-axis slot (flat across a week's slots, sloping week to week).
+ */
+function computeWeeklyUsefulTrend(usefulCounts: number[], ranges: WeekBandRange[]): number[] {
+  const weeklyTotals = ranges.map((range) => {
+    let sum = 0;
+    for (let i = range.start; i <= range.end; i++) {
+      sum += usefulCounts[i] ?? 0;
+    }
+    return sum;
+  });
+  const weeklyTrend = computeLinearTrend(weeklyTotals);
+
+  const result = new Array<number>(usefulCounts.length);
+  ranges.forEach((range, index) => {
+    for (let i = range.start; i <= range.end; i++) {
+      result[i] = weeklyTrend[index];
+    }
+  });
+  return result;
+}
+
 @Component({
   selector: 'app-feedback-trend-chart',
   templateUrl: './feedback-trend-chart.html',
@@ -151,6 +178,7 @@ function buildConfig(
   const textColor = isDark ? '#e2e8f0' : '#334155';
   const gridColor = isDark ? 'rgba(226, 232, 240, 0.1)' : 'rgba(51, 65, 85, 0.1)';
   const weekBandColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(100, 116, 139, 0.08)';
+  const weekRanges = computeWeekBandRanges(labels);
 
   return {
     type: 'bar',
@@ -193,7 +221,7 @@ function buildConfig(
         {
           type: 'line',
           label: 'Useful trend',
-          data: computeLinearTrend(usefulCounts),
+          data: computeWeeklyUsefulTrend(usefulCounts, weekRanges),
           borderColor: '#0ea5e9',
           borderDash: [6, 4],
           pointRadius: 0,
@@ -219,7 +247,7 @@ function buildConfig(
       plugins: {
         legend: { labels: { color: textColor } },
         weekBands: {
-          ranges: computeWeekBandRanges(labels),
+          ranges: weekRanges,
           color: weekBandColor,
         },
       },
