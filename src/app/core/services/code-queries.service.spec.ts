@@ -145,6 +145,54 @@ describe('CodeQueriesService', () => {
 
     expect(result?.map((r) => r.id)).toEqual([2, 1, 3]);
   });
+
+  it('submits useful feedback without a reason', () => {
+    service
+      .submitFeedback(7, { question: 'where is retry logic?', useful: true, similarities: [0.9, 0.5], user: 'Ada' })
+      .subscribe();
+
+    const req = httpMock.expectOne('/api/v1/projects/7/code-queries/feedback');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      question: 'where is retry logic?',
+      useful: true,
+      similarities: [0.9, 0.5],
+      user: 'Ada',
+    });
+    req.flush({});
+  });
+
+  it('includes the reason when submitting not-useful feedback', () => {
+    service
+      .submitFeedback(7, {
+        question: 'q',
+        useful: false,
+        similarities: [],
+        user: 'Ada',
+        reason: 'Wrong file',
+      })
+      .subscribe();
+
+    const req = httpMock.expectOne('/api/v1/projects/7/code-queries/feedback');
+    expect(req.request.body).toEqual({
+      question: 'q',
+      useful: false,
+      similarities: [],
+      user: 'Ada',
+      reason: 'Wrong file',
+    });
+    req.flush({});
+  });
+
+  it('omits an empty reason', () => {
+    service
+      .submitFeedback(7, { question: 'q', useful: false, similarities: [], user: 'Ada', reason: '' })
+      .subscribe();
+
+    const req = httpMock.expectOne('/api/v1/projects/7/code-queries/feedback');
+    expect(req.request.body).toEqual({ question: 'q', useful: false, similarities: [], user: 'Ada' });
+    req.flush({});
+  });
 });
 
 function dto(id: number, similarity: number) {

@@ -42,6 +42,16 @@ interfaces + mapper functions in `core/services/projects.service.ts` and
 - `POST /api/v1/projects/{projectId}/code-queries` body `{ question }` → `CodeQueryResultDto[]`
   (`id`, `source_file`, `kind`, `type_name`, `member`, `embedding_text`, `similarity`). Can 404 (bad
   project id) or 400 (blank question).
+- `POST /api/v1/projects/{projectId}/code-queries/feedback` body `{ question, useful, similarities,
+  reason?, user }` → `201` with the created feedback record (unused by the app — there's no GET to
+  read it back later). Every field name here is already a single lowercase word, so unlike the DTOs
+  above there's no camelCase/snake_case translation to do in `CodeQueriesService.submitFeedback()`.
+  `user` identifies the caller and is never guessed — the app prompts for it (see `UserNameDialog` in
+  `features/code-search/`) and remembers it via `ConfigService`/`localStorage`, the same way the API
+  base URL is remembered. Can 404 (bad project id) or 400 (missing/blank required fields); no 409 —
+  repeat submissions for the same question are accepted. Not documented in `v1.json` or
+  `openapi.generated.json` (added to the live API after those were last regenerated) — confirmed via
+  `swagger.json` fetched directly and the `submit_code_query_feedback` MCP tool schema.
 - Errors are RFC7807 `ProblemDetails` (`type`, `title`, `status`, `detail`, `instance` — plain lowercase,
   unaffected by the snake_case naming policy). `core/interceptors/error-toast.interceptor.ts` reads
   `detail`/`title` and reports every failed request as a toast.
@@ -101,9 +111,10 @@ reimplemented per field/popup:
    and registers a `close()` callback with the coordinator. If `isDirty()` is provided and returns true,
    closing routes through `ConfirmDialog` first; otherwise it closes immediately.
 
-Today the only popup (`ResultDetailDialog`) is read-only, so its `isDirty` is effectively always false —
-the confirm-discard branch is implemented generically and correctly, but only exercised once a popup with
-editable state is added.
+`ResultDetailDialog` and `QueryFiltersDrawer` are read-only/always-valid (`isDirty` effectively always
+false). `NotUsefulReasonDialog` and `UserNameDialog` (both in `features/code-search/`, opened only from
+the feedback flow) are the first popups with real editable state and a real `isDirty`, exercising the
+confirm-discard-via-`ConfirmDialog` branch end-to-end for the first time.
 
 ### XSS
 

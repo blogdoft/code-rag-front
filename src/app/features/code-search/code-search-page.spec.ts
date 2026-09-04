@@ -3,17 +3,21 @@ import { Observable, Subject, of } from 'rxjs';
 import type { CodeQueryResult } from '../../core/models/code-query-result';
 import type { Project } from '../../core/models/project';
 import { CodeQueriesService } from '../../core/services/code-queries.service';
+import { ConfigService } from '../../core/services/config.service';
 import { ProjectsService } from '../../core/services/projects.service';
 import { PopupService } from '../../shared/services/popup.service';
 import { CodeSearchPage } from './code-search-page';
+import { NotUsefulReasonDialog } from './not-useful-reason-dialog';
 import { QueryFiltersDrawer } from './query-filters-drawer';
+import { UserNameDialog } from './user-name-dialog';
 
 describe('CodeSearchPage', () => {
   let fixture: ComponentFixture<CodeSearchPage>;
   let component: CodeSearchPage;
   let projectsService: { list: ReturnType<typeof vi.fn> };
-  let codeQueriesService: { ask: ReturnType<typeof vi.fn> };
+  let codeQueriesService: { ask: ReturnType<typeof vi.fn>; submitFeedback: ReturnType<typeof vi.fn> };
   let popupService: { open: ReturnType<typeof vi.fn> };
+  let configService: { userName: ReturnType<typeof vi.fn>; setUserName: ReturnType<typeof vi.fn> };
 
   const projects: Project[] = [
     { id: 1, name: 'alpha', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-01T00:00:00Z' },
@@ -39,16 +43,18 @@ describe('CodeSearchPage', () => {
     },
   ];
 
-  function setup(askResult: Observable<CodeQueryResult[]> = of(results)): void {
+  function setup(askResult: Observable<CodeQueryResult[]> = of(results), userName = 'Ada Lovelace'): void {
     projectsService = { list: vi.fn(() => of(projects)) };
-    codeQueriesService = { ask: vi.fn(() => askResult) };
+    codeQueriesService = { ask: vi.fn(() => askResult), submitFeedback: vi.fn(() => of(undefined)) };
     popupService = { open: vi.fn() };
+    configService = { userName: vi.fn(() => userName), setUserName: vi.fn() };
 
     TestBed.configureTestingModule({
       providers: [
         { provide: ProjectsService, useValue: projectsService },
         { provide: CodeQueriesService, useValue: codeQueriesService },
         { provide: PopupService, useValue: popupService },
+        { provide: ConfigService, useValue: configService },
       ],
     });
 
@@ -109,7 +115,16 @@ describe('CodeSearchPage', () => {
 
     expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {});
     expect(component['history']()).toEqual([
-      { id: 0, projectName: 'alpha', projectGitUrl: null, question: 'Where is retry logic?', filters: {}, results },
+      {
+        id: 0,
+        projectId: 1,
+        projectName: 'alpha',
+        projectGitUrl: null,
+        question: 'Where is retry logic?',
+        filters: {},
+        results,
+        feedback: { status: 'idle' },
+      },
     ]);
     expect(component['question']()).toBe('Where is retry logic?');
     expect(component['isSubmitting']()).toBe(false);
@@ -406,5 +421,156 @@ describe('CodeSearchPage', () => {
     expect(badges.length).toBe(2);
     expect(badges[0].textContent).toContain('namespace not contains "Legacy"');
     expect(badges[1].textContent).toContain('kind equals "method"');
+  });
+
+  describe('feedback', () => {
+    function askQuestion(): void {
+      component['selectedProjectId'].set(1);
+      component['question'].set('Where is retry logic?');
+      component['submit']();
+      fixture.detectChanges();
+    }
+
+    function feedbackButtons(): HTMLButtonElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('article button')).filter((button) =>
+        ['Useful', 'Not useful'].includes((button as HTMLButtonElement).textContent?.trim() ?? ''),
+      ) as HTMLButtonElement[];
+    }
+
+    function usefulButton(): HTMLButtonElement {
+      return feedbackButtons().find((b) => b.textContent?.trim() === 'Useful') as HTMLButtonElement;
+    }
+
+    function notUsefulButton(): HTMLButtonElement {
+      return feedbackButtons().find((b) => b.textContent?.trim() === 'Not useful') as HTMLButtonElement;
+    }
+
+    it('submits useful feedback directly, with no popup, when a name is already configured', () => {
+      setup(of(results), 'Ada Lovelace');
+      askQuestion();
+
+      usefulButton().click();
+      fixture.detectChanges();
+
+      expect(popupService.open).not.toHaveBeenCalled();
+      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(1, {
+        question: 'Where is retry logic?',
+        useful: true,
+        similarities: [0.9],
+        user: 'Ada Lovelace',
+        reason: undefined,
+      });
+      expect(fixture.nativeElement.textContent).toContain('Useful');
+      expect(feedbackButtons().length).toBe(0);
+    });
+
+    it('opens the reason popup for not-useful feedback and submits it once confirmed', () => {
+      setup();
+      askQuestion();
+      const closed = new Subject<boolean>();
+      popupService.open.mockReturnValue({ closed });
+
+      notUsefulButton().click();
+
+      expect(popupService.open).toHaveBeenCalledWith(
+        NotUsefulReasonDialog,
+        expect.objectContaining({ data: expect.objectContaining({ reason: expect.any(Function) }) }),
+      );
+      const [, options] = popupService.open.mock.calls[0];
+      options.data.reason.set('Wrong file');
+
+      closed.next(true);
+      fixture.detectChanges();
+
+      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(1, {
+        question: 'Where is retry logic?',
+        useful: false,
+        similarities: [0.9],
+        user: 'Ada Lovelace',
+        reason: 'Wrong file',
+      });
+      expect(fixture.nativeElement.textContent).toContain('Not useful');
+    });
+
+    it('does not submit not-useful feedback when the reason popup is cancelled', () => {
+      setup();
+      askQuestion();
+      const closed = new Subject<boolean>();
+      popupService.open.mockReturnValue({ closed });
+
+      notUsefulButton().click();
+      closed.next(false);
+      fixture.detectChanges();
+
+      expect(codeQueriesService.submitFeedback).not.toHaveBeenCalled();
+      expect(feedbackButtons().length).toBe(2);
+    });
+
+    it('resets to idle (buttons reappear) when the feedback request fails', () => {
+      setup();
+      const feedbackSubject = new Subject<void>();
+      codeQueriesService.submitFeedback.mockReturnValue(feedbackSubject);
+      askQuestion();
+
+      usefulButton().click();
+      fixture.detectChanges();
+      expect(feedbackButtons().every((b) => b.disabled)).toBe(true);
+
+      feedbackSubject.error(new Error('boom'));
+      fixture.detectChanges();
+
+      expect(feedbackButtons().length).toBe(2);
+      expect(feedbackButtons().every((b) => !b.disabled)).toBe(true);
+    });
+
+    it('asks for a name before submitting when none is configured, and proceeds once confirmed', () => {
+      setup(of(results), '');
+      askQuestion();
+      const closed = new Subject<boolean>();
+      popupService.open.mockReturnValue({ closed });
+
+      usefulButton().click();
+
+      expect(popupService.open).toHaveBeenCalledWith(
+        UserNameDialog,
+        expect.objectContaining({ data: expect.objectContaining({ name: expect.any(Function) }) }),
+      );
+      expect(codeQueriesService.submitFeedback).not.toHaveBeenCalled();
+
+      const [, options] = popupService.open.mock.calls[0];
+      options.data.name.set('Grace Hopper');
+      closed.next(true);
+      fixture.detectChanges();
+
+      expect(configService.setUserName).toHaveBeenCalledWith('Grace Hopper');
+      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(1, {
+        question: 'Where is retry logic?',
+        useful: true,
+        similarities: [0.9],
+        user: 'Grace Hopper',
+        reason: undefined,
+      });
+    });
+
+    it('aborts the whole feedback action, including an already-typed reason, when the name prompt is cancelled', () => {
+      setup(of(results), '');
+      askQuestion();
+      const reasonClosed = new Subject<boolean>();
+      const nameClosed = new Subject<boolean>();
+      popupService.open.mockReturnValueOnce({ closed: reasonClosed }).mockReturnValueOnce({ closed: nameClosed });
+
+      notUsefulButton().click();
+      const [, reasonOptions] = popupService.open.mock.calls[0];
+      reasonOptions.data.reason.set('Wrong file');
+      reasonClosed.next(true);
+
+      expect(popupService.open).toHaveBeenCalledTimes(2);
+      nameClosed.next(false);
+      fixture.detectChanges();
+
+      expect(configService.setUserName).not.toHaveBeenCalled();
+      expect(codeQueriesService.submitFeedback).not.toHaveBeenCalled();
+      expect(feedbackButtons().length).toBe(2);
+    });
   });
 });

@@ -13,6 +13,7 @@ export class SettingsPage {
   private readonly toast = inject(ToastService);
 
   protected readonly apiBaseUrl = signal(this.configService.apiBaseUrl());
+  protected readonly userName = signal(this.configService.userName());
 
   protected onInput(value: string): void {
     this.apiBaseUrl.set(value);
@@ -33,6 +34,19 @@ export class SettingsPage {
 
     this.configService.setApiBaseUrl(value);
     this.toast.success('API base URL saved.');
+  }
+
+  protected onUserNameInput(value: string): void {
+    this.userName.set(value);
+  }
+
+  protected clearUserName(): void {
+    this.userName.set('');
+  }
+
+  protected saveUserName(): void {
+    this.configService.setUserName(this.userName());
+    this.toast.success('Name saved.');
   }
 }
 

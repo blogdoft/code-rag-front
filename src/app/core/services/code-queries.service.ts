@@ -32,6 +32,24 @@ interface CodeQueryRequestDto {
   type_name?: CodeQueryFieldFilterDto;
 }
 
+export interface CodeQueryFeedbackParams {
+  question: string;
+  useful: boolean;
+  similarities: number[];
+  user: string;
+  reason?: string;
+}
+
+/** Wire shape of `POST /api/v1/projects/{projectId}/code-queries/feedback`. Every field name is
+ * already a single lowercase word, so there's no camelCase/snake_case translation to do here. */
+interface CodeQueryFeedbackRequestDto {
+  question: string;
+  useful: boolean;
+  similarities: number[];
+  reason?: string;
+  user: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CodeQueriesService {
   private readonly http = inject(HttpClient);
@@ -42,6 +60,19 @@ export class CodeQueriesService {
       .pipe(
         map((dtos) => dtos.map(toCodeQueryResult).sort((a, b) => b.similarity - a.similarity)),
       );
+  }
+
+  submitFeedback(projectId: number, params: CodeQueryFeedbackParams): Observable<void> {
+    const body: CodeQueryFeedbackRequestDto = {
+      question: params.question,
+      useful: params.useful,
+      similarities: params.similarities,
+      user: params.user,
+      ...(params.reason ? { reason: params.reason } : {}),
+    };
+    return this.http
+      .post(`/api/v1/projects/${projectId}/code-queries/feedback`, body)
+      .pipe(map(() => undefined));
   }
 }
 

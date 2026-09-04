@@ -1,6 +1,7 @@
 import { PercentPipe } from '@angular/common';
 import { Component, ElementRef, afterNextRender, computed, inject, model, signal, viewChild } from '@angular/core';
 import { CodeQueriesService } from '../../core/services/code-queries.service';
+import { ConfigService } from '../../core/services/config.service';
 import {
   DEFAULT_FIELD_FILTER,
   type CodeQueryFieldFilter,
@@ -13,16 +14,22 @@ import { ProjectsService } from '../../core/services/projects.service';
 import { Combobox, type ComboboxOption } from '../../shared/components/combobox/combobox';
 import { EscClearableDirective } from '../../shared/directives/esc-clearable.directive';
 import { PopupService } from '../../shared/services/popup.service';
+import { NotUsefulReasonDialog, type NotUsefulReasonDialogData } from './not-useful-reason-dialog';
 import { QueryFiltersDrawer, type QueryFiltersDrawerData } from './query-filters-drawer';
 import { ResultDetailDialog } from './result-detail-dialog';
+import { UserNameDialog, type UserNameDialogData } from './user-name-dialog';
+
+type FeedbackState = { status: 'idle' } | { status: 'submitting' } | { status: 'submitted'; useful: boolean };
 
 interface QueryHistoryEntry {
   id: number;
+  projectId: number;
   projectName: string;
   projectGitUrl: string | null;
   question: string;
   filters: CodeQueryFilters;
   results: CodeQueryResult[];
+  feedback: FeedbackState;
 }
 
 interface FilterSummaryEntry {
@@ -39,6 +46,7 @@ export class CodeSearchPage {
   private readonly projectsService = inject(ProjectsService);
   private readonly codeQueriesService = inject(CodeQueriesService);
   private readonly popupService = inject(PopupService);
+  private readonly configService = inject(ConfigService);
 
   protected readonly projectOptions = signal<ComboboxOption[]>([]);
   private readonly projects = signal<Project[]>([]);
@@ -140,7 +148,16 @@ export class CodeSearchPage {
     this.codeQueriesService.ask(projectId, question, filters).subscribe({
       next: (results) => {
         this.history.update((entries) => [
-          { id: this.nextHistoryId++, projectName, projectGitUrl, question, filters, results },
+          {
+            id: this.nextHistoryId++,
+            projectId,
+            projectName,
+            projectGitUrl,
+            question,
+            filters,
+            results,
+            feedback: { status: 'idle' },
+          },
           ...entries,
         ]);
       },
@@ -172,6 +189,70 @@ export class CodeSearchPage {
 
   protected openResult(result: CodeQueryResult): void {
     this.popupService.open(ResultDetailDialog, { data: result });
+  }
+
+  protected markUseful(entry: QueryHistoryEntry): void {
+    this.submitFeedback(entry, true, undefined);
+  }
+
+  protected openNotUsefulDialog(entry: QueryHistoryEntry): void {
+    const reason = signal('');
+    const ref = this.popupService.open<boolean, NotUsefulReasonDialogData>(NotUsefulReasonDialog, {
+      data: { reason },
+      isDirty: () => reason().trim().length > 0,
+    });
+    ref.closed.subscribe((confirmed) => {
+      if (confirmed) {
+        this.submitFeedback(entry, false, reason().trim() || undefined);
+      }
+    });
+  }
+
+  private submitFeedback(entry: QueryHistoryEntry, useful: boolean, reason: string | undefined): void {
+    const existingUser = this.configService.userName().trim();
+    if (existingUser.length === 0) {
+      this.askForUserName((user) => this.postFeedback(entry, useful, reason, user));
+      return;
+    }
+    this.postFeedback(entry, useful, reason, existingUser);
+  }
+
+  /** Prompts for a name when none is configured yet. Cancelling aborts the whole feedback action
+   *  that triggered the prompt — `onConfirmed` never runs. */
+  private askForUserName(onConfirmed: (user: string) => void): void {
+    const name = signal('');
+    const ref = this.popupService.open<boolean, UserNameDialogData>(UserNameDialog, {
+      data: { name },
+      isDirty: () => name().trim().length > 0,
+    });
+    ref.closed.subscribe((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+      const user = name().trim();
+      this.configService.setUserName(user);
+      onConfirmed(user);
+    });
+  }
+
+  private postFeedback(entry: QueryHistoryEntry, useful: boolean, reason: string | undefined, user: string): void {
+    this.setFeedback(entry.id, { status: 'submitting' });
+    this.codeQueriesService
+      .submitFeedback(entry.projectId, {
+        question: entry.question,
+        useful,
+        similarities: entry.results.map((result) => result.similarity),
+        user,
+        reason,
+      })
+      .subscribe({
+        next: () => this.setFeedback(entry.id, { status: 'submitted', useful }),
+        error: () => this.setFeedback(entry.id, { status: 'idle' }),
+      });
+  }
+
+  private setFeedback(entryId: number, feedback: FeedbackState): void {
+    this.history.update((entries) => entries.map((entry) => (entry.id === entryId ? { ...entry, feedback } : entry)));
   }
 
   protected removeHistoryEntry(id: number): void {

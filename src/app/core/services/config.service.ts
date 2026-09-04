@@ -12,11 +12,16 @@ const API_BASE_URL_KEY = 'code-rag.apiBaseUrl';
  */
 const DEFAULT_API_BASE_URL = '';
 
+const USER_NAME_KEY = 'code-rag.userName';
+const DEFAULT_USER_NAME = '';
+
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
   private readonly apiBaseUrlSignal = signal(this.readApiBaseUrl());
+  private readonly userNameSignal = signal(this.readUserName());
 
   readonly apiBaseUrl = this.apiBaseUrlSignal.asReadonly();
+  readonly userName = this.userNameSignal.asReadonly();
 
   setApiBaseUrl(value: string): void {
     const trimmed = value.trim().replace(/\/+$/, '');
@@ -24,7 +29,17 @@ export class ConfigService {
     this.apiBaseUrlSignal.set(trimmed);
   }
 
+  setUserName(value: string): void {
+    const trimmed = value.trim();
+    localStorage.setItem(USER_NAME_KEY, trimmed);
+    this.userNameSignal.set(trimmed);
+  }
+
   private readApiBaseUrl(): string {
     return localStorage.getItem(API_BASE_URL_KEY) ?? DEFAULT_API_BASE_URL;
+  }
+
+  private readUserName(): string {
+    return localStorage.getItem(USER_NAME_KEY) ?? DEFAULT_USER_NAME;
   }
 }

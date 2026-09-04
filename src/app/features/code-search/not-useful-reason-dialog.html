@@ -1,0 +1,30 @@
+<div class="w-full max-w-md rounded-lg bg-white p-5 shadow-xl dark:bg-slate-800">
+  <h2 class="text-base font-medium text-slate-900 dark:text-slate-100">Why weren't these results helpful?</h2>
+
+  <textarea
+    rows="4"
+    [value]="data.reason()"
+    [appEscClearable]="data.reason()"
+    (cleared)="clearReason()"
+    (input)="onReasonInput($any($event.target).value)"
+    placeholder="Optional — what were you expecting instead?"
+    class="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+  ></textarea>
+
+  <div class="mt-4 flex justify-end gap-2">
+    <button
+      type="button"
+      (click)="cancel()"
+      class="rounded-md px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+    >
+      Cancel
+    </button>
+    <button
+      type="button"
+      (click)="confirm()"
+      class="rounded-md bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-700"
+    >
+      Confirm
+    </button>
+  </div>
+</div>

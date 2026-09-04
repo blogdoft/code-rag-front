@@ -5,11 +5,21 @@ import { SettingsPage } from './settings-page';
 
 describe('SettingsPage', () => {
   let fixture: ComponentFixture<SettingsPage>;
-  let configService: { apiBaseUrl: ReturnType<typeof vi.fn>; setApiBaseUrl: ReturnType<typeof vi.fn> };
+  let configService: {
+    apiBaseUrl: ReturnType<typeof vi.fn>;
+    setApiBaseUrl: ReturnType<typeof vi.fn>;
+    userName: ReturnType<typeof vi.fn>;
+    setUserName: ReturnType<typeof vi.fn>;
+  };
   let toastService: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
-  function setup(initialUrl = ''): void {
-    configService = { apiBaseUrl: vi.fn(() => initialUrl), setApiBaseUrl: vi.fn() };
+  function setup(initialUrl = '', initialUserName = ''): void {
+    configService = {
+      apiBaseUrl: vi.fn(() => initialUrl),
+      setApiBaseUrl: vi.fn(),
+      userName: vi.fn(() => initialUserName),
+      setUserName: vi.fn(),
+    };
     toastService = { success: vi.fn(), error: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
@@ -21,30 +31,47 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
   }
 
-  function input(): HTMLInputElement {
-    return fixture.nativeElement.querySelector('input');
+  function inputs(): HTMLInputElement[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('input'));
   }
 
-  function typeValue(text: string): void {
-    input().value = text;
-    input().dispatchEvent(new Event('input'));
+  function urlInput(): HTMLInputElement {
+    return inputs()[0];
+  }
+
+  function userNameInput(): HTMLInputElement {
+    return inputs()[1];
+  }
+
+  function typeValue(el: HTMLInputElement, text: string): void {
+    el.value = text;
+    el.dispatchEvent(new Event('input'));
     fixture.detectChanges();
   }
 
-  function save(): void {
-    fixture.nativeElement.querySelector('button').click();
+  function buttons(): HTMLButtonElement[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('button'));
+  }
+
+  function saveUrl(): void {
+    buttons()[0].click();
+    fixture.detectChanges();
+  }
+
+  function saveUserName(): void {
+    buttons()[1].click();
     fixture.detectChanges();
   }
 
   it('initializes the field from the current config', () => {
     setup('https://example.com');
-    expect(input().value).toBe('https://example.com');
+    expect(urlInput().value).toBe('https://example.com');
   });
 
   it('saves a valid absolute URL', () => {
     setup();
-    typeValue('https://example.com');
-    save();
+    typeValue(urlInput(), 'https://example.com');
+    saveUrl();
 
     expect(configService.setApiBaseUrl).toHaveBeenCalledWith('https://example.com');
     expect(toastService.success).toHaveBeenCalledWith('API base URL saved.');
@@ -52,8 +79,8 @@ describe('SettingsPage', () => {
 
   it('saves an empty value without validation', () => {
     setup('https://example.com');
-    typeValue('');
-    save();
+    typeValue(urlInput(), '');
+    saveUrl();
 
     expect(configService.setApiBaseUrl).toHaveBeenCalledWith('');
     expect(toastService.success).toHaveBeenCalled();
@@ -61,8 +88,8 @@ describe('SettingsPage', () => {
 
   it('rejects an invalid URL and shows an error toast without saving', () => {
     setup();
-    typeValue('not-a-url');
-    save();
+    typeValue(urlInput(), 'not-a-url');
+    saveUrl();
 
     expect(configService.setApiBaseUrl).not.toHaveBeenCalled();
     expect(toastService.error).toHaveBeenCalledWith(
@@ -72,19 +99,42 @@ describe('SettingsPage', () => {
 
   it('rejects a non-http(s) URL scheme', () => {
     setup();
-    typeValue('ftp://example.com');
-    save();
+    typeValue(urlInput(), 'ftp://example.com');
+    saveUrl();
 
     expect(configService.setApiBaseUrl).not.toHaveBeenCalled();
     expect(toastService.error).toHaveBeenCalled();
   });
 
-  it('clears the field via the Escape-clearable directive', () => {
+  it('clears the URL field via the Escape-clearable directive', () => {
     setup('https://example.com');
 
-    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    urlInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     fixture.detectChanges();
 
-    expect(input().value).toBe('');
+    expect(urlInput().value).toBe('');
+  });
+
+  it('initializes the name field from the current config', () => {
+    setup('', 'Ada Lovelace');
+    expect(userNameInput().value).toBe('Ada Lovelace');
+  });
+
+  it('saves the name', () => {
+    setup();
+    typeValue(userNameInput(), 'Ada Lovelace');
+    saveUserName();
+
+    expect(configService.setUserName).toHaveBeenCalledWith('Ada Lovelace');
+    expect(toastService.success).toHaveBeenCalledWith('Name saved.');
+  });
+
+  it('clears the name field via the Escape-clearable directive', () => {
+    setup('', 'Ada Lovelace');
+
+    userNameInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(userNameInput().value).toBe('');
   });
 });
