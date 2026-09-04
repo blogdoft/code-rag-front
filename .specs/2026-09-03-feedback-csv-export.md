@@ -16,6 +16,19 @@ this wasn't part of the original §3 design below, which only covered `start_dat
 `project_id`. See `core/services/config.service.ts` (`exportTimezone`/`setExportTimezone`) and
 `features/settings/settings-page.ts` for the new setting.
 
+**Second amendment (2026-09-04):** confirmed live against production - searching the Reports page
+for a local calendar day (e.g. "the 3rd") silently excluded feedback given late in the evening
+(after ~21:40 `America/Sao_Paulo`), because `feedback-stats-page.ts`'s `toIsoStart`/`toIsoEnd` built
+`start_date`/`end_date` by pasting the date-only picker value straight onto `T00:00:00Z`/
+`T23:59:59Z` - treating the user's local calendar day as if it were already UTC. A record from
+21:58 local on the 3rd is already `2026-09-04T00:58:00Z` in storage, past a naive "end of the 3rd"
+UTC cutoff. Fixed by converting the picker's local day boundaries to the correct UTC instant using
+the same configured `ConfigService.exportTimezone()` (via a new `zonedDateBoundaryToUtcIso` helper,
+Intl-based, no new dependency) before sending either `getStats` or `exportCsv` - this applies to
+**both** the Reports chart and the CSV export's date-range filter, not just the CSV's `created_at`
+display column from the first amendment above. No backend change needed: the API already accepts
+any UTC `start_date`/`end_date`.
+
 ## 1. Background
 
 The Reports page (`features/reports/feedback-stats-page.ts`, added by

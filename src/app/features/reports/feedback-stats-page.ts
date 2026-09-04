@@ -1,6 +1,7 @@
 import { Component, computed, inject, model, signal } from '@angular/core';
 import type { FeedbackStats } from '../../core/models/feedback-stats';
 import type { Project } from '../../core/models/project';
+import { ConfigService } from '../../core/services/config.service';
 import {
   FeedbackStatsService,
   type FeedbackStatsQuery,
@@ -34,6 +35,7 @@ export class FeedbackStatsPage {
   private readonly projectsService = inject(ProjectsService);
   private readonly feedbackStatsService = inject(FeedbackStatsService);
   private readonly toast = inject(ToastService);
+  private readonly configService = inject(ConfigService);
 
   protected readonly projectOptions = signal<ComboboxOption[]>([
     { id: ALL_PROJECTS_ID, label: 'All projects' },
@@ -163,9 +165,17 @@ export class FeedbackStatsPage {
 
   private buildQuery(): FeedbackStatsQuery {
     const projectId = this.selectedProjectId();
+    // The date-only picker fields mean the user's local calendar day (e.g. "the 3rd"), not UTC's -
+    // an evening event on that day can already be past midnight UTC (e.g. 21:40 in America/Sao_Paulo
+    // is 00:40 UTC the next day). Filtering the API (always UTC) with a naive "T00:00:00Z"/
+    // "T23:59:59Z" would silently exclude those late-evening records, or count them under the wrong
+    // day once included - see code-rag-api's .specs/code-query-feedback-timezone.md. Anchoring to
+    // the configured export timezone instead keeps "day 3" meaning the same thing here as it does
+    // in the exported CSV's created_at column.
+    const timezone = this.configService.exportTimezone() || 'UTC';
     return {
-      startDate: toIsoStart(this.startDate()),
-      endDate: toIsoEnd(this.endDate()),
+      startDate: toIsoStart(this.startDate(), timezone),
+      endDate: toIsoEnd(this.endDate(), timezone),
       projectId: projectId === null || projectId === ALL_PROJECTS_ID ? undefined : projectId,
     };
   }
@@ -217,12 +227,73 @@ function slugify(value: string): string {
     .replace(/(^-|-$)/g, '');
 }
 
-function toIsoStart(date: string): string | undefined {
-  return date ? `${date}T00:00:00Z` : undefined;
+function toIsoStart(date: string, timeZone: string): string | undefined {
+  return date ? zonedDateBoundaryToUtcIso(date, '00:00:00.000', timeZone) : undefined;
 }
 
-function toIsoEnd(date: string): string | undefined {
-  return date ? `${date}T23:59:59Z` : undefined;
+function toIsoEnd(date: string, timeZone: string): string | undefined {
+  return date ? zonedDateBoundaryToUtcIso(date, '23:59:59.999', timeZone) : undefined;
+}
+
+/**
+ * Converts a plain "YYYY-MM-DD" date plus a wall-clock time, as they'd read on a clock in
+ * `timeZone`, to the matching UTC instant - e.g. "2026-09-03" + "23:59:59.999" in
+ * "America/Sao_Paulo" (-03:00) is "2026-09-04T02:59:59.999Z".
+ *
+ * Two-pass, no timezone library: first guess the instant as if `time` were already UTC, read what
+ * that guessed instant actually renders as in `timeZone` (via Intl, which carries the real IANA
+ * database - correct for any zone/date, DST included), then correct the guess by the difference
+ * between what we asked for and what we got. This is the standard technique for zoned-time
+ * conversion without a library (e.g. what date-fns-tz's fromZonedTime does under the hood); the
+ * only case it can be off by an hour is a wall-clock time that's ambiguous/skipped during that
+ * zone's own DST transition, which doesn't apply here (Brazil has had no DST since 2019).
+ */
+function zonedDateBoundaryToUtcIso(date: string, time: string, timeZone: string): string {
+  const guess = new Date(`${date}T${time}Z`);
+  const offsetMillis = zonedOffsetMillis(guess, timeZone);
+  return new Date(guess.getTime() - offsetMillis).toISOString();
+}
+
+function zonedOffsetMillis(atUtc: Date, timeZone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  const parts: Record<string, string> = {};
+  for (const part of formatter.formatToParts(atUtc)) {
+    if (part.type !== 'literal') {
+      parts[part.type] = part.value;
+    }
+  }
+
+  const asIfUtc = Date.UTC(
+    Number(parts['year']),
+    Number(parts['month']) - 1,
+    Number(parts['day']),
+    Number(parts['hour']),
+    Number(parts['minute']),
+    Number(parts['second']),
+  );
+  // Both sides must be whole-second precision, or a sub-second remainder on atUtc (e.g. the
+  // ".999" end-of-day guess) leaks into the offset itself, since the formatter/Date.UTC above
+  // only carries whole seconds. atUtc's own milliseconds are preserved separately, in
+  // zonedDateBoundaryToUtcIso's final subtraction against the untruncated guess.
+  const atUtcWholeSeconds = Date.UTC(
+    atUtc.getUTCFullYear(),
+    atUtc.getUTCMonth(),
+    atUtc.getUTCDate(),
+    atUtc.getUTCHours(),
+    atUtc.getUTCMinutes(),
+    atUtc.getUTCSeconds(),
+  );
+  return asIfUtc - atUtcWholeSeconds;
 }
 
 function formatWeekLabel(weekStart: string): string {

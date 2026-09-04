@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, Subject, of } from 'rxjs';
 import type { FeedbackStats } from '../../core/models/feedback-stats';
 import type { Project } from '../../core/models/project';
+import { ConfigService } from '../../core/services/config.service';
 import {
   FeedbackStatsService,
   type FeedbackStatsQuery,
@@ -39,6 +40,7 @@ describe('FeedbackStatsPage', () => {
     exportCsv: ReturnType<typeof vi.fn>;
   };
   let toastService: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
+  let configService: { exportTimezone: ReturnType<typeof vi.fn> };
 
   const projects: Project[] = [
     { id: 1, name: 'alpha', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-01T00:00:00Z' },
@@ -80,16 +82,22 @@ describe('FeedbackStatsPage', () => {
     getStats: (query: FeedbackStatsQuery) => Observable<FeedbackStats> = () => of(stats),
     exportCsv: (query: FeedbackStatsQuery) => Observable<HttpResponse<Blob>> = () =>
       of(new HttpResponse({ body: new Blob(['csv,data']), headers: new HttpHeaders() })),
+    // UTC by default so every existing test's literal "...T00:00:00Z"/"...T23:59:59Z" assertions
+    // stay meaningful without also asserting on timezone conversion - see the dedicated
+    // "date-range timezone conversion" describe block below for that.
+    exportTimezone = 'UTC',
   ): void {
     projectsService = { list: vi.fn(() => of(projects)) };
     feedbackStatsService = { getStats: vi.fn(getStats), exportCsv: vi.fn(exportCsv) };
     toastService = { success: vi.fn(), error: vi.fn() };
+    configService = { exportTimezone: vi.fn(() => exportTimezone) };
 
     TestBed.configureTestingModule({
       providers: [
         { provide: ProjectsService, useValue: projectsService },
         { provide: FeedbackStatsService, useValue: feedbackStatsService },
         { provide: ToastService, useValue: toastService },
+        { provide: ConfigService, useValue: configService },
       ],
     });
 
@@ -171,8 +179,8 @@ describe('FeedbackStatsPage', () => {
       expect(start.value).toBe(toDateInput(fourWeeksAgo));
       expect(end.value).toBe(toDateInput(now));
       expect(feedbackStatsService.getStats).toHaveBeenCalledWith({
-        startDate: `${toDateInput(fourWeeksAgo)}T00:00:00Z`,
-        endDate: `${toDateInput(now)}T23:59:59Z`,
+        startDate: `${toDateInput(fourWeeksAgo)}T00:00:00.000Z`,
+        endDate: `${toDateInput(now)}T23:59:59.999Z`,
         projectId: undefined,
       });
     } finally {
@@ -244,8 +252,8 @@ describe('FeedbackStatsPage', () => {
     refreshButton().click();
 
     expect(feedbackStatsService.getStats).toHaveBeenCalledWith({
-      startDate: '2026-08-01T00:00:00Z',
-      endDate: '2026-08-31T23:59:59Z',
+      startDate: '2026-08-01T00:00:00.000Z',
+      endDate: '2026-08-31T23:59:59.999Z',
       projectId: 2,
     });
   });
@@ -278,8 +286,8 @@ describe('FeedbackStatsPage', () => {
 
     expect(toastService.error).not.toHaveBeenCalled();
     expect(feedbackStatsService.getStats).toHaveBeenCalledWith({
-      startDate: '2026-08-31T00:00:00Z',
-      endDate: '2026-09-01T23:59:59Z',
+      startDate: '2026-08-31T00:00:00.000Z',
+      endDate: '2026-09-01T23:59:59.999Z',
       projectId: undefined,
     });
   });
@@ -305,6 +313,60 @@ describe('FeedbackStatsPage', () => {
     );
 
     expect(fixture.nativeElement.textContent).toContain('No data for this range.');
+  });
+
+  describe('date-range timezone conversion', () => {
+    it('anchors the date-only picker fields to the configured export timezone, not literal UTC', () => {
+      setup(undefined, undefined, 'America/Sao_Paulo');
+      const [start, end] = dateInputs();
+      setDate(start, '2026-09-03');
+      setDate(end, '2026-09-03');
+      feedbackStatsService.getStats.mockClear();
+
+      refreshButton().click();
+
+      // Local midnight and local end-of-day on 2026-09-03 in America/Sao_Paulo (-03:00) are
+      // 03:00:00.000Z and 04:59:59.999Z... i.e. 03:00Z that day through 02:59:59.999Z the *next*
+      // day - matching what a feedback record given at 23:58 local on the 3rd (already
+      // 2026-09-04T02:58Z in the DB) needs to be included by a "the 3rd" search.
+      expect(feedbackStatsService.getStats).toHaveBeenCalledWith({
+        startDate: '2026-09-03T03:00:00.000Z',
+        endDate: '2026-09-04T02:59:59.999Z',
+        projectId: undefined,
+      });
+    });
+
+    it('treats an empty configured timezone as UTC (matches the raw picker value)', () => {
+      setup(undefined, undefined, '');
+      const [start, end] = dateInputs();
+      setDate(start, '2026-09-03');
+      setDate(end, '2026-09-03');
+      feedbackStatsService.getStats.mockClear();
+
+      refreshButton().click();
+
+      expect(feedbackStatsService.getStats).toHaveBeenCalledWith({
+        startDate: '2026-09-03T00:00:00.000Z',
+        endDate: '2026-09-03T23:59:59.999Z',
+        projectId: undefined,
+      });
+    });
+
+    it('applies the same conversion to the Export CSV date range', () => {
+      setup(undefined, undefined, 'America/Sao_Paulo');
+      const [start, end] = dateInputs();
+      setDate(start, '2026-09-03');
+      setDate(end, '2026-09-03');
+      feedbackStatsService.exportCsv.mockClear();
+
+      fixture.nativeElement.querySelectorAll('button')[1].click();
+
+      expect(feedbackStatsService.exportCsv).toHaveBeenCalledWith({
+        startDate: '2026-09-03T03:00:00.000Z',
+        endDate: '2026-09-04T02:59:59.999Z',
+        projectId: undefined,
+      });
+    });
   });
 
   describe('Export CSV', () => {
@@ -346,8 +408,8 @@ describe('FeedbackStatsPage', () => {
       exportButton().click();
 
       expect(feedbackStatsService.exportCsv).toHaveBeenCalledWith({
-        startDate: '2026-08-01T00:00:00Z',
-        endDate: '2026-08-31T23:59:59Z',
+        startDate: '2026-08-01T00:00:00.000Z',
+        endDate: '2026-08-31T23:59:59.999Z',
         projectId: 2,
       });
     });
