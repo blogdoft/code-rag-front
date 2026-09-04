@@ -70,23 +70,21 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
   }
 
-  function buttons(): HTMLButtonElement[] {
-    return Array.from(fixture.nativeElement.querySelectorAll('button'));
+  function blur(el: HTMLInputElement): void {
+    el.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
   }
 
   function saveUrl(): void {
-    buttons()[0].click();
-    fixture.detectChanges();
+    blur(urlInput());
   }
 
   function saveUserName(): void {
-    buttons()[1].click();
-    fixture.detectChanges();
+    blur(userNameInput());
   }
 
   function saveExportTimezone(): void {
-    buttons()[2].click();
-    fixture.detectChanges();
+    blur(exportTimezoneInput());
   }
 
   it('initializes the field from the current config', () => {
@@ -110,6 +108,14 @@ describe('SettingsPage', () => {
 
     expect(configService.setApiBaseUrl).toHaveBeenCalledWith('');
     expect(toastService.success).toHaveBeenCalled();
+  });
+
+  it('does not re-save or re-toast when blurring without changing the value', () => {
+    setup('https://example.com');
+    blur(urlInput());
+
+    expect(configService.setApiBaseUrl).not.toHaveBeenCalled();
+    expect(toastService.success).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid URL and shows an error toast without saving', () => {
@@ -141,6 +147,7 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
 
     expect(urlInput().value).toBe('');
+    expect(configService.setApiBaseUrl).toHaveBeenCalledWith('');
   });
 
   it('initializes the name field from the current config', () => {
@@ -166,6 +173,7 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
 
     expect(userNameInput().value).toBe('');
+    expect(configService.setUserName).toHaveBeenCalledWith('');
   });
 
   it('initializes the export timezone field from the current config', () => {
@@ -211,6 +219,7 @@ describe('SettingsPage', () => {
     fixture.detectChanges();
 
     expect(exportTimezoneInput().value).toBe('');
+    expect(configService.setExportTimezone).toHaveBeenCalledWith('');
   });
 
   function themeButtons(): HTMLButtonElement[] {

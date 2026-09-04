@@ -34,16 +34,23 @@ export class SettingsPage {
     this.apiBaseUrl.set(value);
   }
 
+  /** Escape-clearing a field is itself a change, so it persists immediately like any other edit. */
   protected clear(): void {
     this.apiBaseUrl.set('');
+    this.save();
   }
 
+  /** Auto-persisted on blur/Enter - there's no separate Save step. */
   protected save(): void {
     const value = this.apiBaseUrl().trim();
     // Empty is valid on purpose: it means "call /api on this same origin",
     // letting a proxy in front of the app handle routing to the real API.
     if (value.length > 0 && !isValidHttpUrl(value)) {
       this.toast.error('Enter a valid http(s) URL, or leave it empty to use this same origin.');
+      return;
+    }
+
+    if (value.replace(/\/+$/, '') === this.configService.apiBaseUrl()) {
       return;
     }
 
@@ -57,10 +64,16 @@ export class SettingsPage {
 
   protected clearUserName(): void {
     this.userName.set('');
+    this.saveUserName();
   }
 
   protected saveUserName(): void {
-    this.configService.setUserName(this.userName());
+    const value = this.userName().trim();
+    if (value === this.configService.userName()) {
+      return;
+    }
+
+    this.configService.setUserName(value);
     this.toast.success('Name saved.');
   }
 
@@ -70,6 +83,7 @@ export class SettingsPage {
 
   protected clearExportTimezone(): void {
     this.exportTimezone.set('');
+    this.saveExportTimezone();
   }
 
   protected saveExportTimezone(): void {
@@ -80,6 +94,10 @@ export class SettingsPage {
       this.toast.error(
         'Enter a valid IANA timezone name (e.g. America/Sao_Paulo), or leave it empty for UTC.',
       );
+      return;
+    }
+
+    if (value === this.configService.exportTimezone()) {
       return;
     }
 
