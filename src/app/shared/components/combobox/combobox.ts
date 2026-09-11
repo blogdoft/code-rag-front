@@ -57,6 +57,9 @@ export class Combobox {
   }
 
   protected onInput(text: string): void {
+    // Once the text is edited, it no longer represents the previously selected
+    // option. A blank input is therefore an explicit "no selection" state too.
+    this.value.set(null);
     this.query.set(text);
     this.isOpen.set(true);
     this.activeIndex.set(0);

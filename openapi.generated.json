@@ -1,282 +1,1013 @@
 {
-    "openapi": "3.0.1",
-    "info": {
-        "title": "CodeRag.Api | v1",
-        "version": "1.0.0"
-    },
-    "servers": [
-        {
-            "url": "http://localhost:5002/"
-        }
-    ],
-    "paths": {
-        "/api/v1/projects/{projectId}/code-queries": {
-            "post": {
-                "tags": [
-                    "CodeQueries"
-                ],
-                "parameters": [
-                    {
-                        "name": "projectId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CodeQueryRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/CodeQueryResultResponse"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                                }
-                            }
-                        }
-                    }
-                }
+  "openapi": "3.0.4",
+  "info": {
+    "title": "Code CIIR API",
+    "description": "API for querying indexed source code (from code3rag, owned by code-ciir-indexer) using\nnatural language, returning not only the most semantically similar code documents but\nalso up to two levels of their code relationship graph. See .specs/ for the full\nevolutionary implementation plan - this build only exposes a version endpoint so far.\n\nAll endpoints exclusively accept and return application/json. Client errors and server\nerrors are reported using the RFC 7807 \"Problem Details for HTTP APIs\" format, with the\nexception of 404 responses, which are returned with no response body.",
+    "version": "0.0.0-dev+9fe8409a979dddfec4a02f4ddc6dbbe58d3f6048"
+  },
+  "paths": {
+    "/api/v1/code-queries": {
+      "post": {
+        "tags": [
+          "Code Query"
+        ],
+        "summary": "Query indexed code using natural language",
+        "description": "Accepts a natural language question, converts it into a vector embedding using the single\napp-configured embedding model, and returns the code documents whose stored embeddings are\nmost semantically similar to the question - optionally narrowed to one project and/or by\nstructured filters, reordered by an optional reranking stage, and capped at `limit`.\n            \nWhen no code document scores highly enough to be considered a match, the response is a 200\nOK with an empty array - this is not treated as an error. A 404 is returned only when\n`project_id` is provided and does not correspond to any project.\n            \n<b>Why this endpoint has no page-based pagination:</b> results must always come back\nordered from the single greatest match to the smallest. When a reranker is configured\n(server-side only, see `Reranking:Provider`), that ordering is decided by reranking\nthe entire candidate pool - not by cosine similarity alone - before truncating to\n`limit`. Offset-based paging would rerank each page's candidates in isolation, which\ncan hide a globally better match that happens to land on a later page, and cannot\nguarantee one consistent best-to-worst ordering across pages. Use `limit` to control\nhow many top results you want; there is no `page`. See .specs/10-reranking.md.",
+        "requestBody": {
+          "description": "The natural language question to search with, plus optional `project_id`,\n`min_similarity`, `kind`, `qualified_name` filters and `limit`.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeQueryRequest"
+              }
             }
+          }
         },
-        "/api/v1/projects": {
-            "get": {
-                "tags": [
-                    "Projects"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ProjectResponse"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                                }
-                            }
-                        }
-                    }
+        "responses": {
+          "200": {
+            "description": "The code documents most semantically similar to the natural language question (`matches`,\nordered by descending `rerank_score` when reranking is configured, otherwise by descending\ncosine `similarity`). Each match carries its own `relations` - every direct (1-hop)\nrelation touching it, both directions, every relation type, always complete regardless of\ngraph size (see .specs/12-match-relations.md). The response also includes up to 2 hops of\nthe matches' code relationship graph (`graph`) - every relation type, both directions -\nwhen `project_id` was provided. `matches` is an empty array when no code document is found\nto be similar enough to the question, or matching the given filters; `graph` is then also\nempty. `graph` is always empty, and every match's `relations` is always an empty array,\nwhen `project_id` is omitted (see .specs/09-code-queries-filters.md).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeQueryResponse"
                 }
+              }
             }
-        }
-    },
-    "components": {
-        "schemas": {
-            "CodeQueryRequest": {
-                "required": [
-                    "question"
-                ],
-                "type": "object",
-                "properties": {
-                    "question": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                },
-                "additionalProperties": false
-            },
-            "CodeQueryResultResponse": {
-                "required": [
-                    "id",
-                    "sourceFile",
-                    "kind",
-                    "typeName",
-                    "member",
-                    "embeddingText",
-                    "similarity"
-                ],
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "sourceFile": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "kind": {
-                        "type": "string"
-                    },
-                    "typeName": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "member": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "embeddingText": {
-                        "type": "string"
-                    },
-                    "similarity": {
-                        "type": "number",
-                        "format": "double"
-                    }
+          },
+          "400": {
+            "description": "The request body is missing the question field, has an empty/blank question, has an\ninvalid `project_id`/`min_similarity`/`kind`/`qualified_name`, or is otherwise malformed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
-            },
-            "ExceptionDetails": {
-                "required": [
-                    "exceptionType",
-                    "message",
-                    "stackTrace"
-                ],
-                "type": "object",
-                "properties": {
-                    "exceptionType": {
-                        "type": "string"
-                    },
-                    "message": {
-                        "type": "string"
-                    },
-                    "stackTrace": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                }
-            },
-            "ProblemDetails": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "title": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "status": {
-                        "type": "integer",
-                        "format": "int32",
-                        "nullable": true
-                    },
-                    "detail": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "instance": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                }
-            },
-            "ProjectResponse": {
-                "required": [
-                    "id",
-                    "name",
-                    "createdAt"
-                ],
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                }
-            },
-            "ServerErrorProblemDetails": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "title": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "status": {
-                        "type": "integer",
-                        "format": "int32",
-                        "nullable": true
-                    },
-                    "detail": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "instance": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "exception": {
-                        "$ref": "#/components/schemas/ExceptionDetails"
-                    }
-                }
+              }
             }
+          },
+          "404": {
+            "description": "`project_id` was provided but does not correspond to any project. This is the only\ncondition under which this endpoint returns 404; the response has no body."
+          },
+          "500": {
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
+                }
+              }
+            }
+          }
         }
+      }
     },
-    "tags": [
-        {
-            "name": "CodeQueries"
+    "/api/v1/projects/{projectId}/code-queries/feedback": {
+      "post": {
+        "tags": [
+          "Code Query"
+        ],
+        "summary": "Submit feedback on a prior code query",
+        "description": "Records whether a previous `POST .../code-queries` call's results were useful, so\neffectiveness can be measured later. Callable by a human (REST) or an AI agent (MCP, via\nthe `submit_code_query_feedback` tool). The caller must always identify itself via\nthe required `user` field - for MCP callers this is the calling agent/tool's own\nname (e.g. \"claude code\", \"codex\", \"crewai\", \"hermes\", \"opencode\"), never a guess or a\ndefault.\n            \nThere is no corresponding GET endpoint for feedback - effectiveness is computed directly\nagainst the database out of band. Accordingly, the 201 response below has no\n`Location` header.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Identifier of the project the original code-queries call was scoped to, corresponding to\nthe `id` field returned by `GET /projects`. Must be a positive 64-bit integer;\nany other format (e.g. a GUID or non-numeric string) results in a 400 response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The original question, whether it was useful, the similarity values it returned, and the\nidentity of the caller submitting the feedback.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeQueryFeedbackRequest"
+              }
+            }
+          }
         },
-        {
-            "name": "Projects"
+        "responses": {
+          "201": {
+            "description": "The feedback was recorded. The response body echoes the persisted record, including its\ngenerated id and created_at.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeQueryFeedbackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Either the projectId path parameter is not a valid positive integer, the request body is\nmissing or malformed, question/useful/similarities/user is missing or invalid (empty,\nblank, exceeds its maximum length/count), or reason exceeds its maximum length.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No project exists with the given projectId. This is the only condition under which this\nendpoint returns 404; the response has no body."
+          },
+          "500": {
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
+                }
+              }
+            }
+          }
         }
-    ]
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Search projects (paginated)",
+        "description": "Returns a page of projects stored in code3rag. Optionally filter the results by project\nname using a partial, case-insensitive match against the name field. Use the returned id\nvalues as the projectId path parameter when fetching/updating/deleting a specific project,\nor when querying code via the /projects/{projectId}/code-queries endpoint.\n            \nWhen no project matches the supplied filter (or no projects exist at all), the response is\na 200 OK with an empty items array - this is not treated as an error.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page number to retrieve. Defaults to 0. Must not be negative.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Maximum number of projects per page. Defaults to 20, capped at 100. Must be a positive integer.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The page of projects matching the given filter, or all projects if no filter was supplied.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The name query parameter is invalid (e.g. it exceeds the maximum allowed length, or is\npresent but empty), or page/page_size is out of range. This is the only condition under\nwhich this endpoint returns 400.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create a project",
+        "description": "Creates a new project in code3rag with the given name, embedding model and embedding dimensions.",
+        "requestBody": {
+          "description": "The name, embedding model and embedding dimensions of the project to create.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The project was created. The response body echoes the persisted record, including its generated id and timestamps.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body is missing or malformed, or name/embedding_model/embedding_dimensions is missing or invalid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A project with the given name already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get a project by id",
+        "description": "Returns a single project by its id.",
+        "operationId": "GetProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Identifier of the project, corresponding to the id field returned by GET /projects. Must\nbe a positive 64-bit integer; any other format (e.g. a GUID or non-numeric string) results\nin a 400 response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project matching projectId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The projectId path parameter is not a valid positive integer. This is the only condition\nunder which this endpoint returns 400.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No project exists with the given projectId. This is the only condition under which this\nendpoint returns 404; the response has no body."
+          },
+          "500": {
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Replace a project",
+        "description": "Replaces every field of an existing project. This is a full replace (PUT), not a partial patch - every field must be supplied.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Identifier of the project to update, corresponding to the id field returned by GET\n/projects. Must be a positive 64-bit integer; any other format results in a 400 response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The project's new name, embedding model and embedding dimensions.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The project was updated. The response body echoes the updated record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Either the projectId path parameter is not a valid positive integer, the request body is\nmissing or malformed, or name/embedding_model/embedding_dimensions is missing or invalid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No project exists with the given projectId."
+          },
+          "409": {
+            "description": "Another project with the given name already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Delete a project",
+        "description": "Permanently deletes a project from code3rag. This does not delete the project's indexed\ncode documents/relations - deleting those, if desired, remains code-ciir-indexer's\nresponsibility.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Identifier of the project to delete, corresponding to the id field returned by GET\n/projects. Must be a positive 64-bit integer; any other format results in a 400 response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The project was deleted. The response has no body."
+          },
+          "400": {
+            "description": "The projectId path parameter is not a valid positive integer.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No project exists with the given projectId. The response has no body."
+          },
+          "500": {
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "Get the API version",
+        "description": "Returns the version this instance was built and published from. Deliberately\nunversioned (no /api/v1 prefix) and health-check-style, for use by deploy tooling and\ndiagnostics rather than API consumers.",
+        "responses": {
+          "200": {
+            "description": "The running API's version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CodeQueryFeedbackRequest": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "nullable": true
+          },
+          "useful": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "similarities": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "user": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Feedback on a prior `POST .../code-queries` call, scoped to a single project."
+      },
+      "CodeQueryFeedbackResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "project_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "question": {
+            "type": "string",
+            "nullable": true
+          },
+          "useful": {
+            "type": "boolean"
+          },
+          "similarities": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "user": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A recorded piece of feedback on a prior code query. Serializes as snake_case. There is no\nGET endpoint for retrieving it later - this response is the only view of it."
+      },
+      "CodeQueryGraphEdgeResponse": {
+        "type": "object",
+        "properties": {
+          "from_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "to_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "relation_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "target_symbol": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution_origin": {
+            "type": "string",
+            "nullable": true
+          },
+          "depth": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A relation touching at least one node in the expanded graph. `to_id` is null when the\nrelation's target is outside the indexed universe (external/unresolved - e.g. a framework or\ndependency symbol); `target_symbol` still names it in that case."
+      },
+      "CodeQueryGraphNodeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "symbol_container": {
+            "type": "string",
+            "nullable": true
+          },
+          "symbol_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "symbol_qualified_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "symbol_canonical_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_file": {
+            "type": "string",
+            "nullable": true
+          },
+          "depth": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A code entity reached while expanding the relationship graph from a match."
+      },
+      "CodeQueryGraphResponse": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodeQueryGraphNodeResponse"
+            },
+            "nullable": true
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodeQueryGraphEdgeResponse"
+            },
+            "nullable": true
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Up to 2 hops of the code relationship graph expanded from a code-queries call's matches -\nsee .specs/05-code-queries-relationship-graph.md. CodeCiir.Api.Contracts.CodeQueryGraphResponse.Truncated is true when the\ngraph had more nodes than the configured safety cap and was cut off (nearest-depth-first)."
+      },
+      "CodeQueryQualifiedNameFilterRequest": {
+        "required": [
+          "operator",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "operator": {
+            "$ref": "#/components/schemas/QualifiedNameFilterOperator"
+          },
+          "value": {
+            "type": "string",
+            "description": "Value to compare the qualified name against. Must not be empty or blank. When the operator is\n`Contains` or `NotContains`, `*` acts as a wildcard matching any sequence of\ncharacters (e.g. `*Controller*` matches values containing \"Controller\"); a value with no\n`*` is matched exactly (case-insensitively). Ignored for `Equals`.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Optional filter narrowing results to code documents matching a `symbol_qualified_name`\ncondition (the member's full name including its namespace/package or language equivalent)."
+      },
+      "CodeQueryRelationResponse": {
+        "type": "object",
+        "properties": {
+          "from_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "to_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "relation_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "target_symbol": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution_origin": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "A relation (ciir_relations row) directly touching one specific match, in either direction.\nCodeCiir.Api.Contracts.CodeQueryRelationResponse.ToId is null when the relation's target is outside the indexed universe\n(external/unresolved - e.g. a framework or dependency symbol); CodeCiir.Api.Contracts.CodeQueryRelationResponse.TargetSymbol\nstill names it in that case."
+      },
+      "CodeQueryRequest": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "A natural language ask describing the code the caller is looking for. This text is embedded\n(using the app-wide configured embedding model, see EmbeddingOptions) and compared against\nthe stored code documents' embeddings using cosine similarity. Always required, must not be\nempty or blank.",
+            "nullable": true
+          },
+          "project_id": {
+            "type": "integer",
+            "description": "Optional filter narrowing results to a single project, corresponding to the `id` field\nreturned by `GET /projects`. Omit to search across every project. When provided, must be\na positive 64-bit integer and must correspond to an existing project (404 otherwise).",
+            "format": "int64",
+            "nullable": true
+          },
+          "min_similarity": {
+            "type": "number",
+            "description": "Optional minimum cosine similarity (0.0-1.0) a match must have to be included.",
+            "format": "double",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "description": "Optional filter narrowing results to code documents whose `kind` equals this value exactly. Omit for no filtering on this field.",
+            "nullable": true
+          },
+          "qualified_name": {
+            "$ref": "#/components/schemas/CodeQueryQualifiedNameFilterRequest"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Optional maximum number of matches to return (default 10, capped at 50). There is no\npage-based pagination on this endpoint - see `CodeQueriesController.QueryAsync`'s remarks\nfor why.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Natural language search request, optionally narrowed by project and structured filters."
+      },
+      "CodeQueryResponse": {
+        "type": "object",
+        "properties": {
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodeQueryResultResponse"
+            },
+            "nullable": true
+          },
+          "graph": {
+            "$ref": "#/components/schemas/CodeQueryGraphResponse"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response of a code-queries call: the semantic matches, plus up to 2 hops of their code\nrelationship graph (all relation types, both directions) - the requirement central to\ncode-ciir-api. Deliberately a different shape than code-rag-api's plain array response - see\n.specs/05-code-queries-relationship-graph.md."
+      },
+      "CodeQueryResultResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id of the code document (matches `ciir_documents.id`).",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string",
+            "description": "The document's kind (e.g. `method`, `type`, `property`).",
+            "nullable": true
+          },
+          "symbol_container": {
+            "type": "string",
+            "description": "Fully qualified name of the container the symbol belongs to.",
+            "nullable": true
+          },
+          "symbol_name": {
+            "type": "string",
+            "description": "Short name of the symbol.",
+            "nullable": true
+          },
+          "symbol_qualified_name": {
+            "type": "string",
+            "description": "Dotted qualified name, without parameter types.",
+            "nullable": true
+          },
+          "symbol_canonical_name": {
+            "type": "string",
+            "description": "Full signature, disambiguating overloads.",
+            "nullable": true
+          },
+          "source_file": {
+            "type": "string",
+            "description": "Path of the source file the symbol was indexed from.",
+            "nullable": true
+          },
+          "embedding_text": {
+            "type": "string",
+            "description": "The text that was actually embedded for this document.",
+            "nullable": true
+          },
+          "similarity": {
+            "type": "number",
+            "description": "Cosine similarity between the question and this document, 0.0-1.0.",
+            "format": "double"
+          },
+          "rerank_score": {
+            "type": "number",
+            "description": "Relevance score assigned by the reranking stage, normalized to 0.0-1.0 (higher is more\nrelevant). Null when reranking is disabled (the default) or not configured - see\n.specs/10-reranking.md.",
+            "format": "double",
+            "nullable": true
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodeQueryRelationResponse"
+            },
+            "description": "This match's complete set of direct (1-hop) relations, in either direction - every relation\ntype, not subject to the 2-hop `graph`'s node-count truncation. Empty array when the\nmatch has no direct relations, or when `project_id` was omitted from the request (see\n.specs/12-match-relations.md).",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "A single code document matched against a natural language query, annotated with its computed\nsimilarity score. Field names mirror ciir_documents' own columns rather than code-rag-api's\nnamespace/type_name/member, which have no equivalent in code3rag - see\n.specs/04-code-queries-baseline.md. Serializes as snake_case."
+      },
+      "ExceptionDetails": {
+        "type": "object",
+        "properties": {
+          "exception_type": {
+            "type": "string",
+            "description": "Fully-qualified type name of the exception that was raised.",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "The exception's message.",
+            "nullable": true
+          },
+          "stack_trace": {
+            "type": "string",
+            "description": "The exception's captured stack trace.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Details of the unhandled exception that caused the request to fail."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "ProjectCreateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The project's name. Always required, must not be empty or blank, and must not already be\nused by another project (409 otherwise).",
+            "nullable": true
+          },
+          "embedding_model": {
+            "type": "string",
+            "description": "The embedding model this project's code documents are (or will be) embedded with. Always\nrequired, must not be empty or blank.",
+            "nullable": true
+          },
+          "embedding_dimensions": {
+            "type": "integer",
+            "description": "The dimensionality of that embedding model's vectors. Always required, must be a positive integer.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Fields required to create a new project."
+      },
+      "ProjectListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectResponse"
+            },
+            "description": "The projects on this page.",
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "description": "The zero-based page number this response corresponds to.",
+            "format": "int32"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "The maximum number of items per page.",
+            "format": "int32"
+          },
+          "total_count": {
+            "type": "integer",
+            "description": "The total number of projects matching the filter, across every page.",
+            "format": "int64"
+          },
+          "total_pages": {
+            "type": "integer",
+            "description": "The total number of pages available for the filter, given `page_size`.",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A single page of a paginated project search, plus the metadata needed to fetch the next one."
+      },
+      "ProjectResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "embedding_model": {
+            "type": "string",
+            "nullable": true
+          },
+          "embedding_dimensions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A project stored in code3rag, normally created/managed by code-ciir-indexer but also writable\nthrough this API's own CRUD endpoints (see .specs/03-projects-endpoint.md). Serializes as\nsnake_case. Unlike code-rag-api's ProjectResponse, there is no git_url/git_raw_url\n(code3rag's projects table has no equivalent columns - see .specs/01-schema-discovery.md)."
+      },
+      "ProjectUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The project's new name. Must not be empty or blank, and must not already be used by another project (409 otherwise).",
+            "nullable": true
+          },
+          "embedding_model": {
+            "type": "string",
+            "description": "The project's new embedding model. Must not be empty or blank.",
+            "nullable": true
+          },
+          "embedding_dimensions": {
+            "type": "integer",
+            "description": "The project's new embedding dimensionality. Must be a positive integer.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Full replacement fields for an existing project. All fields are required, mirroring\nCodeCiir.Api.Contracts.ProjectCreateRequest - this is a full PUT replace, not a partial patch."
+      },
+      "QualifiedNameFilterOperator": {
+        "enum": [
+          "equals",
+          "contains",
+          "not_contains"
+        ],
+        "type": "string"
+      },
+      "ServerErrorProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          },
+          "exception": {
+            "$ref": "#/components/schemas/ExceptionDetails"
+          }
+        },
+        "additionalProperties": {},
+        "description": "Problem Details payload for 500 responses. Exposing the raised exception's details is a\ndeliberate trade-off for ease of debugging in this API, mirroring code-rag-api's contract,\nand should be disabled or redacted in a hardened deployment."
+      },
+      "VersionResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "Semantic version stamped at publish time (see .specs/08-ops-deployment.md), or\n\"0.0.0-dev\" for a local build that wasn't given an explicit version.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "The running API's own build version. Serializes as snake_case."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Code Query",
+      "description": "Operations for querying indexed source code using natural language."
+    },
+    {
+      "name": "Projects",
+      "description": "Full CRUD over projects stored in code3rag. Projects here are normally created/managed by\n            code-ciir-indexer as part of its own indexing flow, but this API also exposes its own\n            create/update/delete so it can be managed directly - see .specs/03-projects-endpoint.md for\n            the tradeoffs of two independent writers on the same table."
+    },
+    {
+      "name": "Version",
+      "description": "Reports the running API's own build version."
+    }
+  ]
 }

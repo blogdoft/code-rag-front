@@ -16,9 +16,12 @@ describe('ProjectFormDialog', () => {
   const existingProject: Project = {
     id: 1,
     name: 'demo',
-    gitUrl: 'https://example.com/demo.git',
-    gitRawUrl: 'https://raw.example.com/demo',
+    embeddingModel: 'text-embedding-3-small',
+    embeddingDimensions: 1536,
+    gitUrl: 'https://forgejo.example/demo',
+    gitRawUrl: 'https://forgejo.example/demo/raw/main/',
     createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
   };
 
   function setup(data: ProjectFormDialogData): void {
@@ -52,21 +55,26 @@ describe('ProjectFormDialog', () => {
 
     it('starts with empty fields and the "Add project" heading', () => {
       expect(component['name']()).toBe('');
+      expect(component['embeddingModel']()).toBe('');
+      expect(component['embeddingDimensions']()).toBeNull();
       expect(component['gitUrl']()).toBe('');
       expect(component['gitRawUrl']()).toBe('');
       expect(fixture.nativeElement.textContent).toContain('Add project');
     });
 
-    it('cannot save until all three fields are filled', () => {
+    it('cannot save until all three fields are filled with a positive integer dimensions', () => {
       expect(component['canSave']).toBe(false);
 
       component['name'].set('demo');
       expect(component['canSave']).toBe(false);
 
-      component['gitUrl'].set('https://example.com/demo.git');
+      component['embeddingModel'].set('text-embedding-3-small');
       expect(component['canSave']).toBe(false);
 
-      component['gitRawUrl'].set('https://raw.example.com/demo');
+      component['embeddingDimensions'].set(0);
+      expect(component['canSave']).toBe(false);
+
+      component['embeddingDimensions'].set(1536);
       expect(component['canSave']).toBe(true);
     });
 
@@ -79,15 +87,17 @@ describe('ProjectFormDialog', () => {
     it('creates the project and closes with the result on save', () => {
       projectsService.create.mockReturnValue(of(existingProject));
       component['name'].set('demo');
-      component['gitUrl'].set('https://example.com/demo.git');
-      component['gitRawUrl'].set('https://raw.example.com/demo');
+      component['embeddingModel'].set('text-embedding-3-small');
+      component['embeddingDimensions'].set(1536);
 
       component['save']();
 
       expect(projectsService.create).toHaveBeenCalledWith({
         name: 'demo',
-        gitUrl: 'https://example.com/demo.git',
-        gitRawUrl: 'https://raw.example.com/demo',
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 1536,
+        gitUrl: '',
+        gitRawUrl: '',
       });
       expect(toastService.success).toHaveBeenCalledWith('Project created.');
       expect(dialogRef.close).toHaveBeenCalledWith(existingProject);
@@ -104,8 +114,10 @@ describe('ProjectFormDialog', () => {
 
     it('prefills fields from the existing project and shows the "Edit project" heading', () => {
       expect(component['name']()).toBe('demo');
-      expect(component['gitUrl']()).toBe('https://example.com/demo.git');
-      expect(component['gitRawUrl']()).toBe('https://raw.example.com/demo');
+      expect(component['embeddingModel']()).toBe('text-embedding-3-small');
+      expect(component['embeddingDimensions']()).toBe(1536);
+      expect(component['gitUrl']()).toBe('https://forgejo.example/demo');
+      expect(component['gitRawUrl']()).toBe('https://forgejo.example/demo/raw/main/');
       expect(fixture.nativeElement.textContent).toContain('Edit project');
     });
 
@@ -124,8 +136,10 @@ describe('ProjectFormDialog', () => {
 
       expect(projectsService.update).toHaveBeenCalledWith(1, {
         name: 'renamed',
-        gitUrl: 'https://example.com/demo.git',
-        gitRawUrl: 'https://raw.example.com/demo',
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 1536,
+        gitUrl: 'https://forgejo.example/demo',
+        gitRawUrl: 'https://forgejo.example/demo/raw/main/',
       });
       expect(toastService.success).toHaveBeenCalledWith('Project updated.');
       expect(dialogRef.close).toHaveBeenCalledWith(updated);

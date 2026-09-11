@@ -10,12 +10,11 @@ describe('QueryFiltersDrawer', () => {
 
   function setup(): void {
     data = {
-      kindFilter: signal({ operator: 'contains', value: '' }),
-      namespaceFilter: signal({ operator: 'contains', value: '' }),
-      typeNameFilter: signal({ operator: 'contains', value: '' }),
-      kindOperators: ['contains', 'equals', 'not_equals'],
-      namespaceOperators: ['contains', 'not_contains', 'equals', 'not_equals'],
-      typeNameOperators: ['contains', 'not_contains', 'equals'],
+      kind: signal(''),
+      qualifiedName: signal({ operator: 'contains', value: '' }),
+      qualifiedNameOperators: ['equals', 'contains', 'not_contains'],
+      minSimilarity: signal(null),
+      limit: signal(null),
     };
     dialogRef = { close: vi.fn() };
 
@@ -29,74 +28,99 @@ describe('QueryFiltersDrawer', () => {
     fixture.detectChanges();
   }
 
-  it('renders each field with only its valid operator set', () => {
+  it('renders the qualified-name operator select with only its valid operator set', () => {
     setup();
-    const selects = fixture.nativeElement.querySelectorAll('select');
-
-    const optionValues = (select: HTMLSelectElement) => Array.from(select.options).map((o) => o.value);
-    expect(optionValues(selects[0])).toEqual(['contains', 'not_contains', 'equals', 'not_equals']);
-    expect(optionValues(selects[1])).toEqual(['contains', 'equals', 'not_equals']);
-    expect(optionValues(selects[2])).toEqual(['contains', 'not_contains', 'equals']);
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toEqual(['equals', 'contains', 'not_contains']);
   });
 
-  it('updates the injected signal immediately as a value is typed', () => {
+  it('updates the kind signal immediately as a value is typed', () => {
     setup();
-    const kindInput = fixture.nativeElement.querySelector('input[placeholder="e.g. fun*"]') as HTMLInputElement;
+    const kindInput = fixture.nativeElement.querySelector('input[placeholder="e.g. method"]') as HTMLInputElement;
 
     kindInput.value = 'method';
     kindInput.dispatchEvent(new Event('input'));
 
-    expect(data.kindFilter()).toEqual({ operator: 'contains', value: 'method' });
+    expect(data.kind()).toBe('method');
   });
 
-  it('updates the injected signal immediately when the operator changes', () => {
+  it('updates the qualifiedName signal immediately when the value or operator changes', () => {
     setup();
-    const kindSelect = fixture.nativeElement.querySelectorAll('select')[1] as HTMLSelectElement;
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    const valueInput = fixture.nativeElement.querySelector(
+      'input[placeholder="e.g. *Controller*"]',
+    ) as HTMLInputElement;
 
-    kindSelect.value = 'equals';
-    kindSelect.dispatchEvent(new Event('change'));
+    select.value = 'equals';
+    select.dispatchEvent(new Event('change'));
+    expect(data.qualifiedName()).toEqual({ operator: 'equals', value: '' });
 
-    expect(data.kindFilter()).toEqual({ operator: 'equals', value: '' });
+    valueInput.value = 'PaymentService';
+    valueInput.dispatchEvent(new Event('input'));
+    expect(data.qualifiedName()).toEqual({ operator: 'equals', value: 'PaymentService' });
   });
 
-  it('clears a field value via Escape', () => {
+  it('clears the kind field via Escape', () => {
     setup();
-    data.kindFilter.set({ operator: 'contains', value: 'method' });
+    data.kind.set('method');
     fixture.detectChanges();
-    const kindInput = fixture.nativeElement.querySelector('input[placeholder="e.g. fun*"]') as HTMLInputElement;
+    const kindInput = fixture.nativeElement.querySelector('input[placeholder="e.g. method"]') as HTMLInputElement;
 
     kindInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
 
-    expect(data.kindFilter()).toEqual({ operator: 'contains', value: '' });
+    expect(data.kind()).toBe('');
+  });
+
+  it('updates minSimilarity and limit from their number inputs, treating a blank value as null', () => {
+    setup();
+    const minSimilarityInput = fixture.nativeElement.querySelector(
+      'input[placeholder="0.0 - 1.0"]',
+    ) as HTMLInputElement;
+    const limitInput = fixture.nativeElement.querySelector('input[placeholder="10 (default)"]') as HTMLInputElement;
+
+    minSimilarityInput.value = '0.5';
+    minSimilarityInput.dispatchEvent(new Event('input'));
+    expect(data.minSimilarity()).toBe(0.5);
+
+    limitInput.value = '25';
+    limitInput.dispatchEvent(new Event('input'));
+    expect(data.limit()).toBe(25);
+
+    minSimilarityInput.value = '';
+    minSimilarityInput.dispatchEvent(new Event('input'));
+    expect(data.minSimilarity()).toBeNull();
   });
 
   it('closes without altering the filters when Filter is clicked', () => {
     setup();
-    data.kindFilter.set({ operator: 'equals', value: 'method' });
+    data.kind.set('method');
 
     const filterButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
       (button) => (button as HTMLButtonElement).textContent?.trim() === 'Filter',
     ) as HTMLButtonElement;
     filterButton.click();
 
-    expect(data.kindFilter()).toEqual({ operator: 'equals', value: 'method' });
+    expect(data.kind()).toBe('method');
     expect(dialogRef.close).toHaveBeenCalled();
   });
 
-  it('resets all three filters to their default and closes when Clear is clicked', () => {
+  it('resets all four fields to their default and closes when Clear is clicked', () => {
     setup();
-    data.kindFilter.set({ operator: 'equals', value: 'method' });
-    data.namespaceFilter.set({ operator: 'not_contains', value: 'Legacy' });
-    data.typeNameFilter.set({ operator: 'contains', value: '*Controller' });
+    data.kind.set('method');
+    data.qualifiedName.set({ operator: 'not_contains', value: 'Legacy' });
+    data.minSimilarity.set(0.5);
+    data.limit.set(25);
 
     const clearButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
       (button) => (button as HTMLButtonElement).textContent?.trim() === 'Clear',
     ) as HTMLButtonElement;
     clearButton.click();
 
-    expect(data.kindFilter()).toEqual({ operator: 'contains', value: '' });
-    expect(data.namespaceFilter()).toEqual({ operator: 'contains', value: '' });
-    expect(data.typeNameFilter()).toEqual({ operator: 'contains', value: '' });
+    expect(data.kind()).toBe('');
+    expect(data.qualifiedName()).toEqual({ operator: 'contains', value: '' });
+    expect(data.minSimilarity()).toBeNull();
+    expect(data.limit()).toBeNull();
     expect(dialogRef.close).toHaveBeenCalled();
   });
 

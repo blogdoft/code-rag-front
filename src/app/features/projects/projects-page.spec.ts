@@ -15,8 +15,26 @@ describe('ProjectsPage', () => {
   let toastService: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   const projects: Project[] = [
-    { id: 1, name: 'alpha', gitUrl: 'https://example.com/alpha.git', gitRawUrl: null, createdAt: '2026-01-01T00:00:00Z' },
-    { id: 2, name: 'beta', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-02T00:00:00Z' },
+    {
+      id: 1,
+      name: 'alpha',
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 1536,
+      gitUrl: null,
+      gitRawUrl: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 2,
+      name: 'beta',
+      embeddingModel: null,
+      embeddingDimensions: 0,
+      gitUrl: null,
+      gitRawUrl: null,
+      createdAt: '2026-01-02T00:00:00Z',
+      updatedAt: '2026-01-02T00:00:00Z',
+    },
   ];
 
   function setup(): void {
@@ -60,7 +78,7 @@ describe('ProjectsPage', () => {
     const rows = fixture.nativeElement.querySelectorAll('tbody tr');
     expect(rows.length).toBe(2);
     expect(rows[0].textContent).toContain('alpha');
-    expect(rows[0].textContent).toContain('https://example.com/alpha.git');
+    expect(rows[0].textContent).toContain('text-embedding-3-small');
   });
 
   it('shows an empty state when there are no projects', () => {
@@ -121,7 +139,16 @@ describe('ProjectsPage', () => {
     popupService.open.mockReturnValue(ref);
     component['addProject']();
 
-    const created: Project = { id: 3, name: 'gamma', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-03T00:00:00Z' };
+    const created: Project = {
+      id: 3,
+      name: 'gamma',
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 1536,
+      gitUrl: null,
+      gitRawUrl: null,
+      createdAt: '2026-01-03T00:00:00Z',
+      updatedAt: '2026-01-03T00:00:00Z',
+    };
     ref.closed.next(created);
 
     expect(component['projects']()).toEqual([...projects, created]);

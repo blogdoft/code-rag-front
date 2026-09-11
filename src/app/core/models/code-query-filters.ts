@@ -1,14 +1,15 @@
-export type FilterOperator = 'contains' | 'not_contains' | 'equals' | 'not_equals';
+export type QualifiedNameFilterOperator = 'equals' | 'contains' | 'not_contains';
 
-export interface CodeQueryFieldFilter {
-  operator: FilterOperator;
+export interface QualifiedNameFilter {
+  operator: QualifiedNameFilterOperator;
   value: string;
 }
 
 export interface CodeQueryFilters {
-  kind?: CodeQueryFieldFilter;
-  namespace?: CodeQueryFieldFilter;
-  typeName?: CodeQueryFieldFilter;
+  kind?: string;
+  qualifiedName?: QualifiedNameFilter;
+  minSimilarity?: number;
+  limit?: number;
 }
 
-export const DEFAULT_FIELD_FILTER: CodeQueryFieldFilter = { operator: 'contains', value: '' };
+export const DEFAULT_QUALIFIED_NAME_FILTER: QualifiedNameFilter = { operator: 'contains', value: '' };

@@ -3,10 +3,10 @@ import { Component, ElementRef, afterNextRender, computed, inject, model, signal
 import { CodeQueriesService } from '../../core/services/code-queries.service';
 import { ConfigService } from '../../core/services/config.service';
 import {
-  DEFAULT_FIELD_FILTER,
-  type CodeQueryFieldFilter,
+  DEFAULT_QUALIFIED_NAME_FILTER,
   type CodeQueryFilters,
-  type FilterOperator,
+  type QualifiedNameFilter,
+  type QualifiedNameFilterOperator,
 } from '../../core/models/code-query-filters';
 import type { CodeQueryResult } from '../../core/models/code-query-result';
 import type { Project } from '../../core/models/project';
@@ -23,7 +23,7 @@ type FeedbackState = { status: 'idle' } | { status: 'submitting' } | { status: '
 
 interface QueryHistoryEntry {
   id: number;
-  projectId: number;
+  projectId: number | null;
   projectName: string;
   projectGitUrl: string | null;
   question: string;
@@ -33,8 +33,7 @@ interface QueryHistoryEntry {
 }
 
 interface FilterSummaryEntry {
-  field: string;
-  filter: CodeQueryFieldFilter;
+  text: string;
 }
 
 @Component({
@@ -55,24 +54,21 @@ export class CodeSearchPage {
   protected readonly isSubmitting = signal(false);
   protected readonly history = signal<QueryHistoryEntry[]>([]);
 
-  protected readonly namespaceFilter = signal<CodeQueryFieldFilter>({ ...DEFAULT_FIELD_FILTER });
-  protected readonly kindFilter = signal<CodeQueryFieldFilter>({ ...DEFAULT_FIELD_FILTER });
-  protected readonly typeNameFilter = signal<CodeQueryFieldFilter>({ ...DEFAULT_FIELD_FILTER });
+  protected readonly kindFilter = signal('');
+  protected readonly qualifiedNameFilter = signal<QualifiedNameFilter>({ ...DEFAULT_QUALIFIED_NAME_FILTER });
+  protected readonly minSimilarity = signal<number | null>(null);
+  protected readonly limit = signal<number | null>(null);
 
-  protected readonly namespaceOperators: readonly FilterOperator[] = [
+  protected readonly qualifiedNameOperators: readonly QualifiedNameFilterOperator[] = [
+    'equals',
     'contains',
     'not_contains',
-    'equals',
-    'not_equals',
   ];
-  protected readonly kindOperators: readonly FilterOperator[] = ['contains', 'equals', 'not_equals'];
-  protected readonly typeNameOperators: readonly FilterOperator[] = ['contains', 'not_contains', 'equals'];
 
   protected readonly activeFilterCount = computed(() => {
     let count = 0;
-    if (this.namespaceFilter().value.trim().length > 0) count++;
-    if (this.kindFilter().value.trim().length > 0) count++;
-    if (this.typeNameFilter().value.trim().length > 0) count++;
+    if (this.kindFilter().trim().length > 0) count++;
+    if (this.qualifiedNameFilter().value.trim().length > 0) count++;
     return count;
   });
 
@@ -93,7 +89,7 @@ export class CodeSearchPage {
   }
 
   protected get canSubmit(): boolean {
-    return this.selectedProjectId() !== null && this.question().trim().length > 0 && !this.isSubmitting();
+    return this.question().trim().length > 0 && !this.isSubmitting();
   }
 
   protected onQuestionInput(text: string): void {
@@ -108,26 +104,24 @@ export class CodeSearchPage {
     this.popupService.open(QueryFiltersDrawer, {
       panelClass: 'filter-drawer-panel',
       data: {
-        namespaceFilter: this.namespaceFilter,
-        kindFilter: this.kindFilter,
-        typeNameFilter: this.typeNameFilter,
-        namespaceOperators: this.namespaceOperators,
-        kindOperators: this.kindOperators,
-        typeNameOperators: this.typeNameOperators,
+        kind: this.kindFilter,
+        qualifiedName: this.qualifiedNameFilter,
+        qualifiedNameOperators: this.qualifiedNameOperators,
+        minSimilarity: this.minSimilarity,
+        limit: this.limit,
       } satisfies QueryFiltersDrawerData,
     });
   }
 
   protected filterEntries(filters: CodeQueryFilters): FilterSummaryEntry[] {
     const entries: FilterSummaryEntry[] = [];
-    if (filters.namespace) {
-      entries.push({ field: 'namespace', filter: filters.namespace });
-    }
     if (filters.kind) {
-      entries.push({ field: 'kind', filter: filters.kind });
+      entries.push({ text: `kind "${filters.kind}"` });
     }
-    if (filters.typeName) {
-      entries.push({ field: 'type', filter: filters.typeName });
+    if (filters.qualifiedName) {
+      entries.push({
+        text: `qualified name ${filters.qualifiedName.operator.replace('_', ' ')} "${filters.qualifiedName.value}"`,
+      });
     }
     return entries;
   }
@@ -135,12 +129,12 @@ export class CodeSearchPage {
   protected submit(): void {
     const projectId = this.selectedProjectId();
     const question = this.question().trim();
-    if (projectId === null || question.length === 0) {
+    if (question.length === 0) {
       return;
     }
 
     const selectedProject = this.projects().find((project) => project.id === projectId);
-    const projectName = selectedProject?.name ?? '';
+    const projectName = selectedProject?.name ?? 'All projects';
     const projectGitUrl = selectedProject?.gitUrl ?? null;
     const filters = this.buildFilters();
 
@@ -169,19 +163,24 @@ export class CodeSearchPage {
   private buildFilters(): CodeQueryFilters {
     const filters: CodeQueryFilters = {};
 
-    const namespace = activeFilter(this.namespaceFilter());
-    if (namespace) {
-      filters.namespace = namespace;
-    }
-
-    const kind = activeFilter(this.kindFilter());
+    const kind = this.kindFilter().trim();
     if (kind) {
       filters.kind = kind;
     }
 
-    const typeName = activeFilter(this.typeNameFilter());
-    if (typeName) {
-      filters.typeName = typeName;
+    const qualifiedNameValue = this.qualifiedNameFilter().value.trim();
+    if (qualifiedNameValue) {
+      filters.qualifiedName = { operator: this.qualifiedNameFilter().operator, value: qualifiedNameValue };
+    }
+
+    const minSimilarity = this.minSimilarity();
+    if (minSimilarity != null) {
+      filters.minSimilarity = minSimilarity;
+    }
+
+    const limit = this.limit();
+    if (limit != null) {
+      filters.limit = limit;
     }
 
     return filters;
@@ -209,6 +208,11 @@ export class CodeSearchPage {
   }
 
   private submitFeedback(entry: QueryHistoryEntry, useful: boolean, reason: string | undefined): void {
+    const projectId = entry.projectId;
+    if (projectId === null) {
+      return;
+    }
+
     const existingUser = this.configService.userName().trim();
     if (existingUser.length === 0) {
       this.askForUserName((user) => this.postFeedback(entry, useful, reason, user));
@@ -236,9 +240,14 @@ export class CodeSearchPage {
   }
 
   private postFeedback(entry: QueryHistoryEntry, useful: boolean, reason: string | undefined, user: string): void {
+    const projectId = entry.projectId;
+    if (projectId === null) {
+      return;
+    }
+
     this.setFeedback(entry.id, { status: 'submitting' });
     this.codeQueriesService
-      .submitFeedback(entry.projectId, {
+      .submitFeedback(projectId, {
         question: entry.question,
         useful,
         similarities: entry.results.map((result) => result.similarity),
@@ -262,9 +271,4 @@ export class CodeSearchPage {
   protected focusQuestion(): void {
     this.questionInput().nativeElement.focus();
   }
-}
-
-function activeFilter(filter: CodeQueryFieldFilter): CodeQueryFieldFilter | undefined {
-  const value = filter.value.trim();
-  return value.length > 0 ? { operator: filter.operator, value } : undefined;
 }

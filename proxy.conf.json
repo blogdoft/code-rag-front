@@ -1,12 +1,12 @@
 {
   "/api": {
-    "target": "https://code-rag-api.home.arpa",
+    "target": "http://localhost:5080",
     "secure": false,
-    "changeOrigin": true
+    "changeOrigin": false
   },
   "/version": {
-    "target": "https://code-rag-api.home.arpa",
+    "target": "http://localhost:5080",
     "secure": false,
-    "changeOrigin": true
+    "changeOrigin": false
   }
 }

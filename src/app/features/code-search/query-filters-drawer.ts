@@ -1,15 +1,18 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, inject, type WritableSignal } from '@angular/core';
-import { DEFAULT_FIELD_FILTER, type CodeQueryFieldFilter, type FilterOperator } from '../../core/models/code-query-filters';
+import {
+  DEFAULT_QUALIFIED_NAME_FILTER,
+  type QualifiedNameFilter,
+  type QualifiedNameFilterOperator,
+} from '../../core/models/code-query-filters';
 import { EscClearableDirective } from '../../shared/directives/esc-clearable.directive';
 
 export interface QueryFiltersDrawerData {
-  namespaceFilter: WritableSignal<CodeQueryFieldFilter>;
-  kindFilter: WritableSignal<CodeQueryFieldFilter>;
-  typeNameFilter: WritableSignal<CodeQueryFieldFilter>;
-  namespaceOperators: readonly FilterOperator[];
-  kindOperators: readonly FilterOperator[];
-  typeNameOperators: readonly FilterOperator[];
+  kind: WritableSignal<string>;
+  qualifiedName: WritableSignal<QualifiedNameFilter>;
+  qualifiedNameOperators: readonly QualifiedNameFilterOperator[];
+  minSimilarity: WritableSignal<number | null>;
+  limit: WritableSignal<number | null>;
 }
 
 @Component({
@@ -21,14 +24,15 @@ export class QueryFiltersDrawer {
   protected readonly data = inject<QueryFiltersDrawerData>(DIALOG_DATA);
   private readonly dialogRef = inject(DialogRef<void>);
 
-  protected updateFilter(filter: WritableSignal<CodeQueryFieldFilter>, patch: Partial<CodeQueryFieldFilter>): void {
-    filter.update((current) => ({ ...current, ...patch }));
+  protected updateQualifiedName(patch: Partial<QualifiedNameFilter>): void {
+    this.data.qualifiedName.update((current) => ({ ...current, ...patch }));
   }
 
   protected clearAll(): void {
-    this.data.namespaceFilter.set({ ...DEFAULT_FIELD_FILTER });
-    this.data.kindFilter.set({ ...DEFAULT_FIELD_FILTER });
-    this.data.typeNameFilter.set({ ...DEFAULT_FIELD_FILTER });
+    this.data.kind.set('');
+    this.data.qualifiedName.set({ ...DEFAULT_QUALIFIED_NAME_FILTER });
+    this.data.minSimilarity.set(null);
+    this.data.limit.set(null);
     this.dialogRef.close();
   }
 

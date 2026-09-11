@@ -35,7 +35,7 @@
           <thead>
             <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
               <th class="py-2 pr-3">Name</th>
-              <th class="py-2 pr-3">Git URL</th>
+              <th class="py-2 pr-3">Embedding model</th>
               <th class="py-2 pr-3">Created</th>
               <th class="py-2 pr-3">Actions</th>
             </tr>
@@ -45,7 +45,11 @@
               <tr class="border-b border-slate-100 dark:border-slate-700">
                 <td class="py-2 pr-3 font-medium text-slate-900 dark:text-slate-100">{{ project.name }}</td>
                 <td class="max-w-xs truncate py-2 pr-3 font-mono text-slate-600 dark:text-slate-300">
-                  {{ project.gitUrl ?? '—' }}
+                  @if (project.embeddingModel) {
+                    {{ project.embeddingModel }} ({{ project.embeddingDimensions }})
+                  } @else {
+                    —
+                  }
                 </td>
                 <td class="py-2 pr-3 text-slate-600 dark:text-slate-300">{{ project.createdAt | date: 'medium' }}</td>
                 <td class="py-2 pr-3">

@@ -15,4 +15,9 @@ export class ResultDetailDialog {
   protected close(): void {
     this.dialogRef.close();
   }
+
+  /** `true` when a relation points away from this match (its own id is the source). */
+  protected isOutgoing(relation: CodeQueryResult['relations'][number]): boolean {
+    return relation.fromId === this.result.id;
+  }
 }

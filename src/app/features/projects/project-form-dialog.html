@@ -20,10 +20,38 @@
     </div>
 
     <div>
+      <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Embedding model</label>
+      <input
+        type="text"
+        placeholder="text-embedding-3-small"
+        [value]="embeddingModel()"
+        [appEscClearable]="embeddingModel()"
+        (cleared)="clearEmbeddingModel()"
+        (input)="embeddingModel.set($any($event.target).value)"
+        (keydown.enter)="save()"
+        class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+      />
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Embedding dimensions</label>
+      <input
+        type="number"
+        min="1"
+        step="1"
+        placeholder="1536"
+        [value]="embeddingDimensions() ?? ''"
+        (input)="onEmbeddingDimensionsInput($any($event.target).value)"
+        (keydown.enter)="save()"
+        class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+      />
+    </div>
+
+    <div>
       <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Git URL</label>
       <input
         type="text"
-        placeholder="https://github.com/org/repo.git"
+        placeholder="https://forgejo.home.arpa/user/meu-repo"
         [value]="gitUrl()"
         [appEscClearable]="gitUrl()"
         (cleared)="clearGitUrl()"
@@ -34,10 +62,10 @@
     </div>
 
     <div>
-      <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Git Raw URL</label>
+      <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Git RAW URL</label>
       <input
         type="text"
-        placeholder="https://raw.githubusercontent.com/org/repo"
+        placeholder="https://forgejo.home.arpa/user/repo/raw/branch/main/"
         [value]="gitRawUrl()"
         [appEscClearable]="gitRawUrl()"
         (cleared)="clearGitRawUrl()"

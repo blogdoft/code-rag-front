@@ -72,6 +72,19 @@ describe('Combobox', () => {
     expect(options()[0].textContent?.trim()).toBe('beta');
   });
 
+  it('clears a previous selection when its text is edited, including when deleted', () => {
+    focus();
+    options()[0].dispatchEvent(new Event('mousedown', { bubbles: true }));
+    fixture.detectChanges();
+
+    focus();
+    type('alp');
+    expect(fixture.componentInstance.value).toBeNull();
+
+    type('');
+    expect(fixture.componentInstance.value).toBeNull();
+  });
+
   it('shows "No matches" when nothing matches the query', () => {
     focus();
     type('zzz');
@@ -103,7 +116,7 @@ describe('Combobox', () => {
     expect(fixture.componentInstance.value).toBe(2);
   });
 
-  it('reverts the query to the selected label on blur', async () => {
+  it('clears an edited selection on blur', async () => {
     focus();
     options()[0].dispatchEvent(new Event('mousedown', { bubbles: true }));
     fixture.detectChanges();
@@ -114,7 +127,8 @@ describe('Combobox', () => {
     await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
 
-    expect(input.value).toBe('alpha');
+    expect(input.value).toBe('');
+    expect(fixture.componentInstance.value).toBeNull();
   });
 
   it('clears the value via the Escape-clearable directive', () => {

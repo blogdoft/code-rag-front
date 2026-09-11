@@ -1,17 +1,19 @@
-# Mirrors this repository to GitHub once a day (all branches and tags, deleting on the
-# GitHub side anything removed here). Runs daily at 20:00 America/Sao_Paulo time (23:00
-# UTC - Brazil has had no DST since 2019) via a cron schedule instead of on every push.
+# Mirrors this repository to GitHub (all branches and tags, deleting on the GitHub side
+# anything removed here). Changes made from 07:00 through 19:59 America/Sao_Paulo time
+# are sent by the 20:00 scheduled run. Pushes from 20:00 through 06:59 are mirrored
+# immediately.
 # Requires a Forgejo repo secret configured in Settings > Actions > Secrets:
 #   MIRROR_GITHUB_TOKEN - a GitHub Personal Access Token (classic, "repo" scope, or
 #   fine-grained with "Contents: read and write") for an account with push access to
-#   https://github.com/blogdoft/code-rag-front. Mirrors code-rag-api's
-#   mirror-to-github.yml.
-
+#   https://github.com/blogdoft/code-rag-front.
 name: Mirror to GitHub
 
 on:
+  # Do not restrict branches or tags: the mirror must reflect every ref.
+  push:
   schedule:
-    - cron: "0 23 * * *"
+    - cron: "0 20 * * *"
+      timezone: America/Sao_Paulo
 
 # Guards against overlapping runs (e.g. a manual re-run while the scheduled run is still in
 # progress) racing on the same working directory's refs. Each run mirrors the full current
@@ -23,20 +25,35 @@ concurrency:
 
 jobs:
   mirror:
-    runs-on: self-hosted
+    runs-on: ubuntu
     steps:
+      # There is no time-of-day predicate among Forgejo's workflow expressions. Decide
+      # it on the runner, then skip the expensive checkout/fetch/push steps for daytime
+      # push events. A scheduled invocation always mirrors the accumulated daytime work.
+      - name: Decide whether this run is in the mirroring window
+        id: window
+        run: |
+          if [ "$FORGEJO_EVENT_NAME" = "schedule" ]; then
+            mirror=true
+          else
+            hour=$(TZ=America/Sao_Paulo date +%H)
+            case "$hour" in
+              20|21|22|23|00|01|02|03|04|05|06) mirror=true ;;
+              *) mirror=false ;;
+            esac
+          fi
+          echo "mirror=$mirror" >> "$FORGEJO_OUTPUT"
+          echo "Mirror enabled: $mirror"
+
       - name: Checkout
+        if: steps.window.outputs.mirror == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Fetch all branches and tags
+        if: steps.window.outputs.mirror == 'true'
         run: |
-          # Force-refspec (not the --tags shorthand) for tags: actions/checkout@v4, when
-          # triggered by a tag push, already leaves a local refs/tags/<tag> pointing straight
-          # at the commit. Our tags are annotated, so origin's real tag object has a different
-          # SHA - a plain `--tags` fetch treats that as a non-fast-forward update and refuses
-          # it ("would clobber existing tag") instead of updating the local ref.
           git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
           git update-ref -d refs/remotes/origin/HEAD 2>/dev/null || true
 
@@ -53,6 +70,7 @@ jobs:
       # API blip) without masking a genuine push failure, which fails both attempts
       # identically.
       - name: Push mirror to GitHub
+        if: steps.window.outputs.mirror == 'true'
         env:
           MIRROR_GITHUB_TOKEN: ${{ secrets.MIRROR_GITHUB_TOKEN }}
         run: |

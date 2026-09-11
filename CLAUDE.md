@@ -4,10 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this app is
 
-A UI/UX layer for the CodeRAG API. The user selects a project and asks natural-language questions about
-its code; the API returns candidate code snippets, and clicking one opens a popup with its full content.
-Product requirements are in `SPEC.md` (Portuguese); the backend contract is documented in `v1.json` and
-`openapi.generated.json`.
+A UI/UX layer for the Code CIIR API (`code-ciir-api`). The user selects a project and asks
+natural-language questions about its code; the API returns candidate code snippets — each with its
+direct code-relationship data — and clicking one opens a popup with its full content. Product
+requirements are in `SPEC.md` (Portuguese, not yet updated for this backend — see
+`.specs/2026-09-10-ciir-api-migration.md`); the backend contract is documented in
+`openapi.generated.json` (a `v1.json` reference here previously pointed at a file that doesn't exist
+in this repo).
+
+This app previously targeted a different backend, **CodeRAG API** (`code-rag-api`) — smaller, flatter
+DTOs, no relationship graph, git-URL fields on results/projects. That migration is documented in
+`.specs/2026-09-10-ciir-api-migration.md`; this section and the one below describe the *current*
+(Code CIIR API) contract only.
 
 ## Commands
 
@@ -29,29 +37,48 @@ Always follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refacto
 
 ## API contract — trust the live response over the OpenAPI docs
 
-Both `v1.json` and `openapi.generated.json` document **camelCase** response fields (`sourceFile`,
-`embeddingText`, `createdAt`), but the live API actually serializes **snake_case**
-(`source_file`, `embedding_text`, `created_at`) — confirmed by curling the real API directly. The OpenAPI
-docs in this repo are stale/wrong on casing; don't trust them for wire format, only for the general shape
-(endpoints, required fields). If the API's serialization ever changes, the fix point is the DTO
-interfaces + mapper functions in `core/services/projects.service.ts` and
-`core/services/code-queries.service.ts` — everything else in the app deals only in the camelCase
-`Project`/`CodeQueryResult` models (`core/models/`).
+`openapi.generated.json` documents this fairly accurately as of the code-ciir-api migration (2026-09),
+but this backend is under active development — re-fetch `swagger.json` from the live API and diff
+before trusting any specific field on a non-trivial change; see
+`.specs/2026-09-10-ciir-api-migration.md`'s note on the contract changing twice within one session.
+Every response is **snake_case** (`source_file`, `embedding_text`, `created_at`, ...). If the API's
+serialization ever changes, the fix point is the DTO interfaces + mapper functions in
+`core/services/projects.service.ts` and `core/services/code-queries.service.ts` — everything else in
+the app deals only in the camelCase `Project`/`CodeQueryResult` models (`core/models/`).
 
-- `GET /api/v1/projects` → `ProjectDto[]` (`id`, `name`, `created_at`).
-- `POST /api/v1/projects/{projectId}/code-queries` body `{ question }` → `CodeQueryResultDto[]`
-  (`id`, `source_file`, `kind`, `type_name`, `member`, `embedding_text`, `similarity`). Can 404 (bad
-  project id) or 400 (blank question).
+- `POST /api/v1/code-queries` body `{ question, project_id, min_similarity?, kind?, qualified_name?,
+  limit? }` → `{ matches: CodeQueryResultResponse[], graph }`. The project is a body field, not part of
+  the URL — this app always sends `project_id` for the selected project, but the endpoint itself can
+  search across every project when it's omitted. `kind` is a plain string (exact match only); the old
+  per-field `{operator, value}` filter shape survives only on `qualified_name` (matches
+  `symbol_qualified_name`; `equals`/`contains`/`not_contains`). Results carry `symbol_container`,
+  `symbol_name`, `symbol_qualified_name`, `symbol_canonical_name` (no more `type_name`/`member`), plus
+  `rerank_score` (nullable) and each match's direct `relations[]`. **Results arrive pre-sorted by the
+  API** (by `rerank_score` when reranking is configured, else `similarity`) — `CodeQueriesService.ask()`
+  must not re-sort them; doing so would silently discard reranking. `graph` (up to 2 hops of the
+  relationship graph) is received but intentionally unused by this frontend — it's for the MCP-facing
+  side of this API. Can 404 (`project_id` given but unknown) or 400 (blank question, invalid filter).
 - `POST /api/v1/projects/{projectId}/code-queries/feedback` body `{ question, useful, similarities,
   reason?, user }` → `201` with the created feedback record (unused by the app — there's no GET to
-  read it back later). Every field name here is already a single lowercase word, so unlike the DTOs
-  above there's no camelCase/snake_case translation to do in `CodeQueriesService.submitFeedback()`.
+  read it back later). Every field name here is already a single lowercase word, so unlike the other
+  DTOs there's no camelCase/snake_case translation to do in `CodeQueriesService.submitFeedback()`.
   `user` identifies the caller and is never guessed — the app prompts for it (see `UserNameDialog` in
   `features/code-search/`) and remembers it via `ConfigService`/`localStorage`, the same way the API
   base URL is remembered. Can 404 (bad project id) or 400 (missing/blank required fields); no 409 —
-  repeat submissions for the same question are accepted. Not documented in `v1.json` or
-  `openapi.generated.json` (added to the live API after those were last regenerated) — confirmed via
-  `swagger.json` fetched directly and the `submit_code_query_feedback` MCP tool schema.
+  repeat submissions for the same question are accepted.
+- `GET /api/v1/projects` → **paginated** (`{ items, page, page_size, total_count, total_pages }`,
+  `page_size` capped at 100 server-side). `ProjectsService.list()` loops every page internally and
+  returns the flattened `Project[]` — every caller (the code-search project combobox, the Projects
+  page's own client-side search) is unaware pagination exists. `POST /api/v1/projects` (create),
+  `PUT`/`DELETE /api/v1/projects/{projectId}` (replace/delete) round out full CRUD; `ProjectResponse`
+  is `{ id, name, embedding_model, embedding_dimensions, created_at, updated_at }` — no
+  `git_url`/`git_raw_url` (that concept doesn't exist on this backend at all, on projects or on
+  code-query results).
+- `GET /version` → `{ version }`, unversioned and unauthenticated, for deploy tooling/diagnostics.
+- `/api/v1/code-queries/feedback/stats` and `/export` (backing `features/reports`) **do not exist on
+  this API yet** — `FeedbackStatsService` and the whole `features/reports` module are left in place
+  deliberately (planned for a future backend release, per `.specs/2026-09-10-ciir-api-migration.md`
+  §1) but will produce error toasts against this backend until then.
 - Errors are RFC7807 `ProblemDetails` (`type`, `title`, `status`, `detail`, `instance` — plain lowercase,
   unaffected by the snake_case naming policy). `core/interceptors/error-toast.interceptor.ts` reads
   `detail`/`title` and reports every failed request as a toast.
@@ -63,10 +90,11 @@ interfaces + mapper functions in `core/services/projects.service.ts` and
   with Playwright, not just reading the code: the default used to be `https://code-rag-api.home.arpa`,
   which made every request bypass the dev proxy and fail with `ERR_CERT_AUTHORITY_INVALID`). Settings
   still accepts an absolute URL when the API truly lives on a different, browser-trusted origin.
-  `proxy.conf.json` points the dev server's own proxy at `https://code-rag-api.home.arpa` so same-origin
-  `/api/...` calls get forwarded there in dev; `proxy.conf.local.example.json` is the alternate
-  `http://localhost:5002` target seen in `openapi.generated.json` for local API instances — copy it over
-  `proxy.conf.json` to use it.
+  **`proxy.conf.json` still points the dev server's own proxy at `https://code-rag-api.home.arpa` (the
+  old backend) — this is a known gap, not yet updated to code-ciir-api's real address; see
+  `.specs/2026-09-10-ciir-api-migration.md` §6.** `proxy.conf.local.example.json` remains the
+  `http://localhost:5002`-style pattern for pointing at a local API instance — copy it over
+  `proxy.conf.json` and adjust the port/host to use it.
 - Browser JS cannot bypass TLS certificate validation (that's a browser/OS trust decision, not something
   a page's script controls) — `secure: false` in `proxy.conf.json` is the one place in this project where
   that's actually configurable, and only for local dev traffic through the CLI proxy.
@@ -91,8 +119,12 @@ src/app/
     services/       PopupService — opens popups via @angular/cdk/dialog and registers them
                      with PopupCoordinatorService
   features/
-    code-search/    "/" route — project combobox, question input, Q&A history, ResultDetailDialog
+    code-search/    "/rag" route — project combobox, question input, Q&A history, ResultDetailDialog
+    projects/       "/projects" route — project CRUD (list/search, add/edit/delete via ProjectFormDialog)
+    reports/        "/reports" route — feedback-stats dashboard; backend endpoints not live yet (see
+                     the API contract section above) but the module is kept intentionally
     settings/       "/settings" route — API base URL form
+    home/           "/" route — landing page
 ```
 
 ### The Escape-key state machine (SPEC.md's most detailed requirement)
@@ -118,15 +150,19 @@ confirm-discard-via-`ConfirmDialog` branch end-to-end for the first time.
 
 ### XSS
 
-Every API-sourced string (`embeddingText`, `sourceFile`, `typeName`, `member`) is rendered only through
-Angular interpolation (`{{ }}`), never `[innerHTML]` or `bypassSecurityTrustHtml`. `embeddingText`'s
-embedded newlines are preserved with a `whitespace-pre-wrap` `<pre>` — not by converting `\n` to `<br>`
-via HTML.
+Every API-sourced string (`embeddingText`, `sourceFile`, `symbolContainer`, `symbolName`,
+`symbolQualifiedName`, `symbolCanonicalName`) is rendered only through Angular interpolation (`{{ }}`),
+never `[innerHTML]` or `bypassSecurityTrustHtml`. `embeddingText`'s embedded newlines are preserved
+with a `whitespace-pre-wrap` `<pre>` — not by converting `\n` to `<br>` via HTML.
 
 ### Combobox
 
 `shared/components/combobox` fetches nothing itself — it filters a full `options: {id, label}[]` list
 client-side by substring match on `label`, and only lets the user commit a value that matches an existing
-option (reverts on blur otherwise). This is deliberately simpler than server-side type-ahead search: with
-the current project counts, fetching the full list once is enough, and the API's `name` filter query
-param on `GET /api/v1/projects` isn't used.
+option (reverts on blur otherwise). This is deliberately simpler than server-side type-ahead search:
+`ProjectsService.list()` fetches every project up front (looping `GET /api/v1/projects`'s pagination
+internally, see the API contract section above) rather than wiring the combobox to server-side search —
+with the current project counts, fetching the full list once is enough. The API's own `name` partial-match
+filter on `GET /api/v1/projects` isn't used by this app (and, as of the code-ciir-api migration, isn't
+even a declared query parameter in the live swagger.json despite being mentioned in the endpoint's
+description — see `.specs/2026-09-10-ciir-api-migration.md` §2.3).

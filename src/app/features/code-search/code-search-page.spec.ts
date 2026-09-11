@@ -20,26 +20,43 @@ describe('CodeSearchPage', () => {
   let configService: { userName: ReturnType<typeof vi.fn>; setUserName: ReturnType<typeof vi.fn> };
 
   const projects: Project[] = [
-    { id: 1, name: 'alpha', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-01T00:00:00Z' },
+    {
+      id: 1,
+      name: 'alpha',
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 1536,
+      gitUrl: 'https://forgejo.example/alpha',
+      gitRawUrl: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    },
     {
       id: 2,
       name: 'beta',
-      gitUrl: 'https://forgejo.home.arpa/sauron/beta/',
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 1536,
+      gitUrl: 'https://forgejo.example/beta',
       gitRawUrl: null,
       createdAt: '2026-01-02T00:00:00Z',
+      updatedAt: '2026-01-02T00:00:00Z',
     },
   ];
 
   const results: CodeQueryResult[] = [
     {
       id: 1,
-      sourceFile: 'src/foo.ts',
-      gitRawUrl: 'https://forgejo.home.arpa/sauron/code-rag-api/raw/branch/main/src/foo.ts',
       kind: 'method',
-      typeName: 'Foo',
-      member: 'bar',
+      symbolContainer: 'Billing.Services',
+      symbolName: 'RetryPayment',
+      symbolQualifiedName: 'Billing.Services.PaymentService.RetryPayment',
+      symbolCanonicalName: 'RetryPayment(int, bool)',
+      sourceFile: 'src/foo.ts',
+      gitUrl: 'https://forgejo.example/alpha',
+      gitRawUrl: 'https://forgejo.example/alpha/raw/main/src/foo.ts',
       embeddingText: 'function bar() {}',
       similarity: 0.9,
+      rerankScore: null,
+      relations: [],
     },
   ];
 
@@ -92,11 +109,8 @@ describe('CodeSearchPage', () => {
     ]);
   });
 
-  it('cannot submit without a selected project and a non-blank question', () => {
+  it('requires a non-blank question but not a project selection', () => {
     setup();
-    expect(component['canSubmit']).toBe(false);
-
-    component['selectedProjectId'].set(1);
     expect(component['canSubmit']).toBe(false);
 
     component['question'].set('  ');
@@ -119,7 +133,7 @@ describe('CodeSearchPage', () => {
         id: 0,
         projectId: 1,
         projectName: 'alpha',
-        projectGitUrl: null,
+        projectGitUrl: 'https://forgejo.example/alpha',
         question: 'Where is retry logic?',
         filters: {},
         results,
@@ -144,7 +158,7 @@ describe('CodeSearchPage', () => {
     expect(component['history']().length).toBe(2);
   });
 
-  it('renders the card title as a link to the project git repository when one is set', () => {
+  it('renders the selected project name with a repository link', () => {
     setup();
     component['selectedProjectId'].set(2);
     component['question'].set('Where is retry logic?');
@@ -152,32 +166,23 @@ describe('CodeSearchPage', () => {
     component['submit']();
     fixture.detectChanges();
 
-    const titleLink = fixture.nativeElement.querySelector('article p a') as HTMLAnchorElement;
-    expect(titleLink.textContent?.trim()).toBe('beta');
-    expect(titleLink.href).toBe('https://forgejo.home.arpa/sauron/beta/');
-    expect(titleLink.target).toBe('_blank');
+    const repositoryLink = fixture.nativeElement.querySelector(
+      'article a[aria-label="Open repository in a new tab"]',
+    ) as HTMLAnchorElement;
+    expect(repositoryLink.href).toBe('https://forgejo.example/beta');
+    expect(repositoryLink.target).toBe('_blank');
+    expect(repositoryLink.rel).toBe('noopener noreferrer');
+    expect(fixture.nativeElement.querySelector('article').textContent).toContain('beta');
   });
 
-  it('renders the card title as plain text when the project has no git repository', () => {
-    setup();
-    component['selectedProjectId'].set(1);
-    component['question'].set('Where is retry logic?');
-
-    component['submit']();
-    fixture.detectChanges();
-
-    const title = fixture.nativeElement.querySelector('article p') as HTMLParagraphElement;
-    expect(title.querySelector('a')).toBeNull();
-    expect(title.textContent).toContain('alpha');
-  });
-
-  it('does not submit when no project is selected', () => {
+  it('submits across all projects when none is selected', () => {
     setup();
     component['question'].set('hello');
 
     component['submit']();
 
-    expect(codeQueriesService.ask).not.toHaveBeenCalled();
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(null, 'hello', {});
+    expect(component['history']()[0]).toMatchObject({ projectId: null, projectName: 'All projects' });
   });
 
   it('does not submit a blank question', () => {
@@ -237,29 +242,20 @@ describe('CodeSearchPage', () => {
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
     expect(row.textContent).toContain('method');
     expect(row.textContent).toContain('90%');
+    expect(row.textContent).toContain('Billing.Services.PaymentService.RetryPayment');
 
-    const gitRawLink = row.querySelector('a') as HTMLAnchorElement;
-    expect(gitRawLink.textContent?.trim()).toBe('View Raw');
-    expect(gitRawLink.href).toBe(results[0].gitRawUrl);
-    expect(gitRawLink.target).toBe('_blank');
+    const rawLink = row.querySelector('a[aria-label="Open raw file src/foo.ts"]') as HTMLAnchorElement;
+    expect(rawLink.href).toBe('https://forgejo.example/alpha/raw/main/src/foo.ts');
+    expect(rawLink.target).toBe('_blank');
+    expect(rawLink.rel).toBe('noopener noreferrer');
+    expect(rawLink.textContent).toContain('View File');
+
+    rawLink.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(popupService.open).not.toHaveBeenCalled();
 
     row.click();
 
     expect(popupService.open).toHaveBeenCalled();
-  });
-
-  it('does not open the popup when the GitRaw link is clicked', () => {
-    setup();
-    component['selectedProjectId'].set(1);
-    component['question'].set('Where is retry logic?');
-
-    component['submit']();
-    fixture.detectChanges();
-
-    const gitRawLink = fixture.nativeElement.querySelector('tbody tr a') as HTMLAnchorElement;
-    gitRawLink.click();
-
-    expect(popupService.open).not.toHaveBeenCalled();
   });
 
   it('removes a history entry when its close button is clicked', () => {
@@ -278,6 +274,22 @@ describe('CodeSearchPage', () => {
 
     expect(component['history']()).toEqual([]);
     expect(fixture.nativeElement.querySelector('article')).toBeNull();
+  });
+
+  it('keeps the close button for an all-projects search', () => {
+    setup();
+    component['question'].set('Where is retry logic?');
+
+    component['submit']();
+    fixture.detectChanges();
+
+    const closeButton = fixture.nativeElement.querySelector('article button[aria-label="Close"]') as HTMLButtonElement;
+    expect(closeButton).not.toBeNull();
+
+    closeButton.click();
+    fixture.detectChanges();
+
+    expect(component['history']()).toEqual([]);
   });
 
   it('updates the question from real typing and clears it via Escape', () => {
@@ -319,7 +331,7 @@ describe('CodeSearchPage', () => {
     expect(button.textContent).toContain('Ask');
   });
 
-  it('opens the filters drawer with the filter signals and operator lists as data', () => {
+  it('opens the filters drawer with the filter signals and operator list as data', () => {
     setup();
 
     const filtersButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
@@ -332,12 +344,11 @@ describe('CodeSearchPage', () => {
       expect.objectContaining({
         panelClass: 'filter-drawer-panel',
         data: expect.objectContaining({
-          kindFilter: component['kindFilter'],
-          namespaceFilter: component['namespaceFilter'],
-          typeNameFilter: component['typeNameFilter'],
-          kindOperators: component['kindOperators'],
-          namespaceOperators: component['namespaceOperators'],
-          typeNameOperators: component['typeNameOperators'],
+          kind: component['kindFilter'],
+          qualifiedName: component['qualifiedNameFilter'],
+          qualifiedNameOperators: component['qualifiedNameOperators'],
+          minSimilarity: component['minSimilarity'],
+          limit: component['limit'],
         }),
       }),
     );
@@ -349,8 +360,8 @@ describe('CodeSearchPage', () => {
 
     expect(fixture.nativeElement.textContent).not.toMatch(/Filters\s*\d/);
 
-    component['kindFilter'].set({ operator: 'equals', value: 'method' });
-    component['namespaceFilter'].set({ operator: 'contains', value: 'Billing' });
+    component['kindFilter'].set('method');
+    component['qualifiedNameFilter'].set({ operator: 'contains', value: 'Billing' });
     fixture.detectChanges();
 
     const filtersButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
@@ -359,68 +370,75 @@ describe('CodeSearchPage', () => {
     expect(filtersButton.textContent).toContain('2');
   });
 
+  it('does not count min similarity or limit toward the active-filter badge', () => {
+    setup();
+    component['minSimilarity'].set(0.5);
+    component['limit'].set(25);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toMatch(/Filters\s*\d/);
+  });
+
   it('persists filter values across searches without reopening the drawer', () => {
     setup();
     component['selectedProjectId'].set(1);
-    component['kindFilter'].set({ operator: 'equals', value: 'method' });
+    component['kindFilter'].set('method');
 
     component['question'].set('first question');
     component['submit']();
-    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'first question', {
-      kind: { operator: 'equals', value: 'method' },
-    });
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'first question', { kind: 'method' });
 
     component['question'].set('second question');
     component['submit']();
-    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'second question', {
-      kind: { operator: 'equals', value: 'method' },
-    });
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'second question', { kind: 'method' });
   });
 
   it('submits active filter values and records them on the history entry', () => {
     setup();
     component['selectedProjectId'].set(1);
     component['question'].set('Where is retry logic?');
-    component['kindFilter'].set({ operator: 'equals', value: 'method' });
-    component['typeNameFilter'].set({ operator: 'contains', value: '  *Controller  ' });
+    component['kindFilter'].set('method');
+    component['qualifiedNameFilter'].set({ operator: 'contains', value: '  *Controller  ' });
+    component['minSimilarity'].set(0.4);
+    component['limit'].set(5);
 
     component['submit']();
 
-    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {
-      kind: { operator: 'equals', value: 'method' },
-      typeName: { operator: 'contains', value: '*Controller' },
-    });
-    expect(component['history']()[0].filters).toEqual({
-      kind: { operator: 'equals', value: 'method' },
-      typeName: { operator: 'contains', value: '*Controller' },
-    });
+    const expectedFilters = {
+      kind: 'method',
+      qualifiedName: { operator: 'contains', value: '*Controller' },
+      minSimilarity: 0.4,
+      limit: 5,
+    };
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', expectedFilters);
+    expect(component['history']()[0].filters).toEqual(expectedFilters);
   });
 
   it('omits a filter left blank (or only whitespace) from the request', () => {
     setup();
     component['selectedProjectId'].set(1);
     component['question'].set('Where is retry logic?');
-    component['kindFilter'].set({ operator: 'equals', value: '   ' });
+    component['kindFilter'].set('   ');
 
     component['submit']();
 
     expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {});
   });
 
-  it('renders active filters as badges on the history entry', () => {
+  it('renders active filters as badges on the history entry, in Kind then Qualified-name order', () => {
     setup();
     component['selectedProjectId'].set(1);
     component['question'].set('Where is retry logic?');
-    component['kindFilter'].set({ operator: 'equals', value: 'method' });
-    component['namespaceFilter'].set({ operator: 'not_contains', value: 'Legacy' });
+    component['kindFilter'].set('method');
+    component['qualifiedNameFilter'].set({ operator: 'not_contains', value: 'Legacy' });
 
     component['submit']();
     fixture.detectChanges();
 
     const badges = fixture.nativeElement.querySelectorAll('article p + div span');
     expect(badges.length).toBe(2);
-    expect(badges[0].textContent).toContain('namespace not contains "Legacy"');
-    expect(badges[1].textContent).toContain('kind equals "method"');
+    expect(badges[0].textContent).toContain('kind "method"');
+    expect(badges[1].textContent).toContain('qualified name not contains "Legacy"');
   });
 
   describe('feedback', () => {

@@ -43,8 +43,26 @@ describe('FeedbackStatsPage', () => {
   let configService: { exportTimezone: ReturnType<typeof vi.fn> };
 
   const projects: Project[] = [
-    { id: 1, name: 'alpha', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-01T00:00:00Z' },
-    { id: 2, name: 'beta', gitUrl: null, gitRawUrl: null, createdAt: '2026-01-02T00:00:00Z' },
+    {
+      id: 1,
+      name: 'alpha',
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 1536,
+      gitUrl: null,
+      gitRawUrl: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 2,
+      name: 'beta',
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 1536,
+      gitUrl: null,
+      gitRawUrl: null,
+      createdAt: '2026-01-02T00:00:00Z',
+      updatedAt: '2026-01-02T00:00:00Z',
+    },
   ];
 
   const stats: FeedbackStats = {

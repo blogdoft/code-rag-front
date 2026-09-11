@@ -23,6 +23,8 @@ export class ProjectFormDialog {
 
   protected readonly isEditMode = !!this.data.project;
   protected readonly name = signal(this.data.project?.name ?? '');
+  protected readonly embeddingModel = signal(this.data.project?.embeddingModel ?? '');
+  protected readonly embeddingDimensions = signal<number | null>(this.data.project?.embeddingDimensions ?? null);
   protected readonly gitUrl = signal(this.data.project?.gitUrl ?? '');
   protected readonly gitRawUrl = signal(this.data.project?.gitRawUrl ?? '');
   protected readonly isSaving = signal(false);
@@ -30,8 +32,8 @@ export class ProjectFormDialog {
   protected get canSave(): boolean {
     return (
       this.name().trim().length > 0 &&
-      this.gitUrl().trim().length > 0 &&
-      this.gitRawUrl().trim().length > 0 &&
+      this.embeddingModel().trim().length > 0 &&
+      isPositiveInteger(this.embeddingDimensions()) &&
       !this.isSaving()
     );
   }
@@ -41,13 +43,17 @@ export class ProjectFormDialog {
     const original = this.data.project;
     return (
       this.name().trim() !== (original?.name ?? '') ||
-      this.gitUrl().trim() !== (original?.gitUrl ?? '') ||
-      this.gitRawUrl().trim() !== (original?.gitRawUrl ?? '')
+      this.embeddingModel().trim() !== (original?.embeddingModel ?? '') ||
+      this.embeddingDimensions() !== (original?.embeddingDimensions ?? null)
     );
   }
 
   protected clearName(): void {
     this.name.set('');
+  }
+
+  protected clearEmbeddingModel(): void {
+    this.embeddingModel.set('');
   }
 
   protected clearGitUrl(): void {
@@ -56,6 +62,10 @@ export class ProjectFormDialog {
 
   protected clearGitRawUrl(): void {
     this.gitRawUrl.set('');
+  }
+
+  protected onEmbeddingDimensionsInput(value: string): void {
+    this.embeddingDimensions.set(value === '' ? null : Number(value));
   }
 
   protected cancel(): void {
@@ -67,7 +77,13 @@ export class ProjectFormDialog {
       return;
     }
 
-    const input = { name: this.name().trim(), gitUrl: this.gitUrl().trim(), gitRawUrl: this.gitRawUrl().trim() };
+    const input = {
+      name: this.name().trim(),
+      embeddingModel: this.embeddingModel().trim(),
+      embeddingDimensions: this.embeddingDimensions()!,
+      gitUrl: this.gitUrl().trim(),
+      gitRawUrl: this.gitRawUrl().trim(),
+    };
     const original = this.data.project;
 
     this.isSaving.set(true);
@@ -80,4 +96,8 @@ export class ProjectFormDialog {
       error: () => this.isSaving.set(false),
     });
   }
+}
+
+function isPositiveInteger(value: number | null): boolean {
+  return value != null && Number.isInteger(value) && value > 0;
 }

@@ -9,13 +9,18 @@ describe('ResultDetailDialog', () => {
 
   const result: CodeQueryResult = {
     id: 1,
-    sourceFile: 'src/foo.ts',
-    gitRawUrl: null,
     kind: 'method',
-    typeName: 'Foo',
-    member: 'bar',
+    symbolContainer: 'Billing.Services',
+    symbolName: 'RetryPayment',
+    symbolQualifiedName: 'Billing.Services.PaymentService.RetryPayment',
+    symbolCanonicalName: 'RetryPayment(int, bool)',
+    sourceFile: 'src/foo.ts',
+    gitUrl: null,
+    gitRawUrl: null,
     embeddingText: 'function bar() {\n  return 1;\n}',
     similarity: 0.876,
+    rerankScore: 0.912,
+    relations: [],
   };
 
   function setup(data: CodeQueryResult): void {
@@ -30,15 +35,17 @@ describe('ResultDetailDialog', () => {
     fixture.detectChanges();
   }
 
-  it('renders the source file, kind, type name, member, and similarity', () => {
+  it('renders the source file, kind, container, name, canonical name, similarity, and rerank score', () => {
     setup(result);
     const text = fixture.nativeElement.textContent as string;
 
     expect(text).toContain('src/foo.ts');
     expect(text).toContain('method');
-    expect(text).toContain('Foo');
-    expect(text).toContain('bar');
+    expect(text).toContain('Billing.Services');
+    expect(text).toContain('RetryPayment');
+    expect(text).toContain('RetryPayment(int, bool)');
     expect(text).toContain('0.876');
+    expect(text).toContain('0.912');
   });
 
   it('falls back to "Unknown file" when sourceFile is null', () => {
@@ -46,15 +53,50 @@ describe('ResultDetailDialog', () => {
     expect(fixture.nativeElement.textContent).toContain('Unknown file');
   });
 
-  it('omits the type name and member segments when absent', () => {
-    setup({ ...result, typeName: null, member: null });
-    expect(fixture.nativeElement.textContent).not.toContain('Foo');
+  it('omits the container and name segments when absent', () => {
+    setup({ ...result, symbolContainer: null, symbolName: null, symbolCanonicalName: null });
+    expect(fixture.nativeElement.textContent).not.toContain('Billing.Services');
+    expect(fixture.nativeElement.textContent).not.toContain('RetryPayment');
+  });
+
+  it('omits the canonical name when it matches the short name', () => {
+    setup({ ...result, symbolName: 'RetryPayment', symbolCanonicalName: 'RetryPayment' });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text.match(/RetryPayment/g)?.length).toBe(1);
+  });
+
+  it('omits the rerank score segment when null', () => {
+    setup({ ...result, rerankScore: null });
+    expect(fixture.nativeElement.textContent).not.toContain('rerank');
   });
 
   it('preserves embedding text whitespace via a <pre> element', () => {
     setup(result);
     const pre = fixture.nativeElement.querySelector('pre');
     expect(pre?.textContent).toContain('function bar()');
+  });
+
+  it('renders no Relations section when there are none', () => {
+    setup(result);
+    expect(fixture.nativeElement.textContent).not.toContain('Relations');
+  });
+
+  it('renders a relation per entry, marking direction relative to this match', () => {
+    setup({
+      ...result,
+      relations: [
+        { fromId: 1, toId: 42, relationType: 'calls', targetSymbol: 'Charge', resolutionOrigin: 'static' },
+        { fromId: 7, toId: 1, relationType: 'calls', targetSymbol: 'RetryPayment', resolutionOrigin: 'static' },
+      ],
+    });
+
+    const items = fixture.nativeElement.querySelectorAll('ul li');
+    expect(items.length).toBe(2);
+    expect(items[0].textContent).toContain('→');
+    expect(items[0].textContent).toContain('calls');
+    expect(items[0].textContent).toContain('Charge');
+    expect(items[1].textContent).toContain('←');
+    expect(items[1].textContent).toContain('RetryPayment');
   });
 
   it('closes the dialog when the close button is clicked', () => {

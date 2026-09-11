@@ -19,131 +19,167 @@ describe('CodeQueriesService', () => {
     httpMock.verify();
   });
 
-  it('posts the question to the project-scoped endpoint and maps the DTOs (snake_case, except the camelCase gitRawUrl)', () => {
+  it('posts the question and project_id to the project-agnostic endpoint and maps the DTOs (snake_case)', () => {
     let result: unknown;
     service.ask(7, 'where is retry logic?').subscribe((results) => (result = results));
 
-    const req = httpMock.expectOne('/api/v1/projects/7/code-queries');
+    const req = httpMock.expectOne('/api/v1/code-queries');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ question: 'where is retry logic?' });
+    expect(req.request.body).toEqual({ question: 'where is retry logic?', project_id: 7 });
 
-    req.flush([
-      {
-        id: 1,
-        source_file: 'src/foo.ts',
-        gitRawUrl: 'https://forgejo.home.arpa/sauron/repo/raw/branch/main/src/foo.ts',
-        kind: 'method',
-        type_name: 'Foo',
-        member: 'bar',
-        embedding_text: 'function bar() {}',
-        similarity: 0.87,
-      },
-    ]);
+    req.flush({
+      matches: [
+        {
+          id: 1,
+          kind: 'method',
+          symbol_container: 'Billing.Services',
+          symbol_name: 'RetryPayment',
+          symbol_qualified_name: 'Billing.Services.PaymentService.RetryPayment',
+          symbol_canonical_name: 'RetryPayment(int, bool)',
+          source_file: 'src/foo.ts',
+          git_url: 'https://forgejo.example/demo',
+          git_raw_url: 'https://forgejo.example/demo/raw/main/src/foo.ts',
+          embedding_text: 'function bar() {}',
+          similarity: 0.87,
+          rerank_score: 0.91,
+          relations: [
+            { from_id: 1, to_id: 42, relation_type: 'calls', target_symbol: 'Charge', resolution_origin: 'static' },
+          ],
+        },
+      ],
+      graph: { nodes: [], edges: [], truncated: false },
+    });
 
     expect(result).toEqual([
       {
         id: 1,
-        sourceFile: 'src/foo.ts',
-        gitRawUrl: 'https://forgejo.home.arpa/sauron/repo/raw/branch/main/src/foo.ts',
         kind: 'method',
-        typeName: 'Foo',
-        member: 'bar',
+        symbolContainer: 'Billing.Services',
+        symbolName: 'RetryPayment',
+        symbolQualifiedName: 'Billing.Services.PaymentService.RetryPayment',
+        symbolCanonicalName: 'RetryPayment(int, bool)',
+        sourceFile: 'src/foo.ts',
+        gitUrl: 'https://forgejo.example/demo',
+        gitRawUrl: 'https://forgejo.example/demo/raw/main/src/foo.ts',
         embeddingText: 'function bar() {}',
         similarity: 0.87,
+        rerankScore: 0.91,
+        relations: [
+          { fromId: 1, toId: 42, relationType: 'calls', targetSymbol: 'Charge', resolutionOrigin: 'static' },
+        ],
       },
     ]);
   });
 
-  it('maps null sourceFile, gitRawUrl, typeName, and member through unchanged', () => {
+  it('omits project_id when searching across all projects', () => {
+    service.ask(null, 'where is retry logic?').subscribe();
+
+    const req = httpMock.expectOne('/api/v1/code-queries');
+    expect(req.request.body).toEqual({ question: 'where is retry logic?' });
+    req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
+  });
+
+  it('maps null fields and a null/absent relations array through unchanged', () => {
     let result: unknown;
     service.ask(1, 'q').subscribe((results) => (result = results));
 
-    httpMock.expectOne('/api/v1/projects/1/code-queries').flush([
-      {
-        id: 2,
-        source_file: null,
-        gitRawUrl: null,
-        kind: 'file',
-        type_name: null,
-        member: null,
-        embedding_text: 'text',
-        similarity: 0.5,
-      },
-    ]);
+    httpMock.expectOne('/api/v1/code-queries').flush({
+      matches: [
+        {
+          id: 2,
+          kind: null,
+          symbol_container: null,
+          symbol_name: null,
+          symbol_qualified_name: null,
+          symbol_canonical_name: null,
+          source_file: null,
+          git_url: null,
+          git_raw_url: null,
+          embedding_text: null,
+          similarity: 0.5,
+          rerank_score: null,
+          relations: null,
+        },
+      ],
+      graph: { nodes: [], edges: [], truncated: false },
+    });
 
     expect(result).toEqual([
       {
         id: 2,
+        kind: null,
+        symbolContainer: null,
+        symbolName: null,
+        symbolQualifiedName: null,
+        symbolCanonicalName: null,
         sourceFile: null,
+        gitUrl: null,
         gitRawUrl: null,
-        kind: 'file',
-        typeName: null,
-        member: null,
-        embeddingText: 'text',
+        embeddingText: null,
         similarity: 0.5,
+        rerankScore: null,
+        relations: [],
       },
     ]);
   });
 
-  it('sends active filters using snake_case keys and trimmed values', () => {
+  it('returns an empty array when matches is null', () => {
+    let result: unknown;
+    service.ask(1, 'q').subscribe((results) => (result = results));
+
+    httpMock.expectOne('/api/v1/code-queries').flush({ matches: null, graph: { nodes: [], edges: [], truncated: false } });
+
+    expect(result).toEqual([]);
+  });
+
+  it('sends active filters using their new snake_case keys and trimmed values', () => {
     service
       .ask(3, 'q', {
-        kind: { operator: 'contains', value: ' method ' },
-        namespace: { operator: 'not_contains', value: 'Legacy' },
-        typeName: { operator: 'equals', value: 'Foo' },
+        kind: ' method ',
+        qualifiedName: { operator: 'not_contains', value: ' Legacy ' },
+        minSimilarity: 0.4,
+        limit: 5,
       })
       .subscribe();
 
-    const req = httpMock.expectOne('/api/v1/projects/3/code-queries');
+    const req = httpMock.expectOne('/api/v1/code-queries');
     expect(req.request.body).toEqual({
       question: 'q',
-      kind: { operator: 'contains', value: 'method' },
-      namespace: { operator: 'not_contains', value: 'Legacy' },
-      type_name: { operator: 'equals', value: 'Foo' },
+      project_id: 3,
+      kind: 'method',
+      qualified_name: { operator: 'not_contains', value: 'Legacy' },
+      min_similarity: 0.4,
+      limit: 5,
     });
-    req.flush([]);
+    req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
 
   it('omits a filter whose value is blank', () => {
-    service.ask(3, 'q', { kind: { operator: 'contains', value: '   ' } }).subscribe();
+    service.ask(3, 'q', { kind: '   ', qualifiedName: { operator: 'contains', value: '   ' } }).subscribe();
 
-    const req = httpMock.expectOne('/api/v1/projects/3/code-queries');
-    expect(req.request.body).toEqual({ question: 'q' });
-    req.flush([]);
+    const req = httpMock.expectOne('/api/v1/code-queries');
+    expect(req.request.body).toEqual({ question: 'q', project_id: 3 });
+    req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
 
-  it('omits all filter keys when an empty filters object is passed', () => {
+  it('omits all optional keys when an empty filters object is passed', () => {
     service.ask(3, 'q', {}).subscribe();
 
-    const req = httpMock.expectOne('/api/v1/projects/3/code-queries');
-    expect(req.request.body).toEqual({ question: 'q' });
-    req.flush([]);
+    const req = httpMock.expectOne('/api/v1/code-queries');
+    expect(req.request.body).toEqual({ question: 'q', project_id: 3 });
+    req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
 
-  it('sorts results by similarity, highest first, regardless of API order', () => {
+  it('preserves the API response order verbatim, even when it disagrees with raw similarity', () => {
     let result: { id: number; similarity: number }[] | undefined;
     service.ask(1, 'q').subscribe((results) => (result = results));
 
-    httpMock.expectOne('/api/v1/projects/1/code-queries').flush([
-      dto(1, 0.4),
-      dto(2, 0.9),
-      dto(3, 0.6),
-    ]);
+    httpMock.expectOne('/api/v1/code-queries').flush({
+      matches: [dto(1, 0.4, 0.95), dto(2, 0.9, 0.2), dto(3, 0.6, 0.5)],
+      graph: { nodes: [], edges: [], truncated: false },
+    });
 
-    expect(result?.map((r) => r.id)).toEqual([2, 3, 1]);
-  });
-
-  it('keeps original relative order for results with equal similarity (stable sort)', () => {
-    let result: { id: number; similarity: number }[] | undefined;
-    service.ask(1, 'q').subscribe((results) => (result = results));
-
-    httpMock.expectOne('/api/v1/projects/1/code-queries').flush([
-      dto(1, 0.5),
-      dto(2, 0.9),
-      dto(3, 0.5),
-    ]);
-
-    expect(result?.map((r) => r.id)).toEqual([2, 1, 3]);
+    expect(result?.map((r) => r.id)).toEqual([1, 2, 3]);
   });
 
   it('submits useful feedback without a reason', () => {
@@ -195,15 +231,20 @@ describe('CodeQueriesService', () => {
   });
 });
 
-function dto(id: number, similarity: number) {
+function dto(id: number, similarity: number, rerankScore: number) {
   return {
     id,
-    source_file: 'src/foo.ts',
-    gitRawUrl: null,
     kind: 'method',
-    type_name: null,
-    member: null,
+    symbol_container: null,
+    symbol_name: null,
+    symbol_qualified_name: null,
+    symbol_canonical_name: null,
+    source_file: 'src/foo.ts',
+    git_url: null,
+    git_raw_url: null,
     embedding_text: 'text',
     similarity,
+    rerank_score: rerankScore,
+    relations: [],
   };
 }
