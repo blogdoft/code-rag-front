@@ -4,7 +4,7 @@ Status: Draft (revised four times — accordion panel replaced with a side drawe
 confirm button was briefly turned into a direct "Ask" action and then reverted back to `Filter`;
 the question field was made to persist across searches; the filter field order was changed to
 Namespace, Kind, Type; see §4)
-Source: `https://code-rag-api.home.arpa/swagger/v1/swagger.json` (confirmed live, 2026-09-01)
+Source: `https://code-ciir-api.home.arpa/swagger/v1/swagger.json` (confirmed live, 2026-09-01)
 
 ## Revision note (2026-09-01, fourth pass)
 

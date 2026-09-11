@@ -6,7 +6,7 @@ fourth-pass note), then reworked so every project is broken out per week instead
 single-selected, then given a full-width layout and a proper date-range validation toast, then
 given alternating week-band shading, then given a pre-filled default date range; see the revision
 notes below, newest first)
-Source: `https://code-rag-api.home.arpa/swagger/v1/swagger.json` (confirmed live, 2026-09-03)
+Source: `https://code-ciir-api.home.arpa/swagger/v1/swagger.json` (confirmed live, 2026-09-03)
 
 ## Revision note (2026-09-03, seventh pass — pre-fill the date fields with the last 4 weeks)
 

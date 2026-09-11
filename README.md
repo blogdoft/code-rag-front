@@ -96,7 +96,7 @@ docker compose -f .eng/docker/docker-compose.yml up
 
 Builds the image from `.eng/docker/Dockerfile` (multi-stage: `npm run build`, then served by
 nginx) and serves it on `http://localhost:8080`. nginx reverse-proxies `/api/...` to
-`API_UPSTREAM` (defaults to `https://code-rag-api.home.arpa`; override via `.env` or
+`API_UPSTREAM` (defaults to `https://code-ciir-api.home.arpa`; override via `.env` or
 `API_UPSTREAM=... docker compose up`, e.g. `http://host.docker.internal:5002` for a local API).
 
 ## CI/CD

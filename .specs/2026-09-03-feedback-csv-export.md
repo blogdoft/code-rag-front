@@ -1,7 +1,7 @@
 # Spec: Feedback CSV Export
 
 Status: Implemented
-Source: `https://code-rag-api.home.arpa/swagger/v1/swagger.json` (confirmed live, 2026-09-03), plus a
+Source: `https://code-ciir-api.home.arpa/swagger/v1/swagger.json` (confirmed live, 2026-09-03), plus a
 direct `curl` of `GET /api/v1/code-queries/feedback/export` to confirm the response headers the
 swagger doc doesn't document (see §2) — per `CLAUDE.md`'s "trust the live response over the OpenAPI
 docs" rule.

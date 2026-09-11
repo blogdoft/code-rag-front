@@ -6,7 +6,7 @@ const API_BASE_URL_KEY = 'code-rag.apiBaseUrl';
  * Empty by default so `/api` requests stay same-origin (see baseUrlInterceptor)
  * and get routed through whatever's actually serving the app — the CLI dev-server
  * proxy locally, or a reverse proxy in production. Pointing this straight at
- * `https://code-rag-api.home.arpa` by default would make the browser call that
+ * `https://code-ciir-api.home.arpa` by default would make the browser call that
  * host directly and hit its self-signed certificate, which no app code can
  * bypass. Users who don't have a proxy in front of a mismatched-origin API can
  * still set an absolute URL here via the Settings screen.

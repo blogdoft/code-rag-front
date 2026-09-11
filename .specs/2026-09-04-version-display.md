@@ -30,7 +30,7 @@ convention — though this endpoint has no camelCase/snake_case ambiguity, since
 already a single lowercase word):
 
 ```
-$ curl https://code-rag-api.home.arpa/version
+$ curl https://code-ciir-api.home.arpa/version
 {"version":"0.1.3-1"}
 ```
 
@@ -65,7 +65,7 @@ request-routing layers handle it as-is — each only recognizes `/api`:
 - **`core/interceptors/base-url.interceptor.ts`** only prefixes the configured API base URL onto
   requests whose URL `startsWith('/api')`. A raw `this.http.get('/version')` today would be sent
   to the *front-end's own* origin, not the configured API.
-- **Dev proxy** `proxy.conf.json` (`{ "/api": { "target": "https://code-rag-api.home.arpa", ... } }`)
+- **Dev proxy** `proxy.conf.json` (`{ "/api": { "target": "https://code-ciir-api.home.arpa", ... } }`)
   and `proxy.conf.local.example.json` (same shape, `http://localhost:5002`) only proxy `/api`. A
   request to `/version` would be served — or 404'd — by the Angular CLI dev server itself.
 - **Production** `.eng/docker/nginx.conf.template` only reverse-proxies `location /api/`; every
@@ -88,8 +88,8 @@ All three need a `/version` counterpart alongside the existing `/api` one:
 ```diff
 --- proxy.conf.json (and proxy.conf.local.example.json, same shape) ---
  {
-   "/api": { "target": "https://code-rag-api.home.arpa", "secure": false, "changeOrigin": true },
-+  "/version": { "target": "https://code-rag-api.home.arpa", "secure": false, "changeOrigin": true }
+   "/api": { "target": "https://code-ciir-api.home.arpa", "secure": false, "changeOrigin": true },
++  "/version": { "target": "https://code-ciir-api.home.arpa", "secure": false, "changeOrigin": true }
  }
 ```
 

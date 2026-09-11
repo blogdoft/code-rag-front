@@ -10,7 +10,7 @@ is always authoritative over any committed doc (this spec included).
 
 ## 1. Background
 
-The backend is being replaced: **CodeRAG API** (`code-rag-api`, host `code-rag-api.home.arpa`,
+The backend is being replaced: **CodeRAG API** (`code-rag-api`, host `code-ciir-api.home.arpa`,
 title `CodeRag.Api`) is being swapped for a new, differently-shaped service, **Code CIIR API**
 (`code-ciir-api`, title `Code CIIR API`), built on a different data model (`code3rag`,
 "code intelligence and indexing relations" — projects, code documents, and a *relationship graph*
@@ -337,7 +337,7 @@ CRUD stays (the new API has full CRUD, §2.3) — only the fields change:
 - **Dev proxy target** (`proxy.conf.json`'s `/api` and `/version` entries) and the matching
   production defaults (`.eng/docker/docker-compose.yml`'s `API_UPSTREAM`,
   `.eng/k8s/deployment.yaml`'s upstream env value) all currently point at
-  `https://code-rag-api.home.arpa`. Deferred — needs a real hostname for the new API before this
+  `https://code-ciir-api.home.arpa`. Deferred — needs a real hostname for the new API before this
   ships. Get this right rather than guessing: `CLAUDE.md` already documents a real incident
   (`ERR_CERT_AUTHORITY_INVALID`) caused by a wrong default host bypassing the dev proxy, and the same
   failure mode applies to whichever of these three places is updated with the wrong value.
@@ -360,7 +360,7 @@ CRUD stays (the new API has full CRUD, §2.3) — only the fields change:
 - `v1.json`: `CLAUDE.md` already references this file as documenting the backend contract, but it
   doesn't exist in the repo (confirmed absent, 2026-09-10) — pre-existing gap, unrelated to this
   migration; either add it back or drop the reference while touching that paragraph anyway.
-- `SPEC.md` (line 3, `https://code-rag-api.home.arpa`): update once §6's hostname decision lands.
+- `SPEC.md` (line 3, `https://code-ciir-api.home.arpa`): update once §6's hostname decision lands.
 
 ## 8. Testing
 

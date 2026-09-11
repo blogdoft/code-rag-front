@@ -14,7 +14,7 @@ voting, the controls are replaced by a static colored label.
 
 ## 2. API contract
 
-Confirmed via `https://code-rag-api.home.arpa/swagger/v1/swagger.json` and cross-checked against
+Confirmed via `https://code-ciir-api.home.arpa/swagger/v1/swagger.json` and cross-checked against
 the `submit_code_query_feedback` MCP tool schema (already available in this environment, backed
 by the same endpoint).
 

@@ -1,6 +1,6 @@
 # CODE-RAG-FRONT
 
-Esse sistema deve oferecer uma UI e UX amigável para o usuário da api https://code-rag-api.home.arpa.
+Esse sistema deve oferecer uma UI e UX amigável para o usuário da api https://code-ciir-api.home.arpa.
 
 O usuário deve ser capaz de selecionar um projeto e fazer perguntas. Toda vez que ele clicar em uma das respostas oferecidas pelo retorno da api, ele deve ser capaz de visualizar o conteúdo em um pop-up.
 Atenção especial ao campo embeddingText, que é um multi-line com quebras de linha embutidos.

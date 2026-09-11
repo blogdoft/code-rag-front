@@ -87,10 +87,10 @@ the app deals only in the camelCase `Project`/`CodeQueryResult` models (`core/mo
   **defaults to empty** (same-origin, relative `/api/...` calls) on purpose: prefixing with an absolute
   URL by default would make the *browser itself* call that host directly, hitting its certificate
   outside any proxy's control (see the TLS note below — this was an actual bug found by driving the app
-  with Playwright, not just reading the code: the default used to be `https://code-rag-api.home.arpa`,
+  with Playwright, not just reading the code: the default used to be `https://code-ciir-api.home.arpa`,
   which made every request bypass the dev proxy and fail with `ERR_CERT_AUTHORITY_INVALID`). Settings
   still accepts an absolute URL when the API truly lives on a different, browser-trusted origin.
-  **`proxy.conf.json` still points the dev server's own proxy at `https://code-rag-api.home.arpa` (the
+  **`proxy.conf.json` still points the dev server's own proxy at `https://code-ciir-api.home.arpa` (the
   old backend) — this is a known gap, not yet updated to code-ciir-api's real address; see
   `.specs/2026-09-10-ciir-api-migration.md` §6.** `proxy.conf.local.example.json` remains the
   `http://localhost:5002`-style pattern for pointing at a local API instance — copy it over
