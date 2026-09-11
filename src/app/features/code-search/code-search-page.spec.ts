@@ -55,7 +55,7 @@ describe('CodeSearchPage', () => {
       gitRawUrl: 'https://forgejo.example/alpha/raw/main/src/foo.ts',
       embeddingText: 'function bar() {}',
       similarity: 0.9,
-      rerankScore: null,
+      rerankScore: 0.8,
       relations: [],
     },
   ];
@@ -241,7 +241,7 @@ describe('CodeSearchPage', () => {
 
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
     expect(row.textContent).toContain('method');
-    expect(row.textContent).toContain('90%');
+    expect(row.textContent).toContain('80%');
     expect(row.textContent).toContain('Billing.Services.PaymentService.RetryPayment');
 
     const rawLink = row.querySelector('a[aria-label="Open raw file src/foo.ts"]') as HTMLAnchorElement;
