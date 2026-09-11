@@ -81,7 +81,13 @@ export class CodeQueriesService {
   ask(projectId: number | null, question: string, filters?: CodeQueryFilters): Observable<CodeQueryResult[]> {
     return this.http
       .post<CodeQueryResponseDto>('/api/v1/code-queries', toRequestBody(projectId, question, filters))
-      .pipe(map((dto) => (dto.matches ?? []).map(toCodeQueryResult)));
+      .pipe(
+        map((dto) =>
+          (dto.matches ?? [])
+            .map(toCodeQueryResult)
+            .sort((left, right) => (right.rerankScore ?? -Infinity) - (left.rerankScore ?? -Infinity)),
+        ),
+      );
   }
 
   submitFeedback(projectId: number, params: CodeQueryFeedbackParams): Observable<void> {

@@ -170,16 +170,16 @@ describe('CodeQueriesService', () => {
     req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
 
-  it('preserves the API response order verbatim, even when it disagrees with raw similarity', () => {
+  it('orders results by descending rerank score, placing results without a rerank score last', () => {
     let result: { id: number; similarity: number }[] | undefined;
     service.ask(1, 'q').subscribe((results) => (result = results));
 
     httpMock.expectOne('/api/v1/code-queries').flush({
-      matches: [dto(1, 0.4, 0.95), dto(2, 0.9, 0.2), dto(3, 0.6, 0.5)],
+      matches: [dto(1, 0.4, 0.2), dto(2, 0.9, null), dto(3, 0.6, 0.95), dto(4, 0.8, 0.5)],
       graph: { nodes: [], edges: [], truncated: false },
     });
 
-    expect(result?.map((r) => r.id)).toEqual([1, 2, 3]);
+    expect(result?.map((r) => r.id)).toEqual([3, 4, 1, 2]);
   });
 
   it('submits useful feedback without a reason', () => {
@@ -231,7 +231,7 @@ describe('CodeQueriesService', () => {
   });
 });
 
-function dto(id: number, similarity: number, rerankScore: number) {
+function dto(id: number, similarity: number, rerankScore: number | null) {
   return {
     id,
     kind: 'method',
