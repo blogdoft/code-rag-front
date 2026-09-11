@@ -10,17 +10,17 @@
 
     <div>
       <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Question</label>
-      <input
+      <textarea
         #questionInput
-        type="text"
+        rows="4"
         placeholder="Where is the retry logic for failed payments?"
         [value]="question()"
         [appEscClearable]="question()"
         (cleared)="clearQuestion()"
         (input)="onQuestionInput($any($event.target).value)"
-        (keydown.enter)="submit()"
-        class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-      />
+        (keydown.control.enter)="submitWithShortcut($event)"
+        class="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+      ></textarea>
     </div>
 
     <button

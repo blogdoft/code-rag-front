@@ -73,7 +73,7 @@ export class CodeSearchPage {
   });
 
   private readonly projectCombobox = viewChild.required(Combobox);
-  private readonly questionInput = viewChild.required<ElementRef<HTMLInputElement>>('questionInput');
+  private readonly questionInput = viewChild.required<ElementRef<HTMLTextAreaElement>>('questionInput');
 
   private nextHistoryId = 0;
 
@@ -94,6 +94,15 @@ export class CodeSearchPage {
 
   protected onQuestionInput(text: string): void {
     this.question.set(text);
+  }
+
+  protected submitWithShortcut(event: Event): void {
+    if (!this.canSubmit) {
+      return;
+    }
+
+    event.preventDefault();
+    this.submit();
   }
 
   protected clearQuestion(): void {

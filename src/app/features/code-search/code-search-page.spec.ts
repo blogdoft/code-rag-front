@@ -96,7 +96,7 @@ describe('CodeSearchPage', () => {
     fixture.detectChanges();
 
     expect(document.activeElement).toBe(
-      fixture.nativeElement.querySelector('input[placeholder="Where is the retry logic for failed payments?"]'),
+      fixture.nativeElement.querySelector('textarea[placeholder="Where is the retry logic for failed payments?"]'),
     );
   });
 
@@ -295,8 +295,8 @@ describe('CodeSearchPage', () => {
   it('updates the question from real typing and clears it via Escape', () => {
     setup();
     const questionInput = fixture.nativeElement.querySelector(
-      'input[placeholder="Where is the retry logic for failed payments?"]',
-    ) as HTMLInputElement;
+      'textarea[placeholder="Where is the retry logic for failed payments?"]',
+    ) as HTMLTextAreaElement;
 
     questionInput.value = 'Where is retry logic?';
     questionInput.dispatchEvent(new Event('input'));
@@ -309,6 +309,24 @@ describe('CodeSearchPage', () => {
 
     expect(component['question']()).toBe('');
     expect(questionInput.value).toBe('');
+  });
+
+  it('uses a textarea and submits its question with Ctrl+Enter', () => {
+    setup();
+    const questionInput = fixture.nativeElement.querySelector(
+      'textarea[placeholder="Where is the retry logic for failed payments?"]',
+    ) as HTMLTextAreaElement;
+
+    questionInput.value = 'Where is retry logic?';
+    questionInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const submitted = questionInput.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }),
+    );
+
+    expect(submitted).toBe(false);
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(null, 'Where is retry logic?', {});
   });
 
   it('disables the Ask button while submitting and re-enables it once done', () => {
