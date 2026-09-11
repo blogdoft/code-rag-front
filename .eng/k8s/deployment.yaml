@@ -29,7 +29,7 @@ spec:
             # Where nginx reverse-proxies /api/... to, same variable as
             # .eng/docker/docker-compose.yml (see nginx.conf.template).
             - name: API_UPSTREAM
-              value: https://code-ciir-api.home.arpa
+              value: http://code-ciir-api.code-rag.svc.cluster.local
           resources:
             requests:
               cpu: 50m
