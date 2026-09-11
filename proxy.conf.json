@@ -1,11 +1,11 @@
 {
   "/api": {
-    "target": "http://localhost:5080",
+    "target": "http://code-ciir-api.home.arpa",
     "secure": false,
     "changeOrigin": false
   },
   "/version": {
-    "target": "http://localhost:5080",
+    "target": "http://code-ciir-api.home.arpa",
     "secure": false,
     "changeOrigin": false
   }
