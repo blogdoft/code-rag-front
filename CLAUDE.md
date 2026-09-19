@@ -108,25 +108,55 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   updatedAt }`. `id`/`embeddingDimensions` are typed by the server as int64/int32-or-string (JS-number-
   precision safety for int64) — `ProjectsService`'s mapper normalizes both through `Number(...)`.
 - `GET /version` → `{ version }`, unversioned and unauthenticated, for deploy tooling/diagnostics.
-  Served by code-ciir-api, at the same gateway host as everything else.
+  Served by code-ciir-api, but **not exposed through the public gateway** — confirmed by probing
+  `blogdoft.home.arpa/code-brain/version` directly (404; only `/code-brain/api/code-queries` is
+  routed there, see code-ciir-api's own `.eng/k8s/ingress.yaml`). In the k8s deployment this still
+  works in practice because `ApiVersionService`'s `/version` request goes through
+  `baseUrlInterceptor` → `blogdoft.home.arpa/code-brain/version` → falls through to this app's own
+  Traefik catch-all (`.eng/k8s/ingress.yaml`) → this app's own nginx, whose `location = /version`
+  block proxies it onward to `API_UPSTREAM` — a **direct in-cluster Service DNS name**
+  (`code-ciir-api.code-rag.svc.cluster.local`, see `.eng/k8s/deployment.yaml`), not the public
+  gateway host, so it reaches the real endpoint without looping back through Traefik. `ng serve`/
+  `docker-compose` deployments rely on the same nginx passthrough. `ApiVersionService` already
+  degrades to an empty string on any failure (network or otherwise), so this isn't user-visible
+  even where it doesn't resolve.
 - Errors are RFC7807 `ProblemDetails` (`type`, `title`, `status`, `detail`, `instance` — plain lowercase,
   unaffected by either service's body-casing policy). `core/interceptors/error-toast.interceptor.ts`
   reads `detail`/`title` and reports every failed request as a toast.
 - The API base URL is user-configurable (Settings page), stored in `localStorage` via `ConfigService`,
-  and applied by `core/interceptors/base-url.interceptor.ts` to any request starting with `/api`. It
-  **defaults to empty** (same-origin, relative `/api/...` calls) on purpose: prefixing with an absolute
-  URL by default would make the *browser itself* call that host directly, hitting its certificate
-  outside any proxy's control (see the TLS note below — this was an actual bug found by driving the app
-  with Playwright, not just reading the code: the default once was an absolute `.home.arpa` URL, which
-  made every request bypass the dev proxy and fail with `ERR_CERT_AUTHORITY_INVALID`). Settings still
-  accepts an absolute URL when the API truly lives on a different, browser-trusted origin. Both backend
-  services (code-ciir-api and the CIIR Indexer API) sit behind the **same** gateway host,
-  `https://blogdoft.home.arpa/code-brain`, just under different `/api/...` prefixes — so one configured
-  base URL still covers both; there's no need for two separately-configurable base URLs. `proxy.conf.json`
-  and `.eng/docker/nginx.conf.template`/`docker-compose.yml` (`API_UPSTREAM`) now point at that gateway
-  by default. `proxy.conf.local.example.json` remains the `http://localhost:5002`-style pattern for
-  pointing at a local API instance instead — copy it over `proxy.conf.json` and adjust the port/host to
-  use it.
+  and applied by `core/interceptors/base-url.interceptor.ts` to any request starting with `/api`
+  (`/version` too, but not `version.json` — see below). **Defaults to same-origin** (relative
+  `/api/...` calls, no absolute host) on purpose: prefixing with an absolute URL by default would
+  make the *browser itself* call that host directly, hitting its certificate outside any proxy's
+  control (see the TLS note below — this was an actual bug found by driving the app with
+  Playwright, not just reading the code: the default once was an absolute `.home.arpa` URL, which
+  made every request bypass the dev proxy and fail with `ERR_CERT_AUTHORITY_INVALID`). As of
+  2026-09-18 this default is no longer a hardcoded `''` — `ConfigService` reads it from the page's
+  own `<base href>` at module load (`document.querySelector('base')`), stripped of its trailing
+  slash, so it resolves to `/code-brain` in production and `''` in `ng serve` automatically, without
+  the two needing to be kept in sync by hand (see the base-href bullet below for why `<base href>`
+  itself differs between the two). Settings still accepts an absolute URL when the API truly lives
+  on a different, browser-trusted origin. Both backend services (code-ciir-api and the CIIR Indexer
+  API) sit behind the **same** gateway host, `https://blogdoft.home.arpa/code-brain`, just under
+  different `/api/...` prefixes — so one configured base URL still covers both; there's no need for
+  two separately-configurable base URLs. `proxy.conf.json` and
+  `.eng/docker/nginx.conf.template`/`docker-compose.yml` (`API_UPSTREAM`) point at that gateway by
+  default. `proxy.conf.local.example.json` remains the `http://localhost:5002`-style pattern for
+  pointing at a local API instance instead — copy it over `proxy.conf.json` and adjust the port/host
+  to use it.
+- **This app itself is served from `https://blogdoft.home.arpa/code-brain/`** as of 2026-09-18 (see
+  `.specs/2026-09-18-front-on-code-brain-gateway.md`) — not its own subdomain anymore. Production
+  builds get `<base href="/code-brain/">` injected via `angular.json`'s `baseHref` build option
+  (`ng serve`'s unmodified `src/index.html` keeps `<base href="/">`, so local dev is unaffected).
+  `.eng/k8s/ingress.yaml` routes `blogdoft.home.arpa` path `/code-brain` (Prefix) to this app,
+  alongside code-ciir-api's and code-ciir-indexer's own more-specific rules on the same host
+  (`/code-brain/api/code-queries`, `/code-brain/api/indexer`) — Traefik resolves the overlap by
+  path length, so those two keep taking priority with no explicit priority annotation needed.
+  `.eng/k8s/middleware.yaml` strips `/code-brain` before forwarding to this app's own pod, mirroring
+  the sibling services' middlewares, so `nginx.conf.template` needs no changes — it keeps serving
+  everything as if mounted at `/`. `version.json` (this app's own build-version asset, unrelated to
+  the API) is requested as a base-href-relative path (no leading slash) rather than through
+  `ConfigService`, since it's always same-deployment and never user-configurable, unlike the API URL.
 - Browser JS cannot bypass TLS certificate validation (that's a browser/OS trust decision, not something
   a page's script controls) — `secure: false` in `proxy.conf.json` is the one place in this project where
   that's actually configurable, and only for local dev traffic through the CLI proxy.

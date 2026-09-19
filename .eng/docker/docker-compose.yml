@@ -12,6 +12,10 @@ services:
       # (http://host.docker.internal:5002, matching proxy.conf.local.example.json).
       # As of 2026-09-18 this is a shared gateway (code-queries, feedback, and Projects/indexer
       # all live behind it, at different /api/... prefixes) - see
-      # .specs/2026-09-18-gateway-and-projects-migration.md.
+      # .specs/2026-09-18-gateway-and-projects-migration.md. This container's own frontend is ALSO
+      # served from this same gateway in the cluster (/code-brain, see .eng/k8s/ingress.yaml) - if
+      # you ever change this default to that same public host, make sure the cluster's own
+      # deployment.yaml keeps pointing at a direct in-cluster Service instead, or nginx's
+      # proxy_pass ends up routing back through Traefik into this same app, looping.
       API_UPSTREAM: ${API_UPSTREAM:-https://blogdoft.home.arpa/code-brain}
     restart: unless-stopped

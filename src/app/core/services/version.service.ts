@@ -8,10 +8,14 @@ interface VersionDto {
 }
 
 /**
- * /version.json is a static asset, not a CodeRAG API endpoint - it's generated at
+ * version.json is a static asset, not a CodeRAG API endpoint - it's generated at
  * container start from the APP_VERSION baked into the Docker image (see
  * .eng/docker/Dockerfile), so the same compiled bundle reports whatever tag it was
- * actually built from instead of a value hardcoded into the JS at build time.
+ * actually built from instead of a value hardcoded into the JS at build time. Requested as a
+ * base-href-relative path (no leading slash) rather than through baseUrlInterceptor/ConfigService
+ * - unlike the API, this asset is always same-deployment, never user-configurable, so it should
+ * just resolve against `<base href>` (`/` in dev, `/code-brain/` in production) like any other
+ * same-origin asset.
  */
 @Injectable({ providedIn: 'root' })
 export class VersionService {
@@ -19,7 +23,7 @@ export class VersionService {
 
   get(): Observable<string> {
     return this.http
-      .get<VersionDto>('/version.json', { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true) })
+      .get<VersionDto>('version.json', { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true) })
       .pipe(
         map((dto) => dto.version),
         catchError(() => of('')),

@@ -1,3 +1,18 @@
+# Served via the shared blogdoft.home.arpa/code-brain gateway (see
+# .specs/2026-09-18-gateway-and-projects-migration.md and the follow-up spec moving the front
+# itself onto that host), the same host code-ciir-api and code-ciir-indexer already use, at
+# adjacent paths (/code-brain/api/code-queries, /code-brain/api/indexer) - see their own
+# .eng/k8s/ingress.yaml. Traefik resolves the overlap by path specificity (longest prefix wins),
+# so those two more specific rules keep taking priority over this broader /code-brain catch-all
+# regardless of which Ingress object declares them; no priority annotation needed. Replaces the
+# previous code-rag.home.arpa host entirely - this app is no longer reachable there.
+#
+# /code-brain is stripped by the code-rag-front-strip-code-brain Middleware (middleware.yaml)
+# before forwarding, since nginx.conf.template has no idea it's being served from a sub-path -
+# it still serves everything (including the SPA fallback and version.json) as if mounted at "/".
+# What DOES need to know about /code-brain is the browser: the production build's `<base href>`
+# (angular.json's `baseHref`, see index.html) is set to /code-brain/ so Angular Router and every
+# root-relative asset/API request resolve correctly from the browser's side.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -5,13 +20,14 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
     traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: code-rag-code-rag-front-strip-code-brain@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
-    - host: code-rag.home.arpa
+    - host: blogdoft.home.arpa
       http:
         paths:
-          - path: /
+          - path: /code-brain
             pathType: Prefix
             backend:
               service:

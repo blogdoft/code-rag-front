@@ -19,11 +19,11 @@ describe('VersionService', () => {
     httpMock.verify();
   });
 
-  it('resolves the version string from /version.json', () => {
+  it('resolves the version string from version.json', () => {
     let result: unknown;
     service.get().subscribe((version) => (result = version));
 
-    const req = httpMock.expectOne('/version.json');
+    const req = httpMock.expectOne('version.json');
     expect(req.request.method).toBe('GET');
     req.flush({ version: 'v1.2.3' });
 
@@ -34,7 +34,7 @@ describe('VersionService', () => {
     let result: unknown;
     service.get().subscribe((version) => (result = version));
 
-    httpMock.expectOne('/version.json').flush('not found', { status: 404, statusText: 'Not Found' });
+    httpMock.expectOne('version.json').flush('not found', { status: 404, statusText: 'Not Found' });
 
     expect(result).toBe('');
   });

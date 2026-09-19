@@ -3,15 +3,23 @@ import type { ThemePreference } from './theme.service';
 
 const API_BASE_URL_KEY = 'code-rag.apiBaseUrl';
 /**
- * Empty by default so `/api` requests stay same-origin (see baseUrlInterceptor)
- * and get routed through whatever's actually serving the app — the CLI dev-server
- * proxy locally, or a reverse proxy in production. Pointing this straight at
- * `https://code-ciir-api.home.arpa` by default would make the browser call that
- * host directly and hit its self-signed certificate, which no app code can
- * bypass. Users who don't have a proxy in front of a mismatched-origin API can
- * still set an absolute URL here via the Settings screen.
+ * Same-origin by default so `/api` requests stay routed through whatever's actually serving the
+ * app — the CLI dev-server proxy locally, or the shared blogdoft.home.arpa/code-brain gateway in
+ * production — rather than an absolute URL, which would make the *browser itself* call that host
+ * directly and hit its certificate outside any proxy's control. Derived from `<base href>` (read
+ * once, at module load) instead of hardcoded empty, since this app is no longer always served at
+ * `/`: the production build injects `<base href="/code-brain/">` (see angular.json's `baseHref`),
+ * so `/api/...` calls correctly resolve to `/code-brain/api/...` there, while `ng serve`'s
+ * unmodified `src/index.html` (`<base href="/">`) keeps today's `''` behavior locally. Users who
+ * need the API on a different, browser-trusted origin can still override this via the Settings
+ * screen.
  */
-const DEFAULT_API_BASE_URL = '';
+const DEFAULT_API_BASE_URL = readBaseHref();
+
+function readBaseHref(): string {
+  const href = document.querySelector('base')?.getAttribute('href') ?? '/';
+  return href.replace(/\/+$/, '');
+}
 
 const USER_NAME_KEY = 'code-rag.userName';
 const DEFAULT_USER_NAME = '';

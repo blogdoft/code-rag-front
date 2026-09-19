@@ -32,6 +32,7 @@
           },
           "configurations": {
             "production": {
+              "baseHref": "/code-brain/",
               "budgets": [
                 {
                   "type": "initial",

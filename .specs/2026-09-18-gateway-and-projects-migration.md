@@ -113,15 +113,21 @@ attention: `API_UPSTREAM`/`proxy.conf.json`'s `target` now needs to include a pa
 - `.eng/k8s/deployment.yaml` sets `API_UPSTREAM` to an **in-cluster Service DNS name**
   (`http://code-ciir-api.code-rag.svc.cluster.local`), not the public gateway host — deliberately
   routing pod-to-pod inside the cluster rather than back out through the public ingress (see the
-  recent "fix(k8s): route frontend API proxy through cluster service" commit). **Left unchanged in
-  this pass**: unlike `proxy.conf.json`/`docker-compose.yml`, this isn't a case of "same host, add a
-  path" — Projects now lives on a service the frontend has never talked to from inside the cluster
-  before, and whether that's reachable at some in-cluster equivalent of `blogdoft.home.arpa/code-brain`
-  (a cluster-internal gateway Service mirroring the public one) or requires a second Service/env var
-  entirely is a real infrastructure question, not something to guess from this repo alone. Needs a
-  decision (and a live check of what's actually running in the `code-rag` namespace) before deploying
-  this change, or Projects CRUD will break in the cluster even though `/api/code-queries*` keeps
-  working.
+  recent "fix(k8s): route frontend API proxy through cluster service" commit). Flagged here at the
+  time as needing a decision, since it only covers code-ciir-api and Projects now lives on a
+  separate service (code-ciir-indexer) this upstream doesn't reach.
+
+  **Resolved, as a side effect, by `.specs/2026-09-18-front-on-code-brain-gateway.md`**: once this
+  app's own `<base href>`/`ConfigService` default point browser-issued API calls at
+  `/code-brain/api/...`, and this app is itself served from behind that same gateway
+  (`.eng/k8s/ingress.yaml`), Traefik's own `code-ciir-api`/`code-ciir-indexer` Ingress rules
+  intercept `/code-brain/api/code-queries*` and `/code-brain/api/indexer*` directly — the browser
+  talks to the right backend without the request ever reaching this app's pod, so
+  `deployment.yaml`'s `API_UPSTREAM` never gets asked to route Projects traffic at all.
+  `API_UPSTREAM` still exists and still matters for one thing: `/version`, which has no dedicated
+  gateway route of its own (see `CLAUDE.md`'s `GET /version` bullet) and so still falls through to
+  this app's nginx passthrough — that one case is unaffected by which specific backend
+  service Projects happens to live on, so no further change was needed here.
 
 ## 4. Testing
 

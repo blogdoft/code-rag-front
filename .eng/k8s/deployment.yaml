@@ -26,8 +26,16 @@ spec:
             - name: http
               containerPort: 80
           env:
-            # Where nginx reverse-proxies /api/... to, same variable as
-            # .eng/docker/docker-compose.yml (see nginx.conf.template).
+            # Where nginx reverse-proxies /api/... and /version to, same variable as
+            # .eng/docker/docker-compose.yml (see nginx.conf.template). Since the front moved onto
+            # the shared blogdoft.home.arpa/code-brain gateway (ingress.yaml), Traefik's own
+            # code-ciir-api/code-ciir-indexer Ingress rules already intercept
+            # /code-brain/api/code-queries* and /code-brain/api/indexer* before they ever reach
+            # this pod - so this upstream now mainly matters for /version, which has no dedicated
+            # gateway route of its own. Deliberately a direct in-cluster Service DNS name (not the
+            # public gateway host) - pointing this at blogdoft.home.arpa/code-brain instead would
+            # route back through Traefik's own /code-brain catch-all into this same Deployment,
+            # looping nginx's proxy_pass into itself.
             - name: API_UPSTREAM
               value: http://code-ciir-api.code-rag.svc.cluster.local
           resources:
