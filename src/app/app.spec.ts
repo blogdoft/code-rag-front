@@ -43,7 +43,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('nav')?.textContent).toContain('CodeRAG');
+    expect(compiled.querySelector('nav')?.textContent).toContain('code-brain');
     expect(compiled.querySelector('nav button[aria-label="Toggle navigation menu"]')).not.toBeNull();
   });
 

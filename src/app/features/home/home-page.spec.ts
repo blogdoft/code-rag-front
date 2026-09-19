@@ -15,7 +15,7 @@ describe('HomePage', () => {
   });
 
   it('renders a welcome heading', () => {
-    expect(fixture.nativeElement.textContent).toContain('Welcome to CodeRAG');
+    expect(fixture.nativeElement.textContent).toContain('Welcome to code-brain');
   });
 
   it('links to all four sections', () => {
