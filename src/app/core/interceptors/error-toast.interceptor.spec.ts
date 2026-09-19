@@ -102,14 +102,14 @@ describe('errorToastInterceptor', () => {
 
   it('parses a Blob-bodied error (e.g. a responseType: "blob" request) containing valid problem+json', async () => {
     httpClient
-      .get('/api/v1/code-queries/feedback/export', { responseType: 'blob' })
+      .get('/api/code-queries/feedback/export', { responseType: 'blob' })
       .subscribe({ error: () => {} });
 
     const blob = new Blob([JSON.stringify({ detail: 'Window too large' })], {
       type: 'application/problem+json',
     });
     httpMock
-      .expectOne('/api/v1/code-queries/feedback/export')
+      .expectOne('/api/code-queries/feedback/export')
       .flush(blob, { status: 400, statusText: 'Bad Request' });
 
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Window too large'));
@@ -117,12 +117,12 @@ describe('errorToastInterceptor', () => {
 
   it('falls back to the generic message when a Blob-bodied error is not valid JSON', async () => {
     httpClient
-      .get('/api/v1/code-queries/feedback/export', { responseType: 'blob' })
+      .get('/api/code-queries/feedback/export', { responseType: 'blob' })
       .subscribe({ error: () => {} });
 
     const blob = new Blob([''], { type: 'text/plain' });
     httpMock
-      .expectOne('/api/v1/code-queries/feedback/export')
+      .expectOne('/api/code-queries/feedback/export')
       .flush(blob, { status: 404, statusText: 'Not Found' });
 
     await vi.waitFor(() =>

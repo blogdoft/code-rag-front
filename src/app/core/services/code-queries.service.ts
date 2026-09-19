@@ -5,10 +5,11 @@ import type { CodeQueryFilters, QualifiedNameFilterOperator } from '../models/co
 import type { CodeQueryRelation, CodeQueryResult } from '../models/code-query-result';
 
 /**
- * Wire shape of `POST /api/v1/code-queries`. Serializes snake_case throughout — confirmed against
- * the live swagger.json (code-ciir-api, see .specs/2026-09-10-ciir-api-migration.md). Unlike the old
- * code-rag-api, the project is a body field (`project_id`), not part of the URL, and the response is
- * an envelope (`matches` + `graph`), not a bare array.
+ * Wire shape of `POST /api/code-queries`. Serializes snake_case throughout — confirmed against the
+ * live swagger.json at the shared `blogdoft.home.arpa/code-brain` gateway, see
+ * .specs/2026-09-18-gateway-and-projects-migration.md. As of that move the path dropped its `/v1`
+ * segment (was `/api/v1/code-queries`); the project is still a body field (`project_id`), not part
+ * of the URL, and the response is still an envelope (`matches` + `graph`), not a bare array.
  */
 interface CodeQueryQualifiedNameFilterDto {
   operator: QualifiedNameFilterOperator;
@@ -63,10 +64,14 @@ export interface CodeQueryFeedbackParams {
   reason?: string;
 }
 
-/** Wire shape of `POST /api/v1/projects/{projectId}/code-queries/feedback` — unchanged by the
- * code-ciir-api migration. Every field name is already a single lowercase word, so there's no
- * camelCase/snake_case translation to do here. */
+/**
+ * Wire shape of `POST /api/code-queries/feedback` — as of the 2026-09-18 gateway move this is a
+ * flat path (was nested under `/api/v1/projects/{projectId}/...`), so `project_id` is now a body
+ * field instead of a URL segment. Every field name is already a single lowercase word, so there's
+ * still no camelCase/snake_case translation to do here.
+ */
 interface CodeQueryFeedbackRequestDto {
+  project_id: number;
   question: string;
   useful: boolean;
   similarities: number[];
@@ -80,7 +85,7 @@ export class CodeQueriesService {
 
   ask(projectId: number | null, question: string, filters?: CodeQueryFilters): Observable<CodeQueryResult[]> {
     return this.http
-      .post<CodeQueryResponseDto>('/api/v1/code-queries', toRequestBody(projectId, question, filters))
+      .post<CodeQueryResponseDto>('/api/code-queries', toRequestBody(projectId, question, filters))
       .pipe(
         map((dto) =>
           (dto.matches ?? [])
@@ -92,15 +97,14 @@ export class CodeQueriesService {
 
   submitFeedback(projectId: number, params: CodeQueryFeedbackParams): Observable<void> {
     const body: CodeQueryFeedbackRequestDto = {
+      project_id: projectId,
       question: params.question,
       useful: params.useful,
       similarities: params.similarities,
       user: params.user,
       ...(params.reason ? { reason: params.reason } : {}),
     };
-    return this.http
-      .post(`/api/v1/projects/${projectId}/code-queries/feedback`, body)
-      .pipe(map(() => undefined));
+    return this.http.post('/api/code-queries/feedback', body).pipe(map(() => undefined));
   }
 }
 

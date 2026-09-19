@@ -10,5 +10,8 @@ services:
       # .env file next to this compose file, or `API_UPSTREAM=... docker
       # compose up`, e.g. to point at a local API instance instead
       # (http://host.docker.internal:5002, matching proxy.conf.local.example.json).
-      API_UPSTREAM: ${API_UPSTREAM:-https://code-ciir-api.home.arpa}
+      # As of 2026-09-18 this is a shared gateway (code-queries, feedback, and Projects/indexer
+      # all live behind it, at different /api/... prefixes) - see
+      # .specs/2026-09-18-gateway-and-projects-migration.md.
+      API_UPSTREAM: ${API_UPSTREAM:-https://blogdoft.home.arpa/code-brain}
     restart: unless-stopped

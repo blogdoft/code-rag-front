@@ -23,7 +23,7 @@ describe('CodeQueriesService', () => {
     let result: unknown;
     service.ask(7, 'where is retry logic?').subscribe((results) => (result = results));
 
-    const req = httpMock.expectOne('/api/v1/code-queries');
+    const req = httpMock.expectOne('/api/code-queries');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ question: 'where is retry logic?', project_id: 7 });
 
@@ -74,7 +74,7 @@ describe('CodeQueriesService', () => {
   it('omits project_id when searching across all projects', () => {
     service.ask(null, 'where is retry logic?').subscribe();
 
-    const req = httpMock.expectOne('/api/v1/code-queries');
+    const req = httpMock.expectOne('/api/code-queries');
     expect(req.request.body).toEqual({ question: 'where is retry logic?' });
     req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
@@ -83,7 +83,7 @@ describe('CodeQueriesService', () => {
     let result: unknown;
     service.ask(1, 'q').subscribe((results) => (result = results));
 
-    httpMock.expectOne('/api/v1/code-queries').flush({
+    httpMock.expectOne('/api/code-queries').flush({
       matches: [
         {
           id: 2,
@@ -127,7 +127,7 @@ describe('CodeQueriesService', () => {
     let result: unknown;
     service.ask(1, 'q').subscribe((results) => (result = results));
 
-    httpMock.expectOne('/api/v1/code-queries').flush({ matches: null, graph: { nodes: [], edges: [], truncated: false } });
+    httpMock.expectOne('/api/code-queries').flush({ matches: null, graph: { nodes: [], edges: [], truncated: false } });
 
     expect(result).toEqual([]);
   });
@@ -142,7 +142,7 @@ describe('CodeQueriesService', () => {
       })
       .subscribe();
 
-    const req = httpMock.expectOne('/api/v1/code-queries');
+    const req = httpMock.expectOne('/api/code-queries');
     expect(req.request.body).toEqual({
       question: 'q',
       project_id: 3,
@@ -157,7 +157,7 @@ describe('CodeQueriesService', () => {
   it('omits a filter whose value is blank', () => {
     service.ask(3, 'q', { kind: '   ', qualifiedName: { operator: 'contains', value: '   ' } }).subscribe();
 
-    const req = httpMock.expectOne('/api/v1/code-queries');
+    const req = httpMock.expectOne('/api/code-queries');
     expect(req.request.body).toEqual({ question: 'q', project_id: 3 });
     req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
@@ -165,7 +165,7 @@ describe('CodeQueriesService', () => {
   it('omits all optional keys when an empty filters object is passed', () => {
     service.ask(3, 'q', {}).subscribe();
 
-    const req = httpMock.expectOne('/api/v1/code-queries');
+    const req = httpMock.expectOne('/api/code-queries');
     expect(req.request.body).toEqual({ question: 'q', project_id: 3 });
     req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
@@ -174,7 +174,7 @@ describe('CodeQueriesService', () => {
     let result: { id: number; similarity: number }[] | undefined;
     service.ask(1, 'q').subscribe((results) => (result = results));
 
-    httpMock.expectOne('/api/v1/code-queries').flush({
+    httpMock.expectOne('/api/code-queries').flush({
       matches: [dto(1, 0.4, 0.2), dto(2, 0.9, null), dto(3, 0.6, 0.95), dto(4, 0.8, 0.5)],
       graph: { nodes: [], edges: [], truncated: false },
     });
@@ -187,9 +187,10 @@ describe('CodeQueriesService', () => {
       .submitFeedback(7, { question: 'where is retry logic?', useful: true, similarities: [0.9, 0.5], user: 'Ada' })
       .subscribe();
 
-    const req = httpMock.expectOne('/api/v1/projects/7/code-queries/feedback');
+    const req = httpMock.expectOne('/api/code-queries/feedback');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({
+      project_id: 7,
       question: 'where is retry logic?',
       useful: true,
       similarities: [0.9, 0.5],
@@ -209,8 +210,9 @@ describe('CodeQueriesService', () => {
       })
       .subscribe();
 
-    const req = httpMock.expectOne('/api/v1/projects/7/code-queries/feedback');
+    const req = httpMock.expectOne('/api/code-queries/feedback');
     expect(req.request.body).toEqual({
+      project_id: 7,
       question: 'q',
       useful: false,
       similarities: [],
@@ -225,8 +227,8 @@ describe('CodeQueriesService', () => {
       .submitFeedback(7, { question: 'q', useful: false, similarities: [], user: 'Ada', reason: '' })
       .subscribe();
 
-    const req = httpMock.expectOne('/api/v1/projects/7/code-queries/feedback');
-    expect(req.request.body).toEqual({ question: 'q', useful: false, similarities: [], user: 'Ada' });
+    const req = httpMock.expectOne('/api/code-queries/feedback');
+    expect(req.request.body).toEqual({ project_id: 7, question: 'q', useful: false, similarities: [], user: 'Ada' });
     req.flush({});
   });
 });

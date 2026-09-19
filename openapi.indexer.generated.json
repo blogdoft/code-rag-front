@@ -1,0 +1,1010 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "CIIR Indexer API",
+    "description": "Imports CIIR (Code Intelligence Intermediate Representation) JSONL files - produced by the\n`code-csharp-ciir` analyzer - into PostgreSQL with pgvector. For each CIIR document, this\nservice generates an embedding from its precomputed `embeddingText` (reusing the existing\nstored vector whenever the text and embedding model are unchanged) and upserts the document,\nits relations (e.g. `calls`, `inherits`), and the resolved call/dependency graph.\nRe-importing the same file is safe and idempotent: unchanged data is left untouched, and\nonly a fully successful run removes documents/relations that disappeared from the file.\n\nThis service does not parse or analyze source code itself (that is `code-csharp-ciir`'s\njob), and it does not implement search, retrieval, reranking, or answer natural-language\nquestions about the indexed code (that is `code-rag-api`'s job) - its only job is: consume\nCIIR documents, generate embeddings, and persist.\n\nEvery endpoint accepts and returns `application/json`. Client and server errors are\nreported using the RFC 7807 \"Problem Details for HTTP APIs\" format\n(`application/problem+json`), with the exception of 404 responses, which carry no body.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://blogdoft.home.arpa/code-brain"
+    }
+  ],
+  "paths": {
+    "/api/indexer/ciir-uploads": {
+      "post": {
+        "tags": [
+          "CiirUploads"
+        ],
+        "summary": "Submits a CIIR JSONL file for later indexation.",
+        "description": "Expects a `multipart/form-data` body with a `projectId` text field naming an\nalready-registered project, sent before a `ciirFile` file field - `projectId` must\nbe validated before any byte of the file is stored, so it must arrive first in the stream.\nThe file is streamed directly into object storage without ever being fully buffered in\nmemory or on local disk, and is stored under a server-generated random key - never the\nclient-supplied file name. This endpoint returns as soon as the file is stored, before a\nbackground worker has picked it up. Poll `GET /api/ciir-uploads/{uploadId}` with the id\nreturned here to observe progress and the final outcome.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "projectId",
+                  "ciirFile"
+                ],
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string",
+                    "description": "An already-registered project's id. Must be sent before 'ciirFile' - it is validated before any byte of the file is stored."
+                  },
+                  "ciirFile": {
+                    "type": "string",
+                    "description": "The CIIR '.jsonl' file to index.",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitCiirUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/indexer/ciir-uploads/register": {
+      "post": {
+        "tags": [
+          "CiirUploads"
+        ],
+        "summary": "Registers a CIIR JSONL file already placed directly in object storage.",
+        "description": "For files too large to push through `POST /api/ciir-uploads`'s own request body: upload\nthe `.jsonl` file directly to this service's configured MinIO bucket yourself (e.g. via\n`mc cp`), then call this endpoint with the object key you uploaded it under. The\nobject's existence is verified before registering it, so a typo in `objectKey` fails\nimmediately rather than leaving a pending upload that can never be processed. From here on,\nthis behaves exactly like `POST /api/ciir-uploads` - poll\n`GET /api/ciir-uploads/{uploadId}` with the id returned here to observe progress.",
+        "requestBody": {
+          "description": "Propagates request cancellation.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCiirUploadRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCiirUploadRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCiirUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitCiirUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/indexer/ciir-uploads/{id}": {
+      "get": {
+        "tags": [
+          "CiirUploads"
+        ],
+        "summary": "Reports the current status of one CIIR upload.",
+        "description": "Intended to be polled after `POST /api/ciir-uploads` until `status` reaches a\nterminal value (`processed` or `failed`). Once `indexationId` is populated,\n`GET /api/indexations/{indexationId}` reports detailed indexation progress and counters.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The upload id returned by `POST /api/ciir-uploads`.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiirUploadStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/indexer/indexations/{id}": {
+      "get": {
+        "tags": [
+          "Indexations"
+        ],
+        "summary": "Reports the current status and progress of one indexation.",
+        "description": "Intended to be polled using the `indexationId` reported by `GET /api/ciir-uploads/{uploadId}`\nonce that upload starts processing, until `status` reaches a terminal value\n(`completed`, `failed`, or `cancelled`). While the run is still in progress\n(`pending`, `running`, or `resolving_relations`), the\n`documents`/`relations` counters reflect whatever partial progress has been\npersisted so far and may still change on the next poll.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The indexation id reported by `GET /api/ciir-uploads/{uploadId}`.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexationStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/indexer/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Search projects (paginated).",
+        "description": "Returns a page of projects. Optionally filter the results by project name using a partial,\ncase-insensitive match. When no project matches the supplied filter (or no projects exist at\nall), the response is a 200 OK with an empty items array - this is not treated as an error.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page number to retrieve. Defaults to 0. Must not be negative.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create a project.",
+        "description": "Creates a new project with the given name, embedding model and embedding dimensions.",
+        "requestBody": {
+          "description": "Propagates request cancellation.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/indexer/projects/{projectId}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get a project by id.",
+        "description": "Returns a single project by its id.",
+        "operationId": "GetProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Identifier of the project, corresponding to the id field returned by `GET /api/projects`.\nMust be a positive 64-bit integer; any other format results in a 400 response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Replace a project.",
+        "description": "Replaces every field of an existing project. This is a full replace (PUT), not a partial patch - every field must be supplied.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Identifier of the project to update, corresponding to the id field returned by\n`GET /api/projects`. Must be a positive 64-bit integer; any other format results in a\n400 response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Propagates request cancellation.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Delete a project.",
+        "description": "Permanently deletes a project. This does not delete the project's indexed CIIR\ndocuments/relations, which remain pointing at a project id that no longer exists.",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Identifier of the project to delete, corresponding to the id field returned by\n`GET /api/projects`. Must be a positive 64-bit integer; any other format results in a\n400 response.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CiirUploadStatusResponse": {
+        "required": [
+          "id",
+          "projectId",
+          "status",
+          "createdAt",
+          "processingStartedAt",
+          "processedAt",
+          "indexationId",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The upload's id, matching the `uploadId` returned by `POST /api/ciir-uploads`.",
+            "format": "uuid"
+          },
+          "projectId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The already-registered project this file was submitted for.",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "description": "One of `\"pending\"`, `\"processing\"`, `\"processed\"`, or `\"failed\"`. Only\n`\"processed\"` and `\"failed\"` are terminal - stop polling once you observe one of those."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the file was received and stored.",
+            "format": "date-time"
+          },
+          "processingStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the worker last claimed this upload; `null` while still `\"pending\"`.",
+            "format": "date-time"
+          },
+          "processedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When processing reached a terminal outcome; `null` until then.",
+            "format": "date-time"
+          },
+          "indexationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The `indexing_runs` id created for this upload once the worker starts processing it;\n`null` while still `\"pending\"`. Poll `GET /api/indexations/{indexationId}` for\ndetailed indexation progress and counters.",
+            "format": "uuid"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A human-readable failure message when Status is `\"failed\"`; `null` otherwise."
+          }
+        },
+        "description": "Response body for `GET /api/ciir-uploads/{id}` (upload spec §4.1)."
+      },
+      "IndexationDocumentsSummary": {
+        "required": [
+          "processed",
+          "inserted",
+          "updated",
+          "embeddingsGenerated",
+          "embeddingsReused"
+        ],
+        "type": "object",
+        "properties": {
+          "processed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Total number of CIIR document records read from the file so far.",
+            "format": "int64"
+          },
+          "inserted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Of Processed, how many were brand new (no prior row for that `ciir_id` in this project).",
+            "format": "int64"
+          },
+          "updated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Of Processed, how many already existed and were upserted.",
+            "format": "int64"
+          },
+          "embeddingsGenerated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How many documents needed a new embedding call - either newly seen, or their `embeddingText`\nchanged since the last successful run.",
+            "format": "int64"
+          },
+          "embeddingsReused": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How many documents kept their previously stored embedding vector because neither the\n`embeddingText` hash nor the embedding model/dimensions changed - no embedding call was made\nfor these.",
+            "format": "int64"
+          }
+        },
+        "description": "The `documents` section of `GET /api/indexations/{id}` (spec §41)."
+      },
+      "IndexationRelationsSummary": {
+        "required": [
+          "processed",
+          "resolved",
+          "unresolved"
+        ],
+        "type": "object",
+        "properties": {
+          "processed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Total number of relation edges (e.g. `calls`, `inherits`) read from the file so far.",
+            "format": "int64"
+          },
+          "resolved": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Of Processed, how many now have their target document linked by foreign key -\nthese are the edges traversable in the call/dependency graph. Includes both same-project\nresolution by `ciir_id` and the symbol-name fallback match.",
+            "format": "int64"
+          },
+          "unresolved": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Of Processed, how many CIIR itself classified as\n`resolution.status = \"unresolved\"` - genuinely missing targets, not external references or\ndynamic dispatch (those are expected and are not counted here as a problem).",
+            "format": "int64"
+          }
+        },
+        "description": "The `relations` section of `GET /api/indexations/{id}` (spec §41)."
+      },
+      "IndexationStatusResponse": {
+        "required": [
+          "id",
+          "status",
+          "documents",
+          "relations",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The indexation run's id, matching the `indexationId` returned by `POST /api/indexations`.",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "description": "One of `\"pending\"`, `\"running\"`, `\"resolving_relations\"`, `\"completed\"`,\n`\"failed\"`, or `\"cancelled\"`. Only `\"completed\"`, `\"failed\"`, and\n`\"cancelled\"` are terminal - stop polling once you observe one of those."
+          },
+          "documents": {
+            "description": "Document import progress and embedding reuse/regeneration counters.",
+            "$ref": "#/components/schemas/IndexationDocumentsSummary"
+          },
+          "relations": {
+            "description": "Relation import and resolution counters.",
+            "$ref": "#/components/schemas/IndexationRelationsSummary"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A human-readable failure message when Status is `\"failed\"`; `null`\nfor every other status."
+          }
+        },
+        "description": "Response body for `GET /api/indexations/{id}` (spec §41)."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ProjectCreateRequest": {
+        "required": [
+          "name",
+          "embeddingModel",
+          "embeddingDimensions"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required. The project's name. Must not be empty or blank, and must not already be used by another project (409 otherwise)."
+          },
+          "embeddingModel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required. The embedding model this project's code documents are (or will be) embedded with. Must not be empty or blank."
+          },
+          "embeddingDimensions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Required. The dimensionality of that embedding model's vectors. Must be a positive integer.",
+            "format": "int32"
+          },
+          "gitUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional. The project's public git repository URL."
+          },
+          "gitRawUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional. The project's public git raw-content URL."
+          }
+        },
+        "description": "Request body for `POST /api/projects`."
+      },
+      "ProjectListResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectResponse"
+            },
+            "description": "The projects on this page."
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The zero-based page number this response corresponds to.",
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The maximum number of items per page.",
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The total number of projects matching the filter, across every page.",
+            "format": "int64"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The total number of pages available for the filter, given PageSize.",
+            "format": "int32"
+          }
+        },
+        "description": "A single page of a paginated project search, plus the metadata needed to fetch the next one."
+      },
+      "ProjectResponse": {
+        "required": [
+          "id",
+          "name",
+          "embeddingModel",
+          "embeddingDimensions",
+          "gitUrl",
+          "gitRawUrl",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The project's id.",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "description": "The project's name, unique across every project."
+          },
+          "embeddingModel": {
+            "type": "string",
+            "description": "The embedding model this project's code documents are (or will be) embedded with."
+          },
+          "embeddingDimensions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The dimensionality of that embedding model's vectors.",
+            "format": "int32"
+          },
+          "gitUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project's public git repository URL, if any."
+          },
+          "gitRawUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project's public git raw-content URL, if any."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the project was first created.",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "When the project was last updated.",
+            "format": "date-time"
+          }
+        },
+        "description": "A project stored by this service, either resolved from an indexation run or managed directly through this CRUD API."
+      },
+      "ProjectUpdateRequest": {
+        "required": [
+          "name",
+          "embeddingModel",
+          "embeddingDimensions"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project's new name. Must not be empty or blank, and must not already be used by another project (409 otherwise)."
+          },
+          "embeddingModel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project's new embedding model. Must not be empty or blank."
+          },
+          "embeddingDimensions": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "The project's new embedding dimensionality. Must be a positive integer.",
+            "format": "int32"
+          },
+          "gitUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project's public git repository URL."
+          },
+          "gitRawUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The project's public git raw-content URL."
+          }
+        },
+        "description": "Request body for `PUT /api/projects/{projectId}`. Full replacement fields for an existing\nproject - this is a full PUT replace, not a partial patch, so every field must be supplied."
+      },
+      "RegisterCiirUploadRequest": {
+        "required": [
+          "projectId",
+          "objectKey"
+        ],
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required. An already-registered project's id."
+          },
+          "objectKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required. The key the `.jsonl` file was already stored under in this service's configured\nMinIO bucket - upload it there yourself first (e.g. via `mc cp`), then pass the same key\nhere."
+          }
+        },
+        "description": "Request body for `POST /api/ciir-uploads/register` (bring-your-own-upload)."
+      },
+      "SubmitCiirUploadResponse": {
+        "required": [
+          "uploadId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "uploadId": {
+            "type": "string",
+            "description": "The newly created upload's id. Pass this to `GET /api/ciir-uploads/{uploadId}` to poll for\nprogress and the final outcome.",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "description": "The upload's status immediately after creation. Always `\"pending\"` at this point."
+          }
+        },
+        "description": "Response body for a successful `POST /api/ciir-uploads` (upload spec §4)."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "CiirUploads",
+      "description": "The only way to get a CIIR JSONL file indexed: either CancellationToken) streams it here over HTTP, or CancellationToken) registers one the caller already placed directly in object storage (the bring-your-own-upload path for files too large for a single HTTP request). Both store/confirm the file in object storage for a background worker to pick up later, and this also reports an upload's status. Contains no indexing logic of its own - it delegates all validation to SubmitCiirUpload/RegisterCiirUpload and maps the result to an HTTP response."
+    },
+    {
+      "name": "Indexations",
+      "description": "Reports the progress of one indexation run. Contains no indexing logic of its own - a run is always created implicitly by the CIIR upload flow (`POST /api/ciir-uploads` or `POST /api/ciir-uploads/register`), never by this controller; this only reads back its status."
+    },
+    {
+      "name": "Projects",
+      "description": "Full CRUD over the projects this service owns. Most projects are created/updated implicitly by `POST /api/indexations` and `POST /api/ciir-uploads` (spec's \"Atualização — Identidade de projeto informada pelo chamador\"), but this controller lets a caller manage them directly - e.g. to register a project before its first indexation, or to update its git metadata without re-running one."
+    }
+  ]
+}

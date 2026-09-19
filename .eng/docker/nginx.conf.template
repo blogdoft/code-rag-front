@@ -11,12 +11,15 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # Reverse proxy for the CodeRAG API. No path is appended to the upstream
-    # in proxy_pass, so nginx forwards the request URI (/api/v1/...)
-    # unchanged, matching what proxy.conf.json does for the Angular CLI dev
-    # server.
+    # Reverse proxy for the API gateway (blogdoft.home.arpa/code-brain as of 2026-09-18, see
+    # .specs/2026-09-18-gateway-and-projects-migration.md). The URI is spelled out explicitly
+    # (.../api/) rather than left bare, since API_UPSTREAM itself now carries a path
+    # (.../code-brain) - a bare `proxy_pass ${API_UPSTREAM};` would apply nginx's location/proxy_pass
+    # URI-splicing rules to that path too, which only produce the intended result when the upstream
+    # has no path component at all. Appending the matched prefix back on unconditionally sidesteps
+    # that regardless of whether API_UPSTREAM has a path or not.
     location /api/ {
-        proxy_pass ${API_UPSTREAM};
+        proxy_pass ${API_UPSTREAM}/api/;
 
         # The default upstream (.home.arpa) serves a self-signed certificate
         # (see CLAUDE.md's TLS note). Browsers can't be told to trust that,
@@ -35,7 +38,7 @@ server {
     # .specs/2026-09-04-version-display.md - so it needs its own proxy block; an exact match since
     # the API only exposes this one literal path, unlike /api/ which fans out to many sub-routes.
     location = /version {
-        proxy_pass ${API_UPSTREAM};
+        proxy_pass ${API_UPSTREAM}/version;
         proxy_ssl_verify off;
 
         proxy_set_header Host $proxy_host;

@@ -9,7 +9,7 @@ export interface Project {
   updatedAt: string;
 }
 
-/** Fields the API accepts on create/update (`POST`/`PUT /api/v1/projects`). */
+/** Fields the API accepts on create/update (`POST`/`PUT /api/indexer/projects`). */
 export interface ProjectInput {
   name: string;
   embeddingModel: string;

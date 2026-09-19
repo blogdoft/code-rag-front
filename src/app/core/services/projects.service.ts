@@ -4,39 +4,45 @@ import { EMPTY, expand, map, reduce, type Observable } from 'rxjs';
 import type { Project, ProjectInput } from '../models/project';
 
 /**
- * Wire shape of the Projects endpoints (code-ciir-api). Serializes snake_case — confirmed against
- * the live swagger.json, see .specs/2026-09-10-ciir-api-migration.md. Unlike the old code-rag-api,
- * there's no git_url/git_raw_url (embedding_model/embedding_dimensions instead), and the list
- * endpoint is paginated.
+ * Wire shape of the Projects endpoints — moved off code-ciir-api onto the separate CIIR Indexer
+ * API (`/api/indexer/projects`, host `blogdoft.home.arpa/code-brain`) as of 2026-09-18, see
+ * openapi.indexer.generated.json. Unlike the old code-ciir-api contract, body fields here are
+ * camelCase, not snake_case — only the `page`/`page_size` *query* params stay snake_case. `id` and
+ * `embeddingDimensions` are typed by the server as int64/int32-or-string (JS-number-precision
+ * safety for int64), so both are normalized through `Number(...)` below.
  */
 interface ProjectDto {
-  id: number;
+  id: number | string;
   name: string | null;
-  embedding_model: string | null;
-  embedding_dimensions: number;
-  git_url: string | null;
-  git_raw_url: string | null;
-  created_at: string;
-  updated_at: string;
+  embeddingModel: string | null;
+  embeddingDimensions: number | string;
+  gitUrl: string | null;
+  gitRawUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ProjectListResponseDto {
   items: ProjectDto[] | null;
   page: number;
-  page_size: number;
-  total_count: number;
-  total_pages: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
 }
 
 interface ProjectRequestDto {
   name: string;
-  embedding_model: string;
-  embedding_dimensions: number;
-  git_url: string | null;
-  git_raw_url: string | null;
+  embeddingModel: string;
+  embeddingDimensions: number;
+  gitUrl: string | null;
+  gitRawUrl: string | null;
 }
 
-/** The server's own cap on page_size (see swagger.json's `GET /api/v1/projects` description). */
+/**
+ * Page size requested per fetch. The indexer API's `GET /api/indexer/projects` no longer documents
+ * a server-side cap (unlike the old code-ciir-api's confirmed 100), but 100 is kept as a reasonable
+ * default; `list()` still follows `totalPages` regardless of what the server actually honors.
+ */
 const MAX_PAGE_SIZE = 100;
 
 @Injectable({ providedIn: 'root' })
@@ -48,54 +54,54 @@ export class ProjectsService {
    * server-side, but every consumer of this service (the project combobox, the Projects page's own
    * client-side search) wants the full list, same as before pagination existed. See
    * .specs/2026-09-10-ciir-api-migration.md §4.2 for why this stays a service-internal concern
-   * rather than surfacing page/page_size to callers.
+   * rather than surfacing page/page_size to callers — still true after the indexer-API move.
    */
   list(): Observable<Project[]> {
     return this.fetchPage(0).pipe(
-      expand((response) => (response.page + 1 < response.total_pages ? this.fetchPage(response.page + 1) : EMPTY)),
+      expand((response) => (response.page + 1 < response.totalPages ? this.fetchPage(response.page + 1) : EMPTY)),
       reduce<ProjectListResponseDto, ProjectDto[]>((all, response) => [...all, ...(response.items ?? [])], []),
       map((dtos) => dtos.map(toProject)),
     );
   }
 
   create(input: ProjectInput): Observable<Project> {
-    return this.http.post<ProjectDto>('/api/v1/projects', toDto(input)).pipe(map(toProject));
+    return this.http.post<ProjectDto>('/api/indexer/projects', toDto(input)).pipe(map(toProject));
   }
 
   update(id: number, input: ProjectInput): Observable<Project> {
-    return this.http.put<ProjectDto>(`/api/v1/projects/${id}`, toDto(input)).pipe(map(toProject));
+    return this.http.put<ProjectDto>(`/api/indexer/projects/${id}`, toDto(input)).pipe(map(toProject));
   }
 
   remove(id: number): Observable<void> {
-    return this.http.delete<void>(`/api/v1/projects/${id}`);
+    return this.http.delete<void>(`/api/indexer/projects/${id}`);
   }
 
   private fetchPage(page: number): Observable<ProjectListResponseDto> {
     const params = new HttpParams().set('page', page).set('page_size', MAX_PAGE_SIZE);
-    return this.http.get<ProjectListResponseDto>('/api/v1/projects', { params });
+    return this.http.get<ProjectListResponseDto>('/api/indexer/projects', { params });
   }
 }
 
 function toProject(dto: ProjectDto): Project {
   return {
-    id: dto.id,
+    id: Number(dto.id),
     name: dto.name ?? '',
-    embeddingModel: dto.embedding_model,
-    embeddingDimensions: dto.embedding_dimensions,
-    gitUrl: dto.git_url,
-    gitRawUrl: dto.git_raw_url,
-    createdAt: dto.created_at,
-    updatedAt: dto.updated_at,
+    embeddingModel: dto.embeddingModel,
+    embeddingDimensions: Number(dto.embeddingDimensions),
+    gitUrl: dto.gitUrl,
+    gitRawUrl: dto.gitRawUrl,
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt,
   };
 }
 
 function toDto(input: ProjectInput): ProjectRequestDto {
   return {
     name: input.name,
-    embedding_model: input.embeddingModel,
-    embedding_dimensions: input.embeddingDimensions,
-    git_url: input.gitUrl,
-    git_raw_url: input.gitRawUrl,
+    embeddingModel: input.embeddingModel,
+    embeddingDimensions: input.embeddingDimensions,
+    gitUrl: input.gitUrl,
+    gitRawUrl: input.gitRawUrl,
   };
 
 }

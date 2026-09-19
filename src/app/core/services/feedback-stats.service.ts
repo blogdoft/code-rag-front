@@ -9,7 +9,8 @@ import type {
 import { ConfigService } from './config.service';
 
 /**
- * Wire shape of `GET /api/v1/code-queries/feedback/stats`. Snake_case, confirmed
+ * Wire shape of `GET /api/code-queries/feedback/stats` — live as of the 2026-09-18 gateway move
+ * (was previously undeployed; the path also dropped its `/v1` segment). Snake_case, confirmed
  * against the live swagger.json (per CLAUDE.md's "trust the live response" rule).
  */
 interface ProjectFeedbackStatsDto {
@@ -47,7 +48,7 @@ export class FeedbackStatsService {
 
   getStats(query: FeedbackStatsQuery = {}): Observable<FeedbackStats> {
     return this.http
-      .get<FeedbackStatsDto>('/api/v1/code-queries/feedback/stats', { params: buildParams(query) })
+      .get<FeedbackStatsDto>('/api/code-queries/feedback/stats', { params: buildParams(query) })
       .pipe(map(toFeedbackStats));
   }
 
@@ -64,7 +65,7 @@ export class FeedbackStatsService {
       params = params.set('timezone', timezone);
     }
 
-    return this.http.get('/api/v1/code-queries/feedback/export', {
+    return this.http.get('/api/code-queries/feedback/export', {
       params,
       responseType: 'blob',
       observe: 'response',

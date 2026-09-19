@@ -3,10 +3,15 @@
   "info": {
     "title": "Code CIIR API",
     "description": "API for querying indexed source code (from code3rag, owned by code-ciir-indexer) using\nnatural language, returning not only the most semantically similar code documents but\nalso up to two levels of their code relationship graph. See .specs/ for the full\nevolutionary implementation plan - this build only exposes a version endpoint so far.\n\nAll endpoints exclusively accept and return application/json. Client errors and server\nerrors are reported using the RFC 7807 \"Problem Details for HTTP APIs\" format, with the\nexception of 404 responses, which are returned with no response body.",
-    "version": "0.0.0-dev+9fe8409a979dddfec4a02f4ddc6dbbe58d3f6048"
+    "version": "0.5.0"
   },
+  "servers": [
+    {
+      "url": "https://blogdoft.home.arpa/code-brain"
+    }
+  ],
   "paths": {
-    "/api/v1/code-queries": {
+    "/api/code-queries": {
       "post": {
         "tags": [
           "Code Query"
@@ -60,26 +65,15 @@
         }
       }
     },
-    "/api/v1/projects/{projectId}/code-queries/feedback": {
+    "/api/code-queries/feedback": {
       "post": {
         "tags": [
           "Code Query"
         ],
         "summary": "Submit feedback on a prior code query",
         "description": "Records whether a previous `POST .../code-queries` call's results were useful, so\neffectiveness can be measured later. Callable by a human (REST) or an AI agent (MCP, via\nthe `submit_code_query_feedback` tool). The caller must always identify itself via\nthe required `user` field - for MCP callers this is the calling agent/tool's own\nname (e.g. \"claude code\", \"codex\", \"crewai\", \"hermes\", \"opencode\"), never a guess or a\ndefault.\n            \nThere is no corresponding GET endpoint for feedback - effectiveness is computed directly\nagainst the database out of band. Accordingly, the 201 response below has no\n`Location` header.",
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "description": "Identifier of the project the original code-queries call was scoped to, corresponding to\nthe `id` field returned by `GET /projects`. Must be a positive 64-bit integer;\nany other format (e.g. a GUID or non-numeric string) results in a 400 response.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
-          "description": "The original question, whether it was useful, the similarity values it returned, and the\nidentity of the caller submitting the feedback.",
+          "description": "The identifier of the project the original code-queries call was scoped to, the original\nquestion, whether it was useful, the similarity values it returned, and the identity of\nthe caller submitting the feedback.",
           "content": {
             "application/json": {
               "schema": {
@@ -100,7 +94,7 @@
             }
           },
           "400": {
-            "description": "Either the projectId path parameter is not a valid positive integer, the request body is\nmissing or malformed, question/useful/similarities/user is missing or invalid (empty,\nblank, exceeds its maximum length/count), or reason exceeds its maximum length.",
+            "description": "The request body is missing or malformed, project_id is missing or not a positive integer,\nquestion/useful/similarities/user is missing or invalid (empty, blank, exceeds its maximum\nlength/count), or reason exceeds its maximum length.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -110,7 +104,7 @@
             }
           },
           "404": {
-            "description": "No project exists with the given projectId. This is the only condition under which this\nendpoint returns 404; the response has no body."
+            "description": "No project exists with the given project_id. This is the only condition under which this\nendpoint returns 404; the response has no body."
           },
           "500": {
             "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
@@ -125,46 +119,55 @@
         }
       }
     },
-    "/api/v1/projects": {
+    "/api/code-queries/feedback/stats": {
       "get": {
         "tags": [
-          "Projects"
+          "Code Query"
         ],
-        "summary": "Search projects (paginated)",
-        "description": "Returns a page of projects stored in code3rag. Optionally filter the results by project\nname using a partial, case-insensitive match against the name field. Use the returned id\nvalues as the projectId path parameter when fetching/updating/deleting a specific project,\nor when querying code via the /projects/{projectId}/code-queries endpoint.\n            \nWhen no project matches the supplied filter (or no projects exist at all), the response is\na 200 OK with an empty items array - this is not treated as an error.",
+        "summary": "Get feedback effectiveness statistics, grouped by week and by project",
+        "description": "Returns feedback effectiveness statistics for a time window (up to 12 months), broken down\ninto a dense weekly x project grid: every ISO calendar week (Monday-Sunday) overlapping\nthe window is included, and within every week, every registered project (or the single\nproject matching projectId, if given) is included, even when it has zero feedback in that\nspecific week. Each project entry within a week reports useful vs. not-useful counts and\npercentages for feedback created in that week.\n            \nstartDate and endDate are both optional and independent. When neither is given, the window\ndefaults to the last 30 days ending now (UTC). When only one is given, the other end of the\nwindow is derived as a 30-day span from the given value (startDate + 30 days, or\nendDate - 30 days). When both are given, the exact window requested is used. startDate\nafter endDate is a 400. The effective window (endDate - startDate) must not exceed 366\ndays (12 months); exceeding it is also a 400.",
         "parameters": [
           {
-            "name": "page",
+            "name": "start_date",
             "in": "query",
-            "description": "Zero-based page number to retrieve. Defaults to 0. Must not be negative.",
+            "description": "Inclusive lower bound (UTC, ISO 8601) of the time window to aggregate feedback over.\nOptional - see the endpoint description for the default-window rules that apply when this\nand/or endDate are omitted, and for the 366-day maximum window size.",
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string",
+              "format": "date-time"
             }
           },
           {
-            "name": "page_size",
+            "name": "end_date",
             "in": "query",
-            "description": "Maximum number of projects per page. Defaults to 20, capped at 100. Must be a positive integer.",
+            "description": "Inclusive upper bound (UTC, ISO 8601) of the time window to aggregate feedback over.\nOptional - see the endpoint description for the default-window rules that apply when this\nand/or startDate are omitted, and for the 366-day maximum window size.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Restrict every week's project list to a single project, instead of all registered\nprojects. Must correspond to a project id returned by the list_projects MCP tool; a\nprojectId that does not match any project results in a 404.",
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int64"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "The page of projects matching the given filter, or all projects if no filter was supplied.",
+            "description": "Feedback statistics for the requested time window, as a dense grid of every week\noverlapping the window, each containing every registered project (or a single project when\nprojectId was given), with zero-filled entries where there was no feedback. start_date/\nend_date in the response body reflect the effective window actually used, including when\nderived by default.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectListResponse"
+                  "$ref": "#/components/schemas/CodeQueryFeedbackStatsResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "The name query parameter is invalid (e.g. it exceeds the maximum allowed length, or is\npresent but empty), or page/page_size is out of range. This is the only condition under\nwhich this endpoint returns 400.",
+            "description": "startDate or endDate is not a valid date-time, startDate is after endDate when both are\ngiven, or the effective window exceeds 366 days. This is the only client-error condition\nother than 404 under which this endpoint fails.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -173,64 +176,8 @@
               }
             }
           },
-          "500": {
-            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Projects"
-        ],
-        "summary": "Create a project",
-        "description": "Creates a new project in code3rag with the given name, embedding model and embedding dimensions.",
-        "requestBody": {
-          "description": "The name, embedding model and embedding dimensions of the project to create.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectCreateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "The project was created. The response body echoes the persisted record, including its generated id and timestamps.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The request body is missing or malformed, or name/embedding_model/embedding_dimensions is missing or invalid.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "A project with the given name already exists.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
+          "404": {
+            "description": "projectId was given but does not correspond to any registered project. This is the only\ncondition under which this endpoint returns 404; the response has no body."
           },
           "500": {
             "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
@@ -245,20 +192,45 @@
         }
       }
     },
-    "/api/v1/projects/{projectId}": {
+    "/api/code-queries/feedback/export": {
       "get": {
         "tags": [
-          "Projects"
+          "Code Query"
         ],
-        "summary": "Get a project by id",
-        "description": "Returns a single project by its id.",
-        "operationId": "GetProject",
+        "summary": "Export raw feedback records for a time window (and optionally a single project) as CSV",
+        "description": "Returns a downloadable CSV file with one row per feedback record in code_query_feedback\nwhose created_at falls within [startDate, endDate], optionally restricted to a single\nproject. Unlike GET .../feedback/stats, this endpoint returns raw, unaggregated rows\nordered by created_at ascending.\n            \nstartDate and endDate are both optional, and each side defaults independently of the other\nwhen omitted (no ±N-days derivation like GET .../feedback/stats): a missing startDate\ndefaults to the first day of the current UTC month (00:00 UTC), and a missing endDate\ndefaults to now (UTC). The effective window (endDate - startDate, after defaults are\napplied) must not exceed 366 days (12 months); exceeding it is a 400, as is an effective\nstartDate after endDate.",
         "parameters": [
           {
-            "name": "projectId",
-            "in": "path",
-            "description": "Identifier of the project, corresponding to the id field returned by GET /projects. Must\nbe a positive 64-bit integer; any other format (e.g. a GUID or non-numeric string) results\nin a 400 response.",
-            "required": true,
+            "name": "start_date",
+            "in": "query",
+            "description": "Inclusive lower bound (UTC, ISO 8601) of the export window. Optional - defaults to the\nfirst day of the current UTC month (00:00 UTC) when omitted.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "description": "Inclusive upper bound (UTC, ISO 8601) of the export window. Optional - defaults to now\n(UTC) when omitted.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Restrict the export to a single project, instead of all registered projects. Must\ncorrespond to a project id returned by the list_projects MCP tool; a projectId that does\nnot match any project results in a 404.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "description": "IANA timezone name (e.g. \"America/Sao_Paulo\") used to render the created_at column of the\nCSV in that zone's local wall-clock time, with an explicit UTC offset suffix. Optional -\nwhen omitted, created_at keeps its UTC rendering (a \"Z\" suffix). Does not affect startDate/\nendDate filtering or the default-window rules, which stay UTC-based regardless. An\nunrecognized IANA name is a 400.",
             "schema": {
               "type": "string"
             }
@@ -266,17 +238,18 @@
         ],
         "responses": {
           "200": {
-            "description": "The project matching projectId.",
+            "description": "CSV file with one row per feedback record in the requested window (and project, if given),\nordered by created_at ascending.",
             "content": {
-              "application/json": {
+              "text/csv": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectResponse"
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
           },
           "400": {
-            "description": "The projectId path parameter is not a valid positive integer. This is the only condition\nunder which this endpoint returns 400.",
+            "description": "startDate or endDate is not a valid date-time, the effective startDate (after defaults are\napplied) is after the effective endDate, the effective window exceeds 366 days, or timezone\nwas given but is not a recognized IANA time zone name. This is the only client-error\ncondition other than 404 under which this endpoint fails.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -286,126 +259,7 @@
             }
           },
           "404": {
-            "description": "No project exists with the given projectId. This is the only condition under which this\nendpoint returns 404; the response has no body."
-          },
-          "500": {
-            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Projects"
-        ],
-        "summary": "Replace a project",
-        "description": "Replaces every field of an existing project. This is a full replace (PUT), not a partial patch - every field must be supplied.",
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "description": "Identifier of the project to update, corresponding to the id field returned by GET\n/projects. Must be a positive 64-bit integer; any other format results in a 400 response.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The project's new name, embedding model and embedding dimensions.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectUpdateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The project was updated. The response body echoes the updated record.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Either the projectId path parameter is not a valid positive integer, the request body is\nmissing or malformed, or name/embedding_model/embedding_dimensions is missing or invalid.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No project exists with the given projectId."
-          },
-          "409": {
-            "description": "Another project with the given name already exists.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Projects"
-        ],
-        "summary": "Delete a project",
-        "description": "Permanently deletes a project from code3rag. This does not delete the project's indexed\ncode documents/relations - deleting those, if desired, remains code-ciir-indexer's\nresponsibility.",
-        "parameters": [
-          {
-            "name": "projectId",
-            "in": "path",
-            "description": "Identifier of the project to delete, corresponding to the id field returned by GET\n/projects. Must be a positive 64-bit integer; any other format results in a 400 response.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "The project was deleted. The response has no body."
-          },
-          "400": {
-            "description": "The projectId path parameter is not a valid positive integer.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No project exists with the given projectId. The response has no body."
+            "description": "projectId was given but does not correspond to any registered project. This is the only\ncondition under which this endpoint returns 404; the response has no body."
           },
           "500": {
             "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
@@ -426,7 +280,7 @@
           "Version"
         ],
         "summary": "Get the API version",
-        "description": "Returns the version this instance was built and published from. Deliberately\nunversioned (no /api/v1 prefix) and health-check-style, for use by deploy tooling and\ndiagnostics rather than API consumers.",
+        "description": "Returns the version this instance was built and published from. Deliberately unversioned\n(no /api prefix) and health-check-style, for use by deploy tooling and diagnostics rather\nthan API consumers.",
         "responses": {
           "200": {
             "description": "The running API's version.",
@@ -447,12 +301,20 @@
       "CodeQueryFeedbackRequest": {
         "type": "object",
         "properties": {
+          "project_id": {
+            "type": "integer",
+            "description": "Identifier of the project the original code-queries call was scoped to, corresponding to the\nid of a project returned by the list_projects MCP tool. Required, must be a positive 64-bit\ninteger.",
+            "format": "int64",
+            "nullable": true
+          },
           "question": {
             "type": "string",
+            "description": "The original natural language question, echoed back on the persisted record.",
             "nullable": true
           },
           "useful": {
             "type": "boolean",
+            "description": "Whether the results of the original code-queries call were useful.",
             "nullable": true
           },
           "similarities": {
@@ -461,14 +323,17 @@
               "type": "number",
               "format": "double"
             },
+            "description": "The similarity values the original code-queries call returned.",
             "nullable": true
           },
           "reason": {
             "type": "string",
+            "description": "Optional free-text explanation for why the results were/weren't useful.",
             "nullable": true
           },
           "user": {
             "type": "string",
+            "description": "Identity of the caller submitting the feedback.",
             "nullable": true
           }
         },
@@ -516,6 +381,31 @@
         },
         "additionalProperties": false,
         "description": "A recorded piece of feedback on a prior code query. Serializes as snake_case. There is no\nGET endpoint for retrieving it later - this response is the only view of it."
+      },
+      "CodeQueryFeedbackStatsResponse": {
+        "type": "object",
+        "properties": {
+          "start_date": {
+            "type": "string",
+            "description": "Effective inclusive lower bound (UTC) of the aggregated window.",
+            "format": "date-time"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Effective inclusive upper bound (UTC) of the aggregated window.",
+            "format": "date-time"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyFeedbackStatsResponse"
+            },
+            "description": "Every ISO calendar week (Monday-Sunday) overlapping the effective window, ordered by\n`week_start` ascending. Always includes every overlapping week, even ones with zero\nfeedback across all projects.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Feedback effectiveness statistics for a time window, as a dense week × project grid.\nSerializes as snake_case."
       },
       "CodeQueryGraphEdgeResponse": {
         "type": "object",
@@ -671,7 +561,7 @@
           },
           "project_id": {
             "type": "integer",
-            "description": "Optional filter narrowing results to a single project, corresponding to the `id` field\nreturned by `GET /projects`. Omit to search across every project. When provided, must be\na positive 64-bit integer and must correspond to an existing project (404 otherwise).",
+            "description": "Optional filter narrowing results to a single project, corresponding to a project id returned\nby the list_projects MCP tool. Omit to search across every project. When provided, must be\na positive 64-bit integer and must correspond to an existing project (404 otherwise).",
             "format": "int64",
             "nullable": true
           },
@@ -754,6 +644,18 @@
             "description": "Path of the source file the symbol was indexed from.",
             "nullable": true
           },
+          "git_url": {
+            "type": "string",
+            "description": "Public Git URL of the project that owns the symbol.",
+            "format": "uri",
+            "nullable": true
+          },
+          "git_raw_url": {
+            "type": "string",
+            "description": "Public raw-file URL for the symbol. This is the project's `git_raw_url` concatenated\nwith the indexed source path; null when the project has no `git_raw_url`.",
+            "format": "uri",
+            "nullable": true
+          },
           "embedding_text": {
             "type": "string",
             "description": "The text that was actually embedded for this document.",
@@ -831,117 +733,47 @@
         },
         "additionalProperties": {}
       },
-      "ProjectCreateRequest": {
+      "ProjectFeedbackStatsResponse": {
         "type": "object",
         "properties": {
-          "name": {
+          "project_id": {
+            "type": "integer",
+            "description": "Id of the project these statistics belong to.",
+            "format": "int64"
+          },
+          "project_name": {
             "type": "string",
-            "description": "The project's name. Always required, must not be empty or blank, and must not already be\nused by another project (409 otherwise).",
+            "description": "Name of the project these statistics belong to.",
             "nullable": true
-          },
-          "embedding_model": {
-            "type": "string",
-            "description": "The embedding model this project's code documents are (or will be) embedded with. Always\nrequired, must not be empty or blank.",
-            "nullable": true
-          },
-          "embedding_dimensions": {
-            "type": "integer",
-            "description": "The dimensionality of that embedding model's vectors. Always required, must be a positive integer.",
-            "format": "int32",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Fields required to create a new project."
-      },
-      "ProjectListResponse": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProjectResponse"
-            },
-            "description": "The projects on this page.",
-            "nullable": true
-          },
-          "page": {
-            "type": "integer",
-            "description": "The zero-based page number this response corresponds to.",
-            "format": "int32"
-          },
-          "page_size": {
-            "type": "integer",
-            "description": "The maximum number of items per page.",
-            "format": "int32"
           },
           "total_count": {
             "type": "integer",
-            "description": "The total number of projects matching the filter, across every page.",
+            "description": "Total number of feedback records for this project within this week.",
             "format": "int64"
           },
-          "total_pages": {
+          "useful_count": {
             "type": "integer",
-            "description": "The total number of pages available for the filter, given `page_size`.",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false,
-        "description": "A single page of a paginated project search, plus the metadata needed to fetch the next one."
-      },
-      "ProjectResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
+            "description": "Number of feedback records with `useful = true` within this week.",
             "format": "int64"
           },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "embedding_model": {
-            "type": "string",
-            "nullable": true
-          },
-          "embedding_dimensions": {
+          "not_useful_count": {
             "type": "integer",
-            "format": "int32"
+            "description": "Number of feedback records with `useful = false` within this week.",
+            "format": "int64"
           },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
+          "useful_percentage": {
+            "type": "number",
+            "description": "UsefulCount as a percentage of TotalCount for this week,\n            rounded to 2 decimal places. 0 when TotalCount is 0.",
+            "format": "double"
           },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
+          "not_useful_percentage": {
+            "type": "number",
+            "description": "NotUsefulCount as a percentage of TotalCount for this\n            week, rounded to 2 decimal places. 0 when TotalCount is 0.",
+            "format": "double"
           }
         },
         "additionalProperties": false,
-        "description": "A project stored in code3rag, normally created/managed by code-ciir-indexer but also writable\nthrough this API's own CRUD endpoints (see .specs/03-projects-endpoint.md). Serializes as\nsnake_case. Unlike code-rag-api's ProjectResponse, there is no git_url/git_raw_url\n(code3rag's projects table has no equivalent columns - see .specs/01-schema-discovery.md)."
-      },
-      "ProjectUpdateRequest": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The project's new name. Must not be empty or blank, and must not already be used by another project (409 otherwise).",
-            "nullable": true
-          },
-          "embedding_model": {
-            "type": "string",
-            "description": "The project's new embedding model. Must not be empty or blank.",
-            "nullable": true
-          },
-          "embedding_dimensions": {
-            "type": "integer",
-            "description": "The project's new embedding dimensionality. Must be a positive integer.",
-            "format": "int32",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Full replacement fields for an existing project. All fields are required, mirroring\nCodeCiir.Api.Contracts.ProjectCreateRequest - this is a full PUT replace, not a partial patch."
+        "description": "Feedback effectiveness statistics for a single project within a single week."
       },
       "QualifiedNameFilterOperator": {
         "enum": [
@@ -993,6 +825,31 @@
         },
         "additionalProperties": false,
         "description": "The running API's own build version. Serializes as snake_case."
+      },
+      "WeeklyFeedbackStatsResponse": {
+        "type": "object",
+        "properties": {
+          "week_start": {
+            "type": "string",
+            "description": "Monday of this ISO calendar week.",
+            "format": "date"
+          },
+          "week_end": {
+            "type": "string",
+            "description": "Sunday of this ISO calendar week.",
+            "format": "date"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectFeedbackStatsResponse"
+            },
+            "description": "Every registered project (or the single project matching `project_id`, if given), ordered\nby `project_id`, with counts/percentages for feedback created within this week and within\nthe overall requested window. Zero-filled when a project had no feedback in this specific week.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Feedback effectiveness statistics for a single ISO calendar week (Monday-Sunday)."
       }
     }
   },
@@ -1000,10 +857,6 @@
     {
       "name": "Code Query",
       "description": "Operations for querying indexed source code using natural language."
-    },
-    {
-      "name": "Projects",
-      "description": "Full CRUD over projects stored in code3rag. Projects here are normally created/managed by\n            code-ciir-indexer as part of its own indexing flow, but this API also exposes its own\n            create/update/delete so it can be managed directly - see .specs/03-projects-endpoint.md for\n            the tradeoffs of two independent writers on the same table."
     },
     {
       "name": "Version",

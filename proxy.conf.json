@@ -1,12 +1,12 @@
 {
   "/api": {
-    "target": "http://code-ciir-api.home.arpa",
+    "target": "https://blogdoft.home.arpa/code-brain",
     "secure": false,
-    "changeOrigin": false
+    "changeOrigin": true
   },
   "/version": {
-    "target": "http://code-ciir-api.home.arpa",
+    "target": "https://blogdoft.home.arpa/code-brain",
     "secure": false,
-    "changeOrigin": false
+    "changeOrigin": true
   }
 }

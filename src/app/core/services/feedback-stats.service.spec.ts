@@ -23,7 +23,7 @@ describe('FeedbackStatsService', () => {
   it('requests the stats endpoint with no params when the query is empty', () => {
     service.getStats().subscribe();
 
-    const req = httpMock.expectOne((r) => r.url === '/api/v1/code-queries/feedback/stats');
+    const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/stats');
     expect(req.request.method).toBe('GET');
     expect(req.request.params.keys()).toEqual([]);
     req.flush({ start_date: '2026-08-01T00:00:00Z', end_date: '2026-08-31T00:00:00Z', weeks: [] });
@@ -38,7 +38,7 @@ describe('FeedbackStatsService', () => {
       })
       .subscribe();
 
-    const req = httpMock.expectOne((r) => r.url === '/api/v1/code-queries/feedback/stats');
+    const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/stats');
     expect(req.request.params.get('start_date')).toBe('2026-08-01T00:00:00Z');
     expect(req.request.params.get('end_date')).toBe('2026-08-31T00:00:00Z');
     expect(req.request.params.get('project_id')).toBe('7');
@@ -48,7 +48,7 @@ describe('FeedbackStatsService', () => {
   it('omits project_id when not given', () => {
     service.getStats({ startDate: '2026-08-01T00:00:00Z' }).subscribe();
 
-    const req = httpMock.expectOne((r) => r.url === '/api/v1/code-queries/feedback/stats');
+    const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/stats');
     expect(req.request.params.has('project_id')).toBe(false);
     req.flush({ start_date: '2026-08-01T00:00:00Z', end_date: '2026-08-31T00:00:00Z', weeks: [] });
   });
@@ -58,7 +58,7 @@ describe('FeedbackStatsService', () => {
     service.getStats().subscribe((stats) => (result = stats));
 
     httpMock
-      .expectOne((r) => r.url === '/api/v1/code-queries/feedback/stats')
+      .expectOne((r) => r.url === '/api/code-queries/feedback/stats')
       .flush({
         start_date: '2026-08-01T00:00:00Z',
         end_date: '2026-08-31T00:00:00Z',
@@ -109,7 +109,7 @@ describe('FeedbackStatsService', () => {
     service.getStats().subscribe((stats) => (result = stats));
 
     httpMock
-      .expectOne((r) => r.url === '/api/v1/code-queries/feedback/stats')
+      .expectOne((r) => r.url === '/api/code-queries/feedback/stats')
       .flush({ start_date: '2026-08-01T00:00:00Z', end_date: '2026-08-31T00:00:00Z', weeks: null });
 
     expect(result).toEqual({
@@ -124,7 +124,7 @@ describe('FeedbackStatsService', () => {
     service.getStats().subscribe((stats) => (result = stats));
 
     httpMock
-      .expectOne((r) => r.url === '/api/v1/code-queries/feedback/stats')
+      .expectOne((r) => r.url === '/api/code-queries/feedback/stats')
       .flush({
         start_date: '2026-08-01T00:00:00Z',
         end_date: '2026-08-31T00:00:00Z',
@@ -145,7 +145,7 @@ describe('FeedbackStatsService', () => {
     it('requests the export endpoint as a blob, with the default export timezone', () => {
       service.exportCsv().subscribe();
 
-      const req = httpMock.expectOne((r) => r.url === '/api/v1/code-queries/feedback/export');
+      const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/export');
       expect(req.request.method).toBe('GET');
       expect(req.request.responseType).toBe('blob');
       expect(req.request.params.get('timezone')).toBe('America/Sao_Paulo');
@@ -162,7 +162,7 @@ describe('FeedbackStatsService', () => {
         })
         .subscribe();
 
-      const req = httpMock.expectOne((r) => r.url === '/api/v1/code-queries/feedback/export');
+      const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/export');
       expect(req.request.params.get('start_date')).toBe('2026-08-01T00:00:00Z');
       expect(req.request.params.get('end_date')).toBe('2026-08-31T00:00:00Z');
       expect(req.request.params.get('project_id')).toBe('7');
@@ -174,7 +174,7 @@ describe('FeedbackStatsService', () => {
       TestBed.inject(ConfigService).setExportTimezone('');
       service.exportCsv().subscribe();
 
-      const req = httpMock.expectOne((r) => r.url === '/api/v1/code-queries/feedback/export');
+      const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/export');
       expect(req.request.params.has('timezone')).toBe(false);
       req.flush(new Blob(['csv,data']));
     });
@@ -183,7 +183,7 @@ describe('FeedbackStatsService', () => {
       let result: unknown;
       service.exportCsv().subscribe((response) => (result = response));
 
-      const req = httpMock.expectOne((r) => r.url === '/api/v1/code-queries/feedback/export');
+      const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/export');
       const blob = new Blob(['csv,data']);
       req.flush(blob, { headers: { 'content-disposition': 'attachment; filename=test.csv' } });
 
