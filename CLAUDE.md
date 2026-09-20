@@ -34,7 +34,16 @@ contract only.
 - `npm run build` — production build (`dist/code-rag-front`).
 - `npm test` — unit tests (Vitest, via `@angular/build:unit-test`). Runs once; there's no separate
   `--watch=false` needed, but pass it explicitly in CI-like contexts to be safe.
-- No lint script is configured (Angular CLI v22 doesn't scaffold ESLint by default).
+- `npm run format` — Prettier (`.prettierrc`: 100 columns, single quotes) over `src/`, in place.
+  `npm run format:check` is the read-only version. Prettier is occasionally not idempotent in one
+  pass (e.g. some chained calls in specs) — if `format:check` still fails right after `format`, run
+  `format` again.
+- **Local pre-push gate:** `.githooks/pre-push` runs `format:check` and aborts the push if `src/` isn't
+  formatted. `npm install`/`npm ci` activates it (the `prepare` script sets `core.hooksPath`; it's a
+  no-op where there's no git, like the Dockerfile's build stage). It checks the working tree, not the
+  pushed commits, and `git push --no-verify` bypasses it — it's a local guard rail, not CI.
+- No ESLint is configured (Angular CLI v22 doesn't scaffold it by default), so "lint" here means
+  Prettier only.
 - Playwright (with Chromium already downloaded) is a devDependency for real browser verification — there
   was no Chrome extension available in this environment, so it's the way to actually drive the app rather
   than guess from reading the code. It's not wired into `npm test`; run ad hoc scripts with

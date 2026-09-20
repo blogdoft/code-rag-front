@@ -7,7 +7,8 @@ export const routes: Routes = [
   },
   {
     path: 'rag',
-    loadComponent: () => import('./features/code-search/code-search-page').then((m) => m.CodeSearchPage),
+    loadComponent: () =>
+      import('./features/code-search/code-search-page').then((m) => m.CodeSearchPage),
   },
   {
     path: 'projects',
@@ -19,7 +20,8 @@ export const routes: Routes = [
   },
   {
     path: 'reports',
-    loadComponent: () => import('./features/reports/feedback-stats-page').then((m) => m.FeedbackStatsPage),
+    loadComponent: () =>
+      import('./features/reports/feedback-stats-page').then((m) => m.FeedbackStatsPage),
   },
   { path: '**', redirectTo: '' },
 ];

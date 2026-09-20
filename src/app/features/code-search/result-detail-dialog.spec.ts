@@ -85,8 +85,20 @@ describe('ResultDetailDialog', () => {
     setup({
       ...result,
       relations: [
-        { fromId: 1, toId: 42, relationType: 'calls', targetSymbol: 'Charge', resolutionOrigin: 'static' },
-        { fromId: 7, toId: 1, relationType: 'calls', targetSymbol: 'RetryPayment', resolutionOrigin: 'static' },
+        {
+          fromId: 1,
+          toId: 42,
+          relationType: 'calls',
+          targetSymbol: 'Charge',
+          resolutionOrigin: 'static',
+        },
+        {
+          fromId: 7,
+          toId: 1,
+          relationType: 'calls',
+          targetSymbol: 'RetryPayment',
+          resolutionOrigin: 'static',
+        },
       ],
     });
 

@@ -15,7 +15,10 @@ describe('CodeSearchPage', () => {
   let fixture: ComponentFixture<CodeSearchPage>;
   let component: CodeSearchPage;
   let projectsService: { list: ReturnType<typeof vi.fn> };
-  let codeQueriesService: { ask: ReturnType<typeof vi.fn>; submitFeedback: ReturnType<typeof vi.fn> };
+  let codeQueriesService: {
+    ask: ReturnType<typeof vi.fn>;
+    submitFeedback: ReturnType<typeof vi.fn>;
+  };
   let popupService: { open: ReturnType<typeof vi.fn> };
   let configService: { userName: ReturnType<typeof vi.fn>; setUserName: ReturnType<typeof vi.fn> };
 
@@ -60,9 +63,15 @@ describe('CodeSearchPage', () => {
     },
   ];
 
-  function setup(askResult: Observable<CodeQueryResult[]> = of(results), userName = 'Ada Lovelace'): void {
+  function setup(
+    askResult: Observable<CodeQueryResult[]> = of(results),
+    userName = 'Ada Lovelace',
+  ): void {
     projectsService = { list: vi.fn(() => of(projects)) };
-    codeQueriesService = { ask: vi.fn(() => askResult), submitFeedback: vi.fn(() => of(undefined)) };
+    codeQueriesService = {
+      ask: vi.fn(() => askResult),
+      submitFeedback: vi.fn(() => of(undefined)),
+    };
     popupService = { open: vi.fn() };
     configService = { userName: vi.fn(() => userName), setUserName: vi.fn() };
 
@@ -91,12 +100,16 @@ describe('CodeSearchPage', () => {
   it('moves focus to the question field once a project is selected', () => {
     setup();
 
-    const combobox = fixture.debugElement.query((debugEl) => debugEl.name === 'app-combobox').componentInstance;
+    const combobox = fixture.debugElement.query(
+      (debugEl) => debugEl.name === 'app-combobox',
+    ).componentInstance;
     combobox.selected.emit({ id: 1, label: 'alpha' });
     fixture.detectChanges();
 
     expect(document.activeElement).toBe(
-      fixture.nativeElement.querySelector('textarea[placeholder="Where is the retry logic for failed payments?"]'),
+      fixture.nativeElement.querySelector(
+        'textarea[placeholder="Where is the retry logic for failed payments?"]',
+      ),
     );
   });
 
@@ -182,7 +195,10 @@ describe('CodeSearchPage', () => {
     component['submit']();
 
     expect(codeQueriesService.ask).toHaveBeenCalledWith(null, 'hello', {});
-    expect(component['history']()[0]).toMatchObject({ projectId: null, projectName: 'All projects' });
+    expect(component['history']()[0]).toMatchObject({
+      projectId: null,
+      projectName: 'All projects',
+    });
   });
 
   it('does not submit a blank question', () => {
@@ -244,7 +260,9 @@ describe('CodeSearchPage', () => {
     expect(row.textContent).toContain('80%');
     expect(row.textContent).toContain('Billing.Services.PaymentService.RetryPayment');
 
-    const rawLink = row.querySelector('a[aria-label="Open raw file src/foo.ts"]') as HTMLAnchorElement;
+    const rawLink = row.querySelector(
+      'a[aria-label="Open raw file src/foo.ts"]',
+    ) as HTMLAnchorElement;
     expect(rawLink.href).toBe('https://forgejo.example/alpha/raw/main/src/foo.ts');
     expect(rawLink.target).toBe('_blank');
     expect(rawLink.rel).toBe('noopener noreferrer');
@@ -268,7 +286,9 @@ describe('CodeSearchPage', () => {
 
     expect(component['history']().length).toBe(1);
 
-    const closeButton = fixture.nativeElement.querySelector('article button[aria-label="Close"]') as HTMLButtonElement;
+    const closeButton = fixture.nativeElement.querySelector(
+      'article button[aria-label="Close"]',
+    ) as HTMLButtonElement;
     closeButton.click();
     fixture.detectChanges();
 
@@ -283,7 +303,9 @@ describe('CodeSearchPage', () => {
     component['submit']();
     fixture.detectChanges();
 
-    const closeButton = fixture.nativeElement.querySelector('article button[aria-label="Close"]') as HTMLButtonElement;
+    const closeButton = fixture.nativeElement.querySelector(
+      'article button[aria-label="Close"]',
+    ) as HTMLButtonElement;
     expect(closeButton).not.toBeNull();
 
     closeButton.click();
@@ -304,7 +326,9 @@ describe('CodeSearchPage', () => {
 
     expect(component['question']()).toBe('Where is retry logic?');
 
-    questionInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    questionInput.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
     fixture.detectChanges();
 
     expect(component['question']()).toBe('');
@@ -322,7 +346,12 @@ describe('CodeSearchPage', () => {
     fixture.detectChanges();
 
     const submitted = questionInput.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }),
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
     );
 
     expect(submitted).toBe(false);
@@ -404,11 +433,15 @@ describe('CodeSearchPage', () => {
 
     component['question'].set('first question');
     component['submit']();
-    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'first question', { kind: 'method' });
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'first question', {
+      kind: 'method',
+    });
 
     component['question'].set('second question');
     component['submit']();
-    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'second question', { kind: 'method' });
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'second question', {
+      kind: 'method',
+    });
   });
 
   it('submits active filter values and records them on the history entry', () => {
@@ -428,7 +461,11 @@ describe('CodeSearchPage', () => {
       minSimilarity: 0.4,
       limit: 5,
     };
-    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', expectedFilters);
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(
+      1,
+      'Where is retry logic?',
+      expectedFilters,
+    );
     expect(component['history']()[0].filters).toEqual(expectedFilters);
   });
 
@@ -478,7 +515,9 @@ describe('CodeSearchPage', () => {
     }
 
     function notUsefulButton(): HTMLButtonElement {
-      return feedbackButtons().find((b) => b.textContent?.trim() === 'Not useful') as HTMLButtonElement;
+      return feedbackButtons().find(
+        (b) => b.textContent?.trim() === 'Not useful',
+      ) as HTMLButtonElement;
     }
 
     it('submits useful feedback directly, with no popup, when a name is already configured', () => {
@@ -510,7 +549,9 @@ describe('CodeSearchPage', () => {
 
       expect(popupService.open).toHaveBeenCalledWith(
         NotUsefulReasonDialog,
-        expect.objectContaining({ data: expect.objectContaining({ reason: expect.any(Function) }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ reason: expect.any(Function) }),
+        }),
       );
       const [, options] = popupService.open.mock.calls[0];
       options.data.reason.set('Wrong file');
@@ -593,7 +634,9 @@ describe('CodeSearchPage', () => {
       askQuestion();
       const reasonClosed = new Subject<boolean>();
       const nameClosed = new Subject<boolean>();
-      popupService.open.mockReturnValueOnce({ closed: reasonClosed }).mockReturnValueOnce({ closed: nameClosed });
+      popupService.open
+        .mockReturnValueOnce({ closed: reasonClosed })
+        .mockReturnValueOnce({ closed: nameClosed });
 
       notUsefulButton().click();
       const [, reasonOptions] = popupService.open.mock.calls[0];

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Blocks a push when src/ isn't Prettier-formatted (see .prettierrc). Installed by `npm install`
+# via the "prepare" script, which points core.hooksPath at this directory.
+# Bypassable with `git push --no-verify`; that's deliberate, for emergencies only.
+
+if ! npm run --silent format:check; then
+  echo >&2
+  echo "pre-push: formatting check failed. Run 'npm run format', commit the result, then push again." >&2
+  exit 1
+fi

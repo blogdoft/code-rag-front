@@ -1,5 +1,14 @@
 import { PercentPipe } from '@angular/common';
-import { Component, ElementRef, afterNextRender, computed, inject, model, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  computed,
+  inject,
+  model,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { CodeQueriesService } from '../../core/services/code-queries.service';
 import { ConfigService } from '../../core/services/config.service';
 import {
@@ -19,7 +28,8 @@ import { QueryFiltersDrawer, type QueryFiltersDrawerData } from './query-filters
 import { ResultDetailDialog } from './result-detail-dialog';
 import { UserNameDialog, type UserNameDialogData } from './user-name-dialog';
 
-type FeedbackState = { status: 'idle' } | { status: 'submitting' } | { status: 'submitted'; useful: boolean };
+type FeedbackState =
+  { status: 'idle' } | { status: 'submitting' } | { status: 'submitted'; useful: boolean };
 
 interface QueryHistoryEntry {
   id: number;
@@ -55,7 +65,9 @@ export class CodeSearchPage {
   protected readonly history = signal<QueryHistoryEntry[]>([]);
 
   protected readonly kindFilter = signal('');
-  protected readonly qualifiedNameFilter = signal<QualifiedNameFilter>({ ...DEFAULT_QUALIFIED_NAME_FILTER });
+  protected readonly qualifiedNameFilter = signal<QualifiedNameFilter>({
+    ...DEFAULT_QUALIFIED_NAME_FILTER,
+  });
   protected readonly minSimilarity = signal<number | null>(null);
   protected readonly limit = signal<number | null>(null);
 
@@ -73,7 +85,8 @@ export class CodeSearchPage {
   });
 
   private readonly projectCombobox = viewChild.required(Combobox);
-  private readonly questionInput = viewChild.required<ElementRef<HTMLTextAreaElement>>('questionInput');
+  private readonly questionInput =
+    viewChild.required<ElementRef<HTMLTextAreaElement>>('questionInput');
 
   private nextHistoryId = 0;
 
@@ -81,7 +94,9 @@ export class CodeSearchPage {
     this.projectsService.list().subscribe({
       next: (projects: Project[]) => {
         this.projects.set(projects);
-        this.projectOptions.set(projects.map((project) => ({ id: project.id, label: project.name })));
+        this.projectOptions.set(
+          projects.map((project) => ({ id: project.id, label: project.name })),
+        );
       },
     });
 
@@ -179,7 +194,10 @@ export class CodeSearchPage {
 
     const qualifiedNameValue = this.qualifiedNameFilter().value.trim();
     if (qualifiedNameValue) {
-      filters.qualifiedName = { operator: this.qualifiedNameFilter().operator, value: qualifiedNameValue };
+      filters.qualifiedName = {
+        operator: this.qualifiedNameFilter().operator,
+        value: qualifiedNameValue,
+      };
     }
 
     const minSimilarity = this.minSimilarity();
@@ -216,7 +234,11 @@ export class CodeSearchPage {
     });
   }
 
-  private submitFeedback(entry: QueryHistoryEntry, useful: boolean, reason: string | undefined): void {
+  private submitFeedback(
+    entry: QueryHistoryEntry,
+    useful: boolean,
+    reason: string | undefined,
+  ): void {
     const projectId = entry.projectId;
     if (projectId === null) {
       return;
@@ -248,7 +270,12 @@ export class CodeSearchPage {
     });
   }
 
-  private postFeedback(entry: QueryHistoryEntry, useful: boolean, reason: string | undefined, user: string): void {
+  private postFeedback(
+    entry: QueryHistoryEntry,
+    useful: boolean,
+    reason: string | undefined,
+    user: string,
+  ): void {
     const projectId = entry.projectId;
     if (projectId === null) {
       return;
@@ -270,7 +297,9 @@ export class CodeSearchPage {
   }
 
   private setFeedback(entryId: number, feedback: FeedbackState): void {
-    this.history.update((entries) => entries.map((entry) => (entry.id === entryId ? { ...entry, feedback } : entry)));
+    this.history.update((entries) =>
+      entries.map((entry) => (entry.id === entryId ? { ...entry, feedback } : entry)),
+    );
   }
 
   protected removeHistoryEntry(id: number): void {

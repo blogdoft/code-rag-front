@@ -83,7 +83,7 @@ describe('FeedbackTrendChart', () => {
     expect(trend.data).toEqual([1, 2, 3]);
   });
 
-  it('fits the trend line to each week\'s total useful count across all projects, not per-slot values', () => {
+  it("fits the trend line to each week's total useful count across all projects, not per-slot values", () => {
     // Two weeks, two projects each: week "08/01" totals 6+5=11, week "08/08" totals 2+0=2.
     fixture.componentRef.setInput('labels', [
       ['08/01', 'alpha'],

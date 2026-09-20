@@ -19,7 +19,9 @@ export class ApiVersionService {
 
   get(): Observable<string> {
     return this.http
-      .get<ApiVersionDto>('/version', { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true) })
+      .get<ApiVersionDto>('/version', {
+        context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true),
+      })
       .pipe(
         map((dto) => dto.version ?? ''),
         catchError(() => of('')),

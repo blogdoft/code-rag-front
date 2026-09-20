@@ -37,7 +37,9 @@ describe('QueryFiltersDrawer', () => {
 
   it('updates the kind signal immediately as a value is typed', () => {
     setup();
-    const kindInput = fixture.nativeElement.querySelector('input[placeholder="e.g. method"]') as HTMLInputElement;
+    const kindInput = fixture.nativeElement.querySelector(
+      'input[placeholder="e.g. method"]',
+    ) as HTMLInputElement;
 
     kindInput.value = 'method';
     kindInput.dispatchEvent(new Event('input'));
@@ -65,9 +67,13 @@ describe('QueryFiltersDrawer', () => {
     setup();
     data.kind.set('method');
     fixture.detectChanges();
-    const kindInput = fixture.nativeElement.querySelector('input[placeholder="e.g. method"]') as HTMLInputElement;
+    const kindInput = fixture.nativeElement.querySelector(
+      'input[placeholder="e.g. method"]',
+    ) as HTMLInputElement;
 
-    kindInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    kindInput.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
 
     expect(data.kind()).toBe('');
   });
@@ -77,7 +83,9 @@ describe('QueryFiltersDrawer', () => {
     const minSimilarityInput = fixture.nativeElement.querySelector(
       'input[placeholder="0.0 - 1.0"]',
     ) as HTMLInputElement;
-    const limitInput = fixture.nativeElement.querySelector('input[placeholder="10 (default)"]') as HTMLInputElement;
+    const limitInput = fixture.nativeElement.querySelector(
+      'input[placeholder="10 (default)"]',
+    ) as HTMLInputElement;
 
     minSimilarityInput.value = '0.5';
     minSimilarityInput.dispatchEvent(new Event('input'));

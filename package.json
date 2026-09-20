@@ -7,7 +7,10 @@
     "build": "ng build",
     "watch": "ng serve --host 0.0.0.0 --allowed-hosts",
     "test": "ng test",
-    "test:coverage": "ng test --coverage"
+    "test:coverage": "ng test --coverage",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "private": true,
   "packageManager": "npm@11.17.0",

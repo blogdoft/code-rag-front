@@ -37,8 +37,15 @@ describe('NavSidebar', () => {
 
   it('renders the four navigation links in order', async () => {
     await setup(true);
-    const links = Array.from(fixture.nativeElement.querySelectorAll('nav a')) as HTMLAnchorElement[];
-    expect(links.map((a) => a.textContent?.trim())).toEqual(['Rag', 'Projects', 'Reports', 'Settings']);
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('nav a'),
+    ) as HTMLAnchorElement[];
+    expect(links.map((a) => a.textContent?.trim())).toEqual([
+      'Rag',
+      'Projects',
+      'Reports',
+      'Settings',
+    ]);
   });
 
   it('shows text labels when expanded', async () => {
@@ -52,7 +59,9 @@ describe('NavSidebar', () => {
     const aside = fixture.nativeElement.querySelector('aside') as HTMLElement;
     expect(aside.className).toContain('w-16');
 
-    const links = Array.from(fixture.nativeElement.querySelectorAll('nav a')) as HTMLAnchorElement[];
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('nav a'),
+    ) as HTMLAnchorElement[];
     expect(links.map((a) => a.textContent?.trim())).toEqual(['', '', '', '']);
     expect(links.map((a) => a.title)).toEqual(['Rag', 'Projects', 'Reports', 'Settings']);
   });

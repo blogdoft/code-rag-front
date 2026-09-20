@@ -45,7 +45,9 @@ describe('NotUsefulReasonDialog', () => {
     fixture.detectChanges();
     const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
 
-    textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    textarea.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
 
     expect(data.reason()).toBe('');
   });

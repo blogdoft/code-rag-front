@@ -19,7 +19,9 @@ describe('ConfirmDialog', () => {
   });
 
   function findButton(text: string): HTMLButtonElement {
-    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const buttons: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    );
     const button = buttons.find((b) => b.textContent?.includes(text));
     if (!button) throw new Error(`No button with text "${text}"`);
     return button;
@@ -48,7 +50,10 @@ describe('ConfirmDialog with a custom confirmLabel', () => {
     dialogRef = { close: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
-        { provide: DIALOG_DATA, useValue: { message: 'Delete project "demo"?', confirmLabel: 'Delete' } },
+        {
+          provide: DIALOG_DATA,
+          useValue: { message: 'Delete project "demo"?', confirmLabel: 'Delete' },
+        },
         { provide: DialogRef, useValue: dialogRef },
       ],
     });
@@ -57,7 +62,9 @@ describe('ConfirmDialog with a custom confirmLabel', () => {
   });
 
   it('renders the custom label instead of the default', () => {
-    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const buttons: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    );
     expect(buttons.some((b) => b.textContent?.trim() === 'Delete')).toBe(true);
     expect(buttons.some((b) => b.textContent?.trim() === 'Discard changes')).toBe(false);
   });

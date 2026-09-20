@@ -64,11 +64,27 @@ describe('ProjectsService', () => {
     let result: { id: number }[] | undefined;
     service.list().subscribe((projects) => (result = projects));
 
-    const firstReq = httpMock.expectOne((r) => r.url === '/api/indexer/projects' && r.params.get('page') === '0');
-    firstReq.flush({ items: [projectDto(1), projectDto(2)], page: 0, pageSize: 100, totalCount: 3, totalPages: 2 });
+    const firstReq = httpMock.expectOne(
+      (r) => r.url === '/api/indexer/projects' && r.params.get('page') === '0',
+    );
+    firstReq.flush({
+      items: [projectDto(1), projectDto(2)],
+      page: 0,
+      pageSize: 100,
+      totalCount: 3,
+      totalPages: 2,
+    });
 
-    const secondReq = httpMock.expectOne((r) => r.url === '/api/indexer/projects' && r.params.get('page') === '1');
-    secondReq.flush({ items: [projectDto(3)], page: 1, pageSize: 100, totalCount: 3, totalPages: 2 });
+    const secondReq = httpMock.expectOne(
+      (r) => r.url === '/api/indexer/projects' && r.params.get('page') === '1',
+    );
+    secondReq.flush({
+      items: [projectDto(3)],
+      page: 1,
+      pageSize: 100,
+      totalCount: 3,
+      totalPages: 2,
+    });
 
     expect(result?.map((p) => p.id)).toEqual([1, 2, 3]);
   });

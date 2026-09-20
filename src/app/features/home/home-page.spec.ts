@@ -19,7 +19,14 @@ describe('HomePage', () => {
   });
 
   it('links to all four sections', () => {
-    const labels = Array.from(fixture.nativeElement.querySelectorAll('a span:first-child')) as HTMLElement[];
-    expect(labels.map((el) => el.textContent?.trim())).toEqual(['Rag', 'Projects', 'Reports', 'Settings']);
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('a span:first-child'),
+    ) as HTMLElement[];
+    expect(labels.map((el) => el.textContent?.trim())).toEqual([
+      'Rag',
+      'Projects',
+      'Reports',
+      'Settings',
+    ]);
   });
 });

@@ -24,7 +24,9 @@ export class ProjectFormDialog {
   protected readonly isEditMode = !!this.data.project;
   protected readonly name = signal(this.data.project?.name ?? '');
   protected readonly embeddingModel = signal(this.data.project?.embeddingModel ?? '');
-  protected readonly embeddingDimensions = signal<number | null>(this.data.project?.embeddingDimensions ?? null);
+  protected readonly embeddingDimensions = signal<number | null>(
+    this.data.project?.embeddingDimensions ?? null,
+  );
   protected readonly gitUrl = signal(this.data.project?.gitUrl ?? '');
   protected readonly gitRawUrl = signal(this.data.project?.gitRawUrl ?? '');
   protected readonly isSaving = signal(false);
@@ -87,7 +89,9 @@ export class ProjectFormDialog {
     const original = this.data.project;
 
     this.isSaving.set(true);
-    const request$ = original ? this.projectsService.update(original.id, input) : this.projectsService.create(input);
+    const request$ = original
+      ? this.projectsService.update(original.id, input)
+      : this.projectsService.create(input);
     request$.subscribe({
       next: (project) => {
         this.toast.success(original ? 'Project updated.' : 'Project created.');

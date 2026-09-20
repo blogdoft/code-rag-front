@@ -58,8 +58,13 @@ export class ProjectsService {
    */
   list(): Observable<Project[]> {
     return this.fetchPage(0).pipe(
-      expand((response) => (response.page + 1 < response.totalPages ? this.fetchPage(response.page + 1) : EMPTY)),
-      reduce<ProjectListResponseDto, ProjectDto[]>((all, response) => [...all, ...(response.items ?? [])], []),
+      expand((response) =>
+        response.page + 1 < response.totalPages ? this.fetchPage(response.page + 1) : EMPTY,
+      ),
+      reduce<ProjectListResponseDto, ProjectDto[]>(
+        (all, response) => [...all, ...(response.items ?? [])],
+        [],
+      ),
       map((dtos) => dtos.map(toProject)),
     );
   }
@@ -69,7 +74,9 @@ export class ProjectsService {
   }
 
   update(id: number, input: ProjectInput): Observable<Project> {
-    return this.http.put<ProjectDto>(`/api/indexer/projects/${id}`, toDto(input)).pipe(map(toProject));
+    return this.http
+      .put<ProjectDto>(`/api/indexer/projects/${id}`, toDto(input))
+      .pipe(map(toProject));
   }
 
   remove(id: number): Observable<void> {
@@ -103,5 +110,4 @@ function toDto(input: ProjectInput): ProjectRequestDto {
     gitUrl: input.gitUrl,
     gitRawUrl: input.gitRawUrl,
   };
-
 }

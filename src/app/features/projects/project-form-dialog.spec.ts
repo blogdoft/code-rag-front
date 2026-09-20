@@ -44,7 +44,9 @@ describe('ProjectFormDialog', () => {
   }
 
   function findButton(text: string): HTMLButtonElement {
-    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const buttons: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    );
     const button = buttons.find((b) => b.textContent?.trim().startsWith(text));
     if (!button) throw new Error(`No button with text "${text}"`);
     return button;

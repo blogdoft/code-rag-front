@@ -4,7 +4,10 @@ import { Component, computed, inject, signal } from '@angular/core';
 import type { Project } from '../../core/models/project';
 import { ProjectsService } from '../../core/services/projects.service';
 import { ToastService } from '../../core/services/toast.service';
-import { ConfirmDialog, type ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../shared/components/confirm-dialog/confirm-dialog';
 import { EscClearableDirective } from '../../shared/directives/esc-clearable.directive';
 import { PopupService } from '../../shared/services/popup.service';
 import { ProjectFormDialog, type ProjectFormDialogData } from './project-form-dialog';
@@ -54,7 +57,10 @@ export class ProjectsPage {
   protected deleteProject(project: Project): void {
     const confirmRef = this.popupService.open<boolean, ConfirmDialogData>(ConfirmDialog, {
       role: 'alertdialog',
-      data: { message: `Delete project "${project.name}"? This cannot be undone.`, confirmLabel: 'Delete' },
+      data: {
+        message: `Delete project "${project.name}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+      },
     });
 
     confirmRef.closed.subscribe((confirmed) => {

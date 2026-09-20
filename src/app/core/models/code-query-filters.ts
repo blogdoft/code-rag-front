@@ -12,4 +12,7 @@ export interface CodeQueryFilters {
   limit?: number;
 }
 
-export const DEFAULT_QUALIFIED_NAME_FILTER: QualifiedNameFilter = { operator: 'contains', value: '' };
+export const DEFAULT_QUALIFIED_NAME_FILTER: QualifiedNameFilter = {
+  operator: 'contains',
+  value: '',
+};

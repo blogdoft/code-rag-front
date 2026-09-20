@@ -44,7 +44,9 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('nav')?.textContent).toContain('code-brain');
-    expect(compiled.querySelector('nav button[aria-label="Toggle navigation menu"]')).not.toBeNull();
+    expect(
+      compiled.querySelector('nav button[aria-label="Toggle navigation menu"]'),
+    ).not.toBeNull();
   });
 
   it('renders the sidebar expanded (with labels) by default', async () => {
@@ -110,16 +112,19 @@ describe('App', () => {
     const coordinator = TestBed.inject(PopupCoordinatorService);
     const handleEscapeSpy = vi.spyOn(coordinator, 'handleEscape');
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
 
     expect(handleEscapeSpy).toHaveBeenCalled();
   });
 
   describe('on a mobile viewport', () => {
     function stubMobileMatchMedia(): void {
-      window.matchMedia = vi
-        .fn()
-        .mockReturnValue({ matches: true, addEventListener: vi.fn() }) as unknown as typeof window.matchMedia;
+      window.matchMedia = vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+      }) as unknown as typeof window.matchMedia;
     }
 
     afterEach(() => {

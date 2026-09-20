@@ -83,14 +83,20 @@ interface CodeQueryFeedbackRequestDto {
 export class CodeQueriesService {
   private readonly http = inject(HttpClient);
 
-  ask(projectId: number | null, question: string, filters?: CodeQueryFilters): Observable<CodeQueryResult[]> {
+  ask(
+    projectId: number | null,
+    question: string,
+    filters?: CodeQueryFilters,
+  ): Observable<CodeQueryResult[]> {
     return this.http
       .post<CodeQueryResponseDto>('/api/code-queries', toRequestBody(projectId, question, filters))
       .pipe(
         map((dto) =>
           (dto.matches ?? [])
             .map(toCodeQueryResult)
-            .sort((left, right) => (right.rerankScore ?? -Infinity) - (left.rerankScore ?? -Infinity)),
+            .sort(
+              (left, right) => (right.rerankScore ?? -Infinity) - (left.rerankScore ?? -Infinity),
+            ),
         ),
       );
   }
@@ -108,7 +114,11 @@ export class CodeQueriesService {
   }
 }
 
-function toRequestBody(projectId: number | null, question: string, filters?: CodeQueryFilters): CodeQueryRequestDto {
+function toRequestBody(
+  projectId: number | null,
+  question: string,
+  filters?: CodeQueryFilters,
+): CodeQueryRequestDto {
   const body: CodeQueryRequestDto = { question };
   if (projectId !== null) {
     body.project_id = projectId;

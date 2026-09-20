@@ -55,7 +55,10 @@ describe('ProjectsPage', () => {
     fixture.detectChanges();
   }
 
-  function fakeDialogRef(): { closed: Subject<unknown>; componentInstance: { isDirty: ReturnType<typeof vi.fn> } } {
+  function fakeDialogRef(): {
+    closed: Subject<unknown>;
+    componentInstance: { isDirty: ReturnType<typeof vi.fn> };
+  } {
     return { closed: new Subject(), componentInstance: { isDirty: vi.fn(() => false) } };
   }
 
@@ -222,7 +225,9 @@ describe('ProjectsPage', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
     fixture.detectChanges();
 
     expect(component['search']()).toBe('');

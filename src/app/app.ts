@@ -1,4 +1,12 @@
-import { Component, ElementRef, HostListener, OnInit, ViewChild, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  OnInit,
+  ViewChild,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { ApiVersionService } from './core/services/api-version.service';
 import { ConfigService } from './core/services/config.service';
@@ -20,7 +28,8 @@ export class App implements OnInit {
   private readonly versionService = inject(VersionService);
   private readonly apiVersionService = inject(ApiVersionService);
 
-  @ViewChild('sidebarContainer', { read: ElementRef }) private sidebarContainer?: ElementRef<HTMLElement>;
+  @ViewChild('sidebarContainer', { read: ElementRef })
+  private sidebarContainer?: ElementRef<HTMLElement>;
   @ViewChild('menuToggle', { read: ElementRef }) private menuToggle?: ElementRef<HTMLElement>;
 
   private static readonly MOBILE_QUERY = '(max-width: 767px)';
@@ -65,7 +74,10 @@ export class App implements OnInit {
     if (!target) {
       return;
     }
-    if (this.sidebarContainer?.nativeElement.contains(target) || this.menuToggle?.nativeElement.contains(target)) {
+    if (
+      this.sidebarContainer?.nativeElement.contains(target) ||
+      this.menuToggle?.nativeElement.contains(target)
+    ) {
       return;
     }
     this.sidebarExpanded.set(false);

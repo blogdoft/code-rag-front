@@ -23,7 +23,9 @@ export class VersionService {
 
   get(): Observable<string> {
     return this.http
-      .get<VersionDto>('version.json', { context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true) })
+      .get<VersionDto>('version.json', {
+        context: new HttpContext().set(SUPPRESS_ERROR_TOAST, true),
+      })
       .pipe(
         map((dto) => dto.version),
         catchError(() => of('')),

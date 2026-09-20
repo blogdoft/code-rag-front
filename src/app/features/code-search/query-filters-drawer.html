@@ -1,5 +1,7 @@
 <div class="flex h-full w-full flex-col bg-white shadow-xl dark:bg-slate-800">
-  <header class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+  <header
+    class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-700"
+  >
     <p class="text-base font-medium text-slate-900 dark:text-slate-100">Filters</p>
     <button
       type="button"
@@ -14,7 +16,9 @@
   <div class="min-h-0 flex-1 overflow-auto px-5 py-4">
     <div class="flex flex-col gap-5">
       <div>
-        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Kind</label>
+        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >Kind</label
+        >
         <input
           type="text"
           placeholder="e.g. method"
@@ -27,7 +31,9 @@
       </div>
 
       <div>
-        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Qualified name</label>
+        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >Qualified name</label
+        >
         <div class="flex gap-2">
           <select
             [value]="data.qualifiedName().operator"
@@ -51,10 +57,16 @@
       </div>
 
       <div class="border-t border-slate-200 pt-5 dark:border-slate-700">
-        <p class="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Options</p>
+        <p
+          class="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+        >
+          Options
+        </p>
         <div class="flex flex-col gap-4">
           <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Min similarity</label>
+            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+              >Min similarity</label
+            >
             <input
               type="number"
               min="0"
@@ -62,20 +74,30 @@
               step="0.01"
               placeholder="0.0 - 1.0"
               [value]="data.minSimilarity() ?? ''"
-              (input)="data.minSimilarity.set($any($event.target).value === '' ? null : $any($event.target).valueAsNumber)"
+              (input)="
+                data.minSimilarity.set(
+                  $any($event.target).value === '' ? null : $any($event.target).valueAsNumber
+                )
+              "
               class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Limit</label>
+            <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+              >Limit</label
+            >
             <input
               type="number"
               min="1"
               max="50"
               placeholder="10 (default)"
               [value]="data.limit() ?? ''"
-              (input)="data.limit.set($any($event.target).value === '' ? null : $any($event.target).valueAsNumber)"
+              (input)="
+                data.limit.set(
+                  $any($event.target).value === '' ? null : $any($event.target).valueAsNumber
+                )
+              "
               class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
@@ -84,7 +106,9 @@
     </div>
   </div>
 
-  <footer class="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-700">
+  <footer
+    class="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-700"
+  >
     <button
       type="button"
       (click)="clearAll()"

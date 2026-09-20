@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, model, output, signal, input, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  model,
+  output,
+  signal,
+  input,
+  viewChild,
+} from '@angular/core';
 import { EscClearableDirective } from '../../directives/esc-clearable.directive';
 
 export interface ComboboxOption {

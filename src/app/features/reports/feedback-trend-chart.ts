@@ -202,7 +202,8 @@ function buildConfig(
             align: 'end',
             color: textColor,
             font: { size: 10 },
-            formatter: (value: number, ctx: Context) => `${value} (${usefulPercentages[ctx.dataIndex]}%)`,
+            formatter: (value: number, ctx: Context) =>
+              `${value} (${usefulPercentages[ctx.dataIndex]}%)`,
           },
         },
         {
@@ -215,7 +216,8 @@ function buildConfig(
             align: 'end',
             color: textColor,
             font: { size: 10 },
-            formatter: (value: number, ctx: Context) => `${value} (${notUsefulPercentages[ctx.dataIndex]}%)`,
+            formatter: (value: number, ctx: Context) =>
+              `${value} (${notUsefulPercentages[ctx.dataIndex]}%)`,
           },
         },
         {
