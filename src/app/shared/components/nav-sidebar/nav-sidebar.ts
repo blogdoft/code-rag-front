@@ -2,7 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 interface NavLink {
-  id: 'rag' | 'projects' | 'reports' | 'settings';
+  id: 'rag' | 'projects' | 'uploads' | 'reports' | 'settings';
   label: string;
   path: string;
 }
@@ -24,6 +24,7 @@ export class NavSidebar {
   protected readonly links: readonly NavLink[] = [
     { id: 'rag', label: 'Rag', path: '/rag' },
     { id: 'projects', label: 'Projects', path: '/projects' },
+    { id: 'uploads', label: 'Upload', path: '/uploads' },
     { id: 'reports', label: 'Reports', path: '/reports' },
     { id: 'settings', label: 'Settings', path: '/settings' },
   ];

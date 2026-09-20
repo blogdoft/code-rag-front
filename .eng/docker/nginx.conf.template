@@ -11,6 +11,30 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # CIIR file uploads (features/ciir-upload) can be many GB. nginx's defaults would reject anything
+    # over 1 MB (client_max_body_size) and spool the whole body to disk before forwarding a single
+    # byte (proxy_request_buffering), which also makes the browser's progress bar track that local
+    # spooling instead of the real transfer. Exact match, so only this one path drops the limits -
+    # every other /api/ route below keeps nginx's defaults. HTTP/1.1 is required to stream an
+    # unbuffered request body upstream.
+    location = /api/indexer/ciir-uploads {
+        proxy_pass ${API_UPSTREAM}/api/indexer/ciir-uploads;
+        proxy_ssl_verify off;
+
+        client_max_body_size 0;
+        proxy_request_buffering off;
+        proxy_http_version 1.1;
+        # The API answers only after streaming the file into object storage, so the response can
+        # lag the last uploaded byte by longer than the 60s default for a big file.
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # Reverse proxy for the API gateway (blogdoft.home.arpa/code-brain as of 2026-09-18, see
     # .specs/2026-09-18-gateway-and-projects-migration.md). The URI is spelled out explicitly
     # (.../api/) rather than left bare, since API_UPSTREAM itself now carries a path

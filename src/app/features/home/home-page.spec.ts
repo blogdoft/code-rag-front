@@ -18,13 +18,14 @@ describe('HomePage', () => {
     expect(fixture.nativeElement.textContent).toContain('Welcome to code-brain');
   });
 
-  it('links to all four sections', () => {
+  it('links to all five sections', () => {
     const labels = Array.from(
       fixture.nativeElement.querySelectorAll('a span:first-child'),
     ) as HTMLElement[];
     expect(labels.map((el) => el.textContent?.trim())).toEqual([
       'Rag',
       'Projects',
+      'Upload',
       'Reports',
       'Settings',
     ]);

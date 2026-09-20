@@ -15,9 +15,11 @@ As of 2026-09-18 (`.specs/2026-09-18-gateway-and-projects-migration.md`) the bac
 - **code-ciir-api** — code-queries, feedback, feedback stats/export, `/version`. Contract in
   `openapi.generated.json` (fetched live from
   `.../code-brain/api/code-queries/swagger/v1/swagger.json`).
-- **CIIR Indexer API** — Projects CRUD (`/api/indexer/projects`), plus CIIR-upload/indexation
-  endpoints this frontend doesn't use. Contract in `openapi.indexer.generated.json` (fetched live
-  from `.../code-brain/api/indexer/openapi/v1.json`).
+- **CIIR Indexer API** — Projects CRUD (`/api/indexer/projects`), CIIR file upload + indexation
+  status (`/api/indexer/ciir-uploads`, `/api/indexer/indexations`; used by `features/ciir-upload`),
+  and a `POST .../ciir-uploads/register` (bring-your-own-upload via MinIO) this frontend doesn't
+  use. Contract in `openapi.indexer.generated.json` (fetched live from
+  `.../code-brain/api/indexer/openapi/v1.json`).
 
 Both are reachable under the *same* gateway host, just different `/api/...` prefixes — see the API
 contract section below for exactly which prefix goes with which endpoint, and the base-URL note for
@@ -116,6 +118,24 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   `ProjectResponse` is `{ id, name, embeddingModel, embeddingDimensions, gitUrl, gitRawUrl, createdAt,
   updatedAt }`. `id`/`embeddingDimensions` are typed by the server as int64/int32-or-string (JS-number-
   precision safety for int64) — `ProjectsService`'s mapper normalizes both through `Number(...)`.
+- `POST /api/indexer/ciir-uploads` (CIIR Indexer API; backing `features/ciir-upload`) takes
+  `multipart/form-data` with a `projectId` text field and a `ciirFile` file field, **in that
+  order** — the server validates the project before storing any byte of the file, so
+  `CiirUploadsService.upload()` appends `projectId` first (FormData preserves append order; a spec
+  asserts it). Returns `202 { uploadId, status: "pending" }` as soon as the file is stored in
+  object storage — indexing happens later in a background worker. Errors: 400/413 carry
+  `ProblemDetails`, but **404 (unknown project) and 429 have no body**, so the upload request opts
+  out of the global error toast (`SUPPRESS_ERROR_TOAST`) and `CiirUploadPage` maps status codes to
+  messages itself. Upload progress comes from `HttpClient`'s `reportProgress`/`UploadProgress`
+  events (bytes *sent* — the server answers only after storing the file, so there's a wait at 100%
+  the page explains). Unsubscribing aborts the XHR; that's how Cancel works, and why leaving the
+  page mid-upload is guarded (`canDeactivate` + `beforeunload`). After `202`,
+  `CiirUploadsService.watch()` polls `GET /api/indexer/ciir-uploads/{id}` every 2s until `status`
+  is `processed` or `failed` (terminal), and — once `indexationId` is set — also
+  `GET /api/indexer/indexations/{indexationId}` for the document/relation counters (its own
+  statuses: `pending`/`running`/`resolving_relations`/`completed`/`failed`/`cancelled`). A few
+  transient poll failures are retried; a 404 is not. Bodies are camelCase; int64 fields
+  (`projectId`, counters) are normalized through `Number(...)` like the Projects DTOs.
 - `GET /version` → `{ version }`, unversioned and unauthenticated, for deploy tooling/diagnostics.
   Served by code-ciir-api, but **not exposed through the public gateway** — confirmed by probing
   `blogdoft.home.arpa/code-brain/version` directly (404; only `/code-brain/api/code-queries` is
@@ -152,7 +172,12 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   `.eng/docker/nginx.conf.template`/`docker-compose.yml` (`API_UPSTREAM`) point at that gateway by
   default. `proxy.conf.local.example.json` remains the `http://localhost:5002`-style pattern for
   pointing at a local API instance instead — copy it over `proxy.conf.json` and adjust the port/host
-  to use it.
+  to use it. The nginx template has a dedicated exact-match `location` for
+  `/api/indexer/ciir-uploads` with `client_max_body_size 0` and `proxy_request_buffering off`:
+  CIIR files can be many GB, and nginx's defaults would 413 anything over 1 MB and spool the body
+  to disk before forwarding (breaking the progress bar's meaning). In the k8s deployment the
+  browser reaches the indexer through the gateway directly, so that block only matters for the
+  docker-compose path.
 - **This app itself is served from `https://blogdoft.home.arpa/code-brain/`** as of 2026-09-18 (see
   `.specs/2026-09-18-front-on-code-brain-gateway.md`) — not its own subdomain anymore. Production
   builds get `<base href="/code-brain/">` injected via `angular.json`'s `baseHref` build option
@@ -182,7 +207,8 @@ src/app/
   core/
     models/        Project, CodeQueryResult, ProblemDetails — camelCase app-facing shapes
     services/       ConfigService (localStorage base URL), ThemeService (OS dark/light),
-                     ToastService, ProjectsService, CodeQueriesService, PopupCoordinatorService
+                     ToastService, ProjectsService, CodeQueriesService, CiirUploadsService,
+                     PopupCoordinatorService
     interceptors/   baseUrlInterceptor, errorToastInterceptor
   shared/
     directives/     EscClearableDirective — field-level half of the Escape rule (see below)
@@ -192,6 +218,8 @@ src/app/
   features/
     code-search/    "/rag" route — project combobox, question input, Q&A history, ResultDetailDialog
     projects/       "/projects" route — project CRUD (list/search, add/edit/delete via ProjectFormDialog)
+    ciir-upload/    "/uploads" route — upload a CIIR `.jsonl` file into a project, with upload progress
+                     and server-side indexing status (see the API contract section above)
     reports/        "/reports" route — feedback-stats dashboard; backend endpoints went live in the
                      2026-09-18 gateway move (see the API contract section above)
     settings/       "/settings" route — API base URL form

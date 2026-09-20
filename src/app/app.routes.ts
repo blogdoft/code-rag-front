@@ -1,4 +1,5 @@
 import type { Routes } from '@angular/router';
+import type { CiirUploadPage } from './features/ciir-upload/ciir-upload-page';
 
 export const routes: Routes = [
   {
@@ -13,6 +14,13 @@ export const routes: Routes = [
   {
     path: 'projects',
     loadComponent: () => import('./features/projects/projects-page').then((m) => m.ProjectsPage),
+  },
+  {
+    path: 'uploads',
+    loadComponent: () =>
+      import('./features/ciir-upload/ciir-upload-page').then((m) => m.CiirUploadPage),
+    // Type-only import above keeps the page lazy-loaded; the page decides whether leaving is safe.
+    canDeactivate: [(page: CiirUploadPage) => page.canLeave()],
   },
   {
     path: 'settings',

@@ -19,6 +19,7 @@ describe('NavSidebar', () => {
         provideRouter([
           { path: 'rag', component: StubPage },
           { path: 'projects', component: StubPage },
+          { path: 'uploads', component: StubPage },
           { path: 'reports', component: StubPage },
           { path: 'settings', component: StubPage },
         ]),
@@ -35,7 +36,7 @@ describe('NavSidebar', () => {
     fixture.detectChanges();
   }
 
-  it('renders the four navigation links in order', async () => {
+  it('renders the five navigation links in order', async () => {
     await setup(true);
     const links = Array.from(
       fixture.nativeElement.querySelectorAll('nav a'),
@@ -43,6 +44,7 @@ describe('NavSidebar', () => {
     expect(links.map((a) => a.textContent?.trim())).toEqual([
       'Rag',
       'Projects',
+      'Upload',
       'Reports',
       'Settings',
     ]);
@@ -62,8 +64,8 @@ describe('NavSidebar', () => {
     const links = Array.from(
       fixture.nativeElement.querySelectorAll('nav a'),
     ) as HTMLAnchorElement[];
-    expect(links.map((a) => a.textContent?.trim())).toEqual(['', '', '', '']);
-    expect(links.map((a) => a.title)).toEqual(['Rag', 'Projects', 'Reports', 'Settings']);
+    expect(links.map((a) => a.textContent?.trim())).toEqual(['', '', '', '', '']);
+    expect(links.map((a) => a.title)).toEqual(['Rag', 'Projects', 'Upload', 'Reports', 'Settings']);
   });
 
   describe('version footer', () => {

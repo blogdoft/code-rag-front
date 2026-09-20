@@ -1,0 +1,229 @@
+<div class="flex w-full flex-col gap-6 px-4 py-8">
+  <section
+    class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+  >
+    <div>
+      <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Upload CIIR file</h1>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+        Send a CIIR <code>.jsonl</code> file to be indexed into a project. Large files can take a
+        while - progress is shown below.
+      </p>
+    </div>
+
+    <div class="max-w-md">
+      <app-combobox
+        label="Project"
+        placeholder="Search projects..."
+        [options]="projectOptions()"
+        [disabled]="isBusy()"
+        [(value)]="selectedProjectId"
+      />
+    </div>
+
+    <div>
+      <span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >CIIR file (.jsonl)</span
+      >
+      <label
+        for="ciir-file"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave()"
+        (drop)="onDrop($event)"
+        [class]="dropzoneClasses()"
+      >
+        <input
+          id="ciir-file"
+          type="file"
+          accept=".jsonl"
+          class="sr-only"
+          [disabled]="isBusy()"
+          (change)="onFileInput($event)"
+        />
+        @if (file(); as selected) {
+          <span class="font-medium text-slate-900 dark:text-slate-100">{{ selected.name }}</span>
+          <span class="text-slate-500 dark:text-slate-400">{{ formatBytes(selected.size) }}</span>
+          <span class="text-xs text-slate-500 dark:text-slate-400"
+            >Click or drop to choose a different file</span
+          >
+        } @else {
+          <span class="text-slate-700 dark:text-slate-300"
+            >Drop a .jsonl file here, or click to browse</span
+          >
+        }
+      </label>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        [disabled]="!canSubmit()"
+        (click)="submit()"
+        class="flex items-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          class="h-4 w-4 shrink-0"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+          />
+        </svg>
+        Upload
+      </button>
+
+      @if (phase() === 'uploading') {
+        <button
+          type="button"
+          (click)="cancel()"
+          class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          Cancel upload
+        </button>
+      }
+    </div>
+  </section>
+
+  @if (phase() !== 'idle') {
+    <section
+      aria-live="polite"
+      class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Progress</h2>
+        @switch (phase()) {
+          @case ('uploading') {
+            <span
+              class="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-900/40 dark:text-sky-300"
+              >Uploading</span
+            >
+          }
+          @case ('processing') {
+            <span
+              class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+              >Processing</span
+            >
+          }
+          @case ('succeeded') {
+            <span
+              class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+              >Completed</span
+            >
+          }
+          @case ('failed') {
+            <span
+              class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300"
+              >Failed</span
+            >
+          }
+        }
+      </div>
+
+      @if (phase() === 'uploading') {
+        <div class="flex flex-col gap-2">
+          <div
+            role="progressbar"
+            aria-label="Upload progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            [attr.aria-valuenow]="percent()"
+            class="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+          >
+            <div
+              class="h-full rounded-full bg-sky-600 transition-[width] duration-200"
+              [class.animate-pulse]="percent() === null || isStoring()"
+              [style.width.%]="percent() ?? 100"
+            ></div>
+          </div>
+          <div
+            class="flex flex-wrap justify-between gap-2 text-sm text-slate-600 dark:text-slate-300"
+          >
+            <span>
+              {{ formatBytes(loadedBytes()) }}
+              @if (totalBytes(); as total) {
+                of {{ formatBytes(total) }}
+              }
+            </span>
+            @if (percent() !== null) {
+              <span class="font-medium">{{ percent() }}%</span>
+            }
+          </div>
+          @if (isStoring()) {
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+              Upload sent - waiting for the server to finish storing the file. This can take a
+              moment for large files.
+            </p>
+          }
+        </div>
+      }
+
+      @if (phase() === 'processing') {
+        <div class="flex flex-col gap-2">
+          <div
+            role="progressbar"
+            aria-label="Indexing progress"
+            class="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+          >
+            <div class="h-full w-full animate-pulse rounded-full bg-amber-500"></div>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300">
+            File uploaded. The server is indexing it - you can leave this page, indexing continues
+            in the background.
+          </p>
+        </div>
+      }
+
+      @if (phase() === 'succeeded') {
+        <p class="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+          Indexing completed.
+        </p>
+      }
+
+      @if (phase() === 'failed' && errorMessage()) {
+        <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ errorMessage() }}</p>
+      }
+
+      @if (progress(); as current) {
+        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt class="text-slate-500 dark:text-slate-400">Upload</dt>
+          <dd class="text-slate-900 dark:text-slate-100">{{ uploadStatusLabel() }}</dd>
+          @if (indexationStatusLabel(); as label) {
+            <dt class="text-slate-500 dark:text-slate-400">Indexing</dt>
+            <dd class="text-slate-900 dark:text-slate-100">{{ label }}</dd>
+          }
+        </dl>
+
+        @if (documentCounters().length > 0) {
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <h3 class="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Documents</h3>
+              <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+                @for (counter of documentCounters(); track counter.label) {
+                  <dt class="text-slate-500 dark:text-slate-400">{{ counter.label }}</dt>
+                  <dd class="text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">
+                    {{ counter.value | number }}
+                  </dd>
+                }
+              </dl>
+            </div>
+            <div>
+              <h3 class="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Relations</h3>
+              <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+                @for (counter of relationCounters(); track counter.label) {
+                  <dt class="text-slate-500 dark:text-slate-400">{{ counter.label }}</dt>
+                  <dd class="text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">
+                    {{ counter.value | number }}
+                  </dd>
+                }
+              </dl>
+            </div>
+          </div>
+        }
+      }
+    </section>
+  }
+</div>

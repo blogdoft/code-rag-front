@@ -16,6 +16,11 @@ export class HomePage {
   protected readonly quickLinks: readonly QuickLink[] = [
     { label: 'Rag', path: '/rag', description: 'Ask questions about your codebase.' },
     { label: 'Projects', path: '/projects', description: 'Manage indexed projects.' },
+    {
+      label: 'Upload',
+      path: '/uploads',
+      description: 'Send a CIIR file to be indexed into a project.',
+    },
     { label: 'Reports', path: '/reports', description: 'Review feedback and usage stats.' },
     { label: 'Settings', path: '/settings', description: 'Configure application preferences.' },
   ];
