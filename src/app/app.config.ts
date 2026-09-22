@@ -16,8 +16,13 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    // authInterceptor must run before baseUrlInterceptor: it matches on the request's original
+    // '/api'-relative url, and baseUrlInterceptor rewrites that url to be prefixed with the
+    // configured API base URL (e.g. '/code-brain/api/...' in production, since that's this app's
+    // own <base href> there - see ConfigService). If auth ran after, its '/api' prefix check would
+    // never match in production and the Authorization header would silently never be attached.
     provideHttpClient(
-      withInterceptors([baseUrlInterceptor, errorToastInterceptor, authInterceptor]),
+      withInterceptors([authInterceptor, baseUrlInterceptor, errorToastInterceptor]),
     ),
     // Blocks bootstrap on Keycloak login when enabled (redirects away and back); resolves
     // immediately when disabled - see .specs/2026-09-21-keycloak-conditional-login.md.
