@@ -126,19 +126,48 @@ Adds `keycloak-js` (`^26.2.4` at time of writing) as a runtime dependency.
 - `.eng/docker/docker-compose.yml`: add `KEYCLOAK_ENABLED`/`KEYCLOAK_URL`/`KEYCLOAK_REALM`/
   `KEYCLOAK_CLIENT_ID`, each `${VAR:-...}`-defaulted the same way `API_UPSTREAM` already is, so
   `docker compose up` with no `.env` stays disabled.
-- `.eng/k8s/deployment.yaml`: same four env vars, defaulted to disabled, with a comment noting that
-  enabling this in a real environment means overriding them via a patch in the `argo-local-apps`
-  GitOps repo (this repo's manifest only supplies the safe default, same pattern already used
-  there for anything environment-specific).
+- `.eng/k8s/deployment.yaml`: same four env vars.
 
-## 5. Behavior summary
+## 5. Update — enabled for the `k8s` realm
+
+**Correction to §4.7's original plan:** it assumed an environment could turn Keycloak on via a
+patch layered in the `argo-local-apps` GitOps repo, leaving this repo's own manifest on the safe
+default. Checking `docker-publish.yml` (`.forgejo/workflows/docker-publish.yml`, "Sync manifests to
+argo-local-apps" step) shows that's not how this repo's deploy actually works: every tag push does
+`rm -rf manifests/code-rag-front && cp -r .eng/k8s/. manifests/code-rag-front/` — a wholesale
+replace, not a preserved overlay/patch. Whatever is in *this* repo's `.eng/k8s/deployment.yaml` is
+exactly what ends up deployed; there is no separate place to override it. (Other services in this
+cluster may have a different sync mechanism — not verified, not relevant here.)
+
+Given that, `.eng/k8s/deployment.yaml`'s four env vars are now set directly to real values instead
+of staying disabled-by-default:
+
+```yaml
+KEYCLOAK_ENABLED: "true"
+KEYCLOAK_URL: "https://keycloak.home.arpa"
+KEYCLOAK_REALM: "k8s"
+KEYCLOAK_CLIENT_ID: "code-brain"
+```
+
+Same Keycloak host and realm `code-ciir-api` already authenticates against (see that repo's
+`.eng/k8s/configmap.yaml`, `Keycloak__Authority`) — one shared realm across every code-brain
+service. `code-brain` is a separate, pre-existing public client (PKCE, no client secret)
+registered in that realm specifically for this frontend, distinct from `code-ciir-api`'s own
+client id (which that service shares with its Swagger UI) — confirmed with the user rather than
+assumed, since a wrong client id here would 401/misconfigure login for every user.
+
+`public/auth-config.json` (the `ng serve` dev default, §2) was updated to the same four real
+values, so local dev now also goes through a real Keycloak login rather than staying disabled by
+default. Flip `enabled` back to `false` there locally if that's disruptive to iterate against.
+
+## 6. Behavior summary
 
 | `auth-config.json` | App behavior |
 |---|---|
 | `enabled: false` (default; also the fetch-failure fallback) | Identical to today: no redirect, no login UI, no `Authorization` header, every route reachable immediately. |
 | `enabled: true` | On load, `keycloak.init({ onLoad: 'login-required' })` redirects to Keycloak if there's no active session; the app only renders after a successful login. All `/api/...` calls carry `Authorization: Bearer <token>`. A "Sair" button is visible; using it logs out of Keycloak and immediately re-prompts for login. |
 
-## 6. Testing
+## 7. Testing
 
 - `auth-config.service.spec.ts`, `keycloak-auth.service.spec.ts`, `auth.interceptor.spec.ts`: new,
   covering the enabled/disabled branches and the fetch-failure fallback, following this repo's
@@ -150,7 +179,7 @@ Adds `keycloak-js` (`^26.2.4` at time of writing) as a runtime dependency.
   Keycloak instance reachable from this environment to redirect to; the disabled path (today's
   default) is what's actually exercised end-to-end.
 
-## 7. Out of scope
+## 8. Out of scope
 
 - 401-triggered re-authentication/retry logic beyond `keycloak-js`'s own silent `updateToken`
   refresh — not asked for, and adds real complexity (interceptor retry, request queuing during

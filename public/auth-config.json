@@ -1,1 +1,1 @@
-{"enabled": false, "url": "", "realm": "", "clientId": ""}
+{"enabled": true, "url": "https://keycloak.home.arpa", "realm": "k8s", "clientId": "code-brain"}

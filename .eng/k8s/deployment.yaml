@@ -39,18 +39,22 @@ spec:
             - name: API_UPSTREAM
               value: http://code-ciir-api.code-rag.svc.cluster.local
             # Whether the app requires a Keycloak login - see
-            # .specs/2026-09-21-keycloak-conditional-login.md. Defaults here are the safe/disabled
-            # ones; an environment that wants Keycloak on overrides these four via a patch in the
-            # argo-local-apps GitOps repo (this manifest only supplies the default), same as any
-            # other environment-specific value that isn't checked into this repo.
+            # .specs/2026-09-21-keycloak-conditional-login.md. Same realm/host as code-ciir-api's
+            # own Keycloak__Authority (code-ciir-api/.eng/k8s/configmap.yaml) - one shared realm
+            # for every code-brain service. "code-brain" is a public client (PKCE, no secret)
+            # already registered in that realm for this frontend, with Valid Redirect URIs covering
+            # https://blogdoft.home.arpa/code-brain/*. NOTE: unlike some other environment-specific
+            # values, this can't be overridden via a patch in argo-local-apps - docker-publish.yml's
+            # sync step does `rm -rf` + `cp -r` on manifests/code-rag-front/ on every tag push, so
+            # this file's values ARE what's actually deployed; change them here, not there.
             - name: KEYCLOAK_ENABLED
-              value: "false"
+              value: "true"
             - name: KEYCLOAK_URL
-              value: ""
+              value: "https://keycloak.home.arpa"
             - name: KEYCLOAK_REALM
-              value: ""
+              value: "k8s"
             - name: KEYCLOAK_CLIENT_ID
-              value: ""
+              value: "code-brain"
           resources:
             requests:
               cpu: 50m
