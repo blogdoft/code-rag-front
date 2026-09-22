@@ -160,14 +160,40 @@ assumed, since a wrong client id here would 401/misconfigure login for every use
 values, so local dev now also goes through a real Keycloak login rather than staying disabled by
 default. Flip `enabled` back to `false` there locally if that's disruptive to iterate against.
 
-## 6. Behavior summary
+## 6. Keycloak-side client fixes (not this repo, but the actual cause of two live failures)
+
+Turning `KEYCLOAK_ENABLED` on (§5) surfaced two `code-brain` client misconfigurations in Keycloak
+itself — nothing in this repo's code was wrong, but the login round-trip was broken end-to-end
+until both were fixed in the Keycloak admin console (realm `k8s` → Clients → `code-brain`).
+Recorded here since they're the kind of thing that silently breaks again if the client is ever
+recreated or reset, and neither error message points directly at the fix:
+
+- **`401` on `POST /realms/k8s/protocol/openid-connect/token`** (`keycloak-js`'s `init()` rejects
+  with "Server responded with an invalid status"). Cause: **Client authentication** was `On`
+  (confidential) — but `keycloak-js` is a public SPA client and never sends a `client_secret`, so
+  Keycloak's token endpoint rejected the code exchange with `invalid_client_credentials`. Fix:
+  Settings → Capability config → **Client authentication: Off**.
+- **`403 invalid origin`** on CORS-checked Keycloak requests, immediately after the `401` above was
+  fixed. Cause: **Web origins** was set to `https://blogdoft.home.arpa/code-brain/` — a path, but
+  the browser's `Origin` header is always just scheme+host+port and never includes a path, so it
+  could never match. Fix: Settings → Access settings → **Web origins: `https://blogdoft.home.arpa`**
+  (no path, no trailing slash).
+
+Diagnosed by reproducing the login with a connected browser (`read_network_requests`/
+`read_console_messages` on the failing requests) and cross-checking against `kubectl logs` for the
+`keycloak-0`/`keycloak-1` pods (`keycloak` namespace) — the Keycloak event log's `CODE_TO_TOKEN_ERROR
+... error="invalid_client_credentials"` entries confirmed the first cause directly; the second was
+found by inspecting the client's own Access settings after the first fix didn't fully resolve
+login.
+
+## 7. Behavior summary
 
 | `auth-config.json` | App behavior |
 |---|---|
 | `enabled: false` (default; also the fetch-failure fallback) | Identical to today: no redirect, no login UI, no `Authorization` header, every route reachable immediately. |
 | `enabled: true` | On load, `keycloak.init({ onLoad: 'login-required' })` redirects to Keycloak if there's no active session; the app only renders after a successful login. All `/api/...` calls carry `Authorization: Bearer <token>`. A "Sair" button is visible; using it logs out of Keycloak and immediately re-prompts for login. |
 
-## 7. Testing
+## 8. Testing
 
 - `auth-config.service.spec.ts`, `keycloak-auth.service.spec.ts`, `auth.interceptor.spec.ts`: new,
   covering the enabled/disabled branches and the fetch-failure fallback, following this repo's
@@ -175,11 +201,10 @@ default. Flip `enabled` back to `false` there locally if that's disruptive to it
   `base-url.interceptor.spec.ts`).
 - `app.spec.ts` (if present) / manual check: logout button absent when disabled.
 - `npm test` and `npm run build` both run clean, per existing repo convention.
-- No Playwright/live-browser verification of an actual Keycloak login round trip — there is no
-  Keycloak instance reachable from this environment to redirect to; the disabled path (today's
-  default) is what's actually exercised end-to-end.
+- The real login round trip against `https://keycloak.home.arpa` (realm `k8s`) was verified live
+  with a connected browser after §6's fixes — confirmed working end-to-end, not just unit-tested.
 
-## 8. Out of scope
+## 9. Out of scope
 
 - 401-triggered re-authentication/retry logic beyond `keycloak-js`'s own silent `updateToken`
   refresh — not asked for, and adds real complexity (interceptor retry, request queuing during
