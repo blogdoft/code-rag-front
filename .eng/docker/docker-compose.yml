@@ -18,4 +18,11 @@ services:
       # deployment.yaml keeps pointing at a direct in-cluster Service instead, or nginx's
       # proxy_pass ends up routing back through Traefik into this same app, looping.
       API_UPSTREAM: ${API_UPSTREAM:-https://blogdoft.home.arpa/code-brain}
+      # Whether the app requires a Keycloak login - see
+      # .specs/2026-09-21-keycloak-conditional-login.md. Defaulted to disabled so `docker compose
+      # up` with no .env behaves exactly like today (no login). Set all four to enable it.
+      KEYCLOAK_ENABLED: ${KEYCLOAK_ENABLED:-false}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-}
     restart: unless-stopped

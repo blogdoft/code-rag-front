@@ -4,8 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { App } from './app';
 import { ApiVersionService } from './core/services/api-version.service';
+import { KeycloakAuthService } from './core/services/keycloak-auth.service';
 import { PopupCoordinatorService } from './core/services/popup-coordinator.service';
 import { VersionService } from './core/services/version.service';
+import { signal } from '@angular/core';
 
 @Component({ selector: 'app-stub-page', template: '' })
 class StubPage {}
@@ -13,10 +15,20 @@ class StubPage {}
 describe('App', () => {
   let versionService: { get: ReturnType<typeof vi.fn> };
   let apiVersionService: { get: ReturnType<typeof vi.fn> };
+  let keycloakAuthService: {
+    enabled: ReturnType<typeof signal<boolean>>;
+    username: ReturnType<typeof signal<string | undefined>>;
+    logout: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     versionService = { get: vi.fn(() => of('v1.2.3')) };
     apiVersionService = { get: vi.fn(() => of('0.1.3-1')) };
+    keycloakAuthService = {
+      enabled: signal(false),
+      username: signal<string | undefined>(undefined),
+      logout: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [App],
@@ -29,6 +41,7 @@ describe('App', () => {
         ]),
         { provide: VersionService, useValue: versionService },
         { provide: ApiVersionService, useValue: apiVersionService },
+        { provide: KeycloakAuthService, useValue: keycloakAuthService },
       ],
     }).compileComponents();
   });
@@ -117,6 +130,29 @@ describe('App', () => {
     );
 
     expect(handleEscapeSpy).toHaveBeenCalled();
+  });
+
+  it('does not render a logout button when Keycloak is disabled', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('nav button')?.textContent).not.toContain('Sair');
+  });
+
+  it('renders the username and a logout button when Keycloak is enabled', async () => {
+    keycloakAuthService.enabled.set(true);
+    keycloakAuthService.username.set('jdoe');
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const nav = fixture.nativeElement.querySelector('nav') as HTMLElement;
+    expect(nav.textContent).toContain('jdoe');
+    const logoutButton = Array.from(nav.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Sair'),
+    ) as HTMLButtonElement | undefined;
+    expect(logoutButton).toBeTruthy();
+
+    logoutButton?.click();
+    expect(keycloakAuthService.logout).toHaveBeenCalled();
   });
 
   describe('on a mobile viewport', () => {

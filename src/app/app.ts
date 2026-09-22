@@ -10,6 +10,7 @@ import {
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { ApiVersionService } from './core/services/api-version.service';
 import { ConfigService } from './core/services/config.service';
+import { KeycloakAuthService } from './core/services/keycloak-auth.service';
 import { PopupCoordinatorService } from './core/services/popup-coordinator.service';
 import { ThemeService } from './core/services/theme.service';
 import { VersionService } from './core/services/version.service';
@@ -27,6 +28,7 @@ export class App implements OnInit {
   private readonly popupCoordinator = inject(PopupCoordinatorService);
   private readonly versionService = inject(VersionService);
   private readonly apiVersionService = inject(ApiVersionService);
+  protected readonly keycloakAuth = inject(KeycloakAuthService);
 
   @ViewChild('sidebarContainer', { read: ElementRef })
   private sidebarContainer?: ElementRef<HTMLElement>;
@@ -46,6 +48,10 @@ export class App implements OnInit {
     if (this.isMobileViewport()) {
       this.sidebarExpanded.set(false);
     }
+  }
+
+  protected logout(): void {
+    this.keycloakAuth.logout();
   }
 
   protected toggleSidebar(): void {

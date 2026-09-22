@@ -27,4 +27,13 @@ COPY .eng/docker/version.json.template /etc/nginx/version.json.template
 COPY .eng/docker/40-generate-version.sh /docker-entrypoint.d/40-generate-version.sh
 RUN chmod +x /docker-entrypoint.d/40-generate-version.sh
 
+# auth-config.json tells the frontend whether Keycloak login is required (see
+# .specs/2026-09-21-keycloak-conditional-login.md). Unlike APP_VERSION above, the KEYCLOAK_* vars
+# are plain runtime env vars (docker-compose/k8s), not build args - deployment-specific, not
+# image-specific - so there's no ARG/ENV pair here; 41-generate-auth-config.sh reads them straight
+# from the container's environment at start, defaulting to disabled if unset.
+COPY .eng/docker/auth-config.json.template /etc/nginx/auth-config.json.template
+COPY .eng/docker/41-generate-auth-config.sh /docker-entrypoint.d/41-generate-auth-config.sh
+RUN chmod +x /docker-entrypoint.d/41-generate-auth-config.sh
+
 EXPOSE 80

@@ -38,6 +38,19 @@ spec:
             # looping nginx's proxy_pass into itself.
             - name: API_UPSTREAM
               value: http://code-ciir-api.code-rag.svc.cluster.local
+            # Whether the app requires a Keycloak login - see
+            # .specs/2026-09-21-keycloak-conditional-login.md. Defaults here are the safe/disabled
+            # ones; an environment that wants Keycloak on overrides these four via a patch in the
+            # argo-local-apps GitOps repo (this manifest only supplies the default), same as any
+            # other environment-specific value that isn't checked into this repo.
+            - name: KEYCLOAK_ENABLED
+              value: "false"
+            - name: KEYCLOAK_URL
+              value: ""
+            - name: KEYCLOAK_REALM
+              value: ""
+            - name: KEYCLOAK_CLIENT_ID
+              value: ""
           resources:
             requests:
               cpu: 50m
