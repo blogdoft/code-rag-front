@@ -1,6 +1,6 @@
 # Builds the frontend Docker image (.eng/docker/Dockerfile), publishes it to this repo's
 # Forgejo Container Registry, and deploys it by stamping the version onto .eng/k8s/ and
-# pushing the result into the argo-local-apps GitOps repo (manifests/code-rag-front/) -
+# pushing the result into the argo-local-apps GitOps repo (manifests/code-brain/code-rag-front/) -
 # ArgoCD takes it from there. Mirrors code-rag-api's docker-publish.yml, adapted for
 # Angular/Node.
 #

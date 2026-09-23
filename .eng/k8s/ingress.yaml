@@ -20,7 +20,7 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: code-rag-code-rag-front-strip-code-brain@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: code-brain-code-rag-front-strip-code-brain@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:

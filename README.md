@@ -104,7 +104,7 @@ nginx) and serves it on `http://localhost:8080`. nginx reverse-proxies `/api/...
 - `.forgejo/workflows/docker-publish.yml` — on a `vX.Y.Z` tag push: runs `npm test`, builds and
   pushes the Docker image to this repo's Forgejo Container Registry, then stamps the new image
   tag into `.eng/k8s/` and pushes it to the `argo-local-apps` GitOps repo
-  (`manifests/code-rag-front/`) for ArgoCD to pick up.
+  (`manifests/code-brain/code-rag-front/`) for ArgoCD to pick up.
 - `.forgejo/workflows/mirror-to-github.yml` — mirrors every branch and tag to
   `github.com/blogdoft/code-rag-front` on every push.
 - `.github/workflows/docker-publish.yml` — on the mirrored repo, on a `vX.Y.Z` tag push: runs

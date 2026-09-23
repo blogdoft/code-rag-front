@@ -45,7 +45,7 @@ spec:
             # already registered in that realm for this frontend, with Valid Redirect URIs covering
             # https://blogdoft.home.arpa/code-brain/*. NOTE: unlike some other environment-specific
             # values, this can't be overridden via a patch in argo-local-apps - docker-publish.yml's
-            # sync step does `rm -rf` + `cp -r` on manifests/code-rag-front/ on every tag push, so
+            # sync step does `rm -rf` + `cp -r` on manifests/code-brain/code-rag-front/ on every tag push, so
             # this file's values ARE what's actually deployed; change them here, not there.
             - name: KEYCLOAK_ENABLED
               value: "true"
