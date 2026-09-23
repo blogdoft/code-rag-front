@@ -144,7 +144,7 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   `baseUrlInterceptor` → `blogdoft.home.arpa/code-brain/version` → falls through to this app's own
   Traefik catch-all (`.eng/k8s/ingress.yaml`) → this app's own nginx, whose `location = /version`
   block proxies it onward to `API_UPSTREAM` — a **direct in-cluster Service DNS name**
-  (`code-ciir-api.code-rag.svc.cluster.local`, see `.eng/k8s/deployment.yaml`), not the public
+  (`code-ciir-api.code-brain.svc.cluster.local`, see `.eng/k8s/deployment.yaml`), not the public
   gateway host, so it reaches the real endpoint without looping back through Traefik. `ng serve`/
   `docker-compose` deployments rely on the same nginx passthrough. `ApiVersionService` already
   degrades to an empty string on any failure (network or otherwise), so this isn't user-visible

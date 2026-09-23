@@ -37,7 +37,7 @@ spec:
             # route back through Traefik's own /code-brain catch-all into this same Deployment,
             # looping nginx's proxy_pass into itself.
             - name: API_UPSTREAM
-              value: http://code-ciir-api.code-rag.svc.cluster.local
+              value: http://code-ciir-api.code-brain.svc.cluster.local
             # Whether the app requires a Keycloak login - see
             # .specs/2026-09-21-keycloak-conditional-login.md. Same realm/host as code-ciir-api's
             # own Keycloak__Authority (code-ciir-api/.eng/k8s/configmap.yaml) - one shared realm

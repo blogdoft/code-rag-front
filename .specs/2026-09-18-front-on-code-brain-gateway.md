@@ -114,7 +114,7 @@ request would round-trip back out through Traefik, hit this app's own catch-all 
 
 This does **not** happen with the current configuration: `.eng/k8s/deployment.yaml`'s
 `API_UPSTREAM` is a direct in-cluster Service DNS name
-(`code-ciir-api.code-rag.svc.cluster.local`), not the public gateway host, so `/version` resolves
+(`code-ciir-api.code-brain.svc.cluster.local`), not the public gateway host, so `/version` resolves
 directly and safely there (see the updated comment in that file and in `CLAUDE.md`'s `GET /version`
 bullet). `.eng/docker/docker-compose.yml`'s standalone/local default *does* point at the public
 gateway host (`https://blogdoft.home.arpa/code-brain`) — but that's fine too, since the request it

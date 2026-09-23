@@ -111,7 +111,7 @@ attention: `API_UPSTREAM`/`proxy.conf.json`'s `target` now needs to include a pa
 - `.eng/docker/docker-compose.yml`: `API_UPSTREAM` default updated to
   `https://blogdoft.home.arpa/code-brain`.
 - `.eng/k8s/deployment.yaml` sets `API_UPSTREAM` to an **in-cluster Service DNS name**
-  (`http://code-ciir-api.code-rag.svc.cluster.local`), not the public gateway host — deliberately
+  (`http://code-ciir-api.code-brain.svc.cluster.local`), not the public gateway host — deliberately
   routing pod-to-pod inside the cluster rather than back out through the public ingress (see the
   recent "fix(k8s): route frontend API proxy through cluster service" commit). Flagged here at the
   time as needing a decision, since it only covers code-ciir-api and Projects now lives on a
