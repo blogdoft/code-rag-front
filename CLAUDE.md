@@ -136,7 +136,14 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   statuses: `pending`/`running`/`resolving_relations`/`completed`/`failed`/`cancelled`). A few
   transient poll failures are retried; a 404 is not. Bodies are camelCase; int64 fields
   (`projectId`, counters) are normalized through `Number(...)` like the Projects DTOs.
-- `GET /version` → `{ version }`, unversioned and unauthenticated, for deploy tooling/diagnostics.
+- `GET /version` → `{ version }`, unversioned (no `/api/v1` prefix), for deploy tooling/diagnostics.
+  **Not unauthenticated** despite that unversioned-ness suggesting otherwise: when Keycloak is
+  enabled (see `KEYCLOAK_ENABLED`/`.specs/2026-09-21-keycloak-conditional-login.md`) the deployed
+  API 401s this endpoint (`WWW-Authenticate: Bearer`) exactly like every `/api` route, so
+  `auth.interceptor.ts` attaches the token here too, on top of the usual `baseUrlInterceptor`
+  rewrite described below — confirmed live against `blogdoft.home.arpa/code-brain/version`
+  (401 without a token, `content-type: application/problem+json`) after the API version stopped
+  showing in the nav sidebar footer.
   Served by code-ciir-api, but **not exposed through the public gateway** — confirmed by probing
   `blogdoft.home.arpa/code-brain/version` directly (404; only `/code-brain/api/code-queries` is
   routed there, see code-ciir-api's own `.eng/k8s/ingress.yaml`). In the k8s deployment this still

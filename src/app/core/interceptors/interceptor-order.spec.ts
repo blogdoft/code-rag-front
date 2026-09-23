@@ -75,11 +75,19 @@ describe('authInterceptor + baseUrlInterceptor ordering', () => {
     },
   );
 
+  it('attaches the Authorization header to /version, base URL prefix and all', () => {
+    setup('/code-brain');
+
+    httpClient.get('/version').subscribe();
+
+    const req = httpMock.expectOne('/code-brain/version');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer the-access-token');
+    req.flush({});
+  });
+
   const nonApiEndpoints: Array<{ label: string; url: string; expectedUrl: string }> = [
-    // ApiVersionService - unauthenticated diagnostic endpoint, deliberately excluded.
-    { label: '/version', url: '/version', expectedUrl: '/code-brain/version' },
     // VersionService / AuthConfigService - static assets resolved relative to <base href>, never
-    // '/api'-prefixed, so neither interceptor should touch them.
+    // '/api'-prefixed (and not '/version' either), so neither interceptor should touch them.
     { label: 'version.json', url: 'version.json', expectedUrl: 'version.json' },
     { label: 'auth-config.json', url: 'auth-config.json', expectedUrl: 'auth-config.json' },
   ];

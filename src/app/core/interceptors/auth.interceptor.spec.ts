@@ -44,12 +44,22 @@ describe('authInterceptor', () => {
     req.flush({});
   });
 
-  it('leaves non-/api requests untouched even when enabled', () => {
+  it('attaches a Bearer token to /version too, since the API requires auth on it as well', () => {
     setup(true, 'the-access-token');
 
     httpClient.get('/version').subscribe();
 
     const req = httpMock.expectOne('/version');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer the-access-token');
+    req.flush({});
+  });
+
+  it('leaves other non-/api requests untouched even when enabled', () => {
+    setup(true, 'the-access-token');
+
+    httpClient.get('/other').subscribe();
+
+    const req = httpMock.expectOne('/other');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });

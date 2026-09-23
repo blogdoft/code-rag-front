@@ -11,7 +11,10 @@ interface ApiVersionDto {
  * Fetches the running CodeRAG API's own build version from GET /version - deliberately
  * unversioned (no /api/v1 prefix) by the API's own design, see
  * .specs/2026-09-04-version-display.md for why base-url.interceptor.ts and the dev/prod proxies
- * special-case this one path.
+ * special-case this one path. Despite being unversioned, it's not unauthenticated: when Keycloak
+ * is enabled the API 401s this endpoint the same as /api routes, so auth.interceptor.ts attaches
+ * the token here too - without it this silently degrades to '' below and the nav sidebar just
+ * omits the API version.
  */
 @Injectable({ providedIn: 'root' })
 export class ApiVersionService {
