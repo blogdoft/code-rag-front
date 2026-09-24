@@ -8,6 +8,8 @@ const { keycloakConstructor, keycloakInstance } = vi.hoisted(() => {
   const keycloakInstance = {
     init: vi.fn().mockResolvedValue(true),
     logout: vi.fn(),
+    login: vi.fn().mockResolvedValue(undefined),
+    updateToken: vi.fn().mockResolvedValue(true),
     token: 'the-access-token',
     tokenParsed: { preferred_username: 'jdoe' } as Record<string, unknown>,
     onTokenExpired: undefined as (() => void) | undefined,
@@ -35,6 +37,8 @@ describe('KeycloakAuthService', () => {
     keycloakConstructor.mockClear();
     keycloakInstance.init.mockClear();
     keycloakInstance.logout.mockClear();
+    keycloakInstance.login.mockClear();
+    keycloakInstance.updateToken.mockReset().mockResolvedValue(true);
   });
 
   it('stays disabled and never constructs Keycloak when the config says disabled', async () => {
@@ -84,5 +88,59 @@ describe('KeycloakAuthService', () => {
     service.logout();
 
     expect(keycloakInstance.logout).toHaveBeenCalled();
+  });
+
+  it('login() redirects through Keycloak once, however many 401s call it', async () => {
+    const service = configure({
+      enabled: true,
+      url: 'https://sso.example.com',
+      realm: 'code-brain',
+      clientId: 'front',
+    });
+    await service.init();
+
+    service.login();
+    service.login();
+
+    expect(keycloakInstance.login).toHaveBeenCalledTimes(1);
+  });
+
+  it('login() is a no-op when Keycloak is disabled', async () => {
+    const service = configure({ enabled: false, url: '', realm: '', clientId: '' });
+    await service.init();
+
+    service.login();
+
+    expect(keycloakInstance.login).not.toHaveBeenCalled();
+  });
+
+  it('refreshToken() forces an update and shares one in-flight refresh', async () => {
+    const service = configure({
+      enabled: true,
+      url: 'https://sso.example.com',
+      realm: 'code-brain',
+      clientId: 'front',
+    });
+    await service.init();
+
+    const [a, b] = await Promise.all([service.refreshToken(), service.refreshToken()]);
+
+    expect(keycloakInstance.updateToken).toHaveBeenCalledTimes(1);
+    expect(keycloakInstance.updateToken).toHaveBeenCalledWith(-1);
+    expect(a).toBe('the-access-token');
+    expect(b).toBe('the-access-token');
+  });
+
+  it('refreshToken() resolves undefined when the refresh fails', async () => {
+    const service = configure({
+      enabled: true,
+      url: 'https://sso.example.com',
+      realm: 'code-brain',
+      clientId: 'front',
+    });
+    await service.init();
+    keycloakInstance.updateToken.mockRejectedValue(new Error('session expired'));
+
+    expect(await service.refreshToken()).toBeUndefined();
   });
 });

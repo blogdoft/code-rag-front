@@ -7,6 +7,7 @@ import {
 } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { KeycloakAuthService } from '../services/keycloak-auth.service';
 import { ToastService } from '../services/toast.service';
 import { SUPPRESS_ERROR_TOAST, errorToastInterceptor } from './error-toast.interceptor';
 
@@ -14,14 +15,17 @@ describe('errorToastInterceptor', () => {
   let httpClient: HttpClient;
   let httpMock: HttpTestingController;
   let toast: { error: ReturnType<typeof vi.fn> };
+  let keycloakEnabled: boolean;
 
   beforeEach(() => {
+    keycloakEnabled = false;
     toast = { error: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([errorToastInterceptor])),
         provideHttpClientTesting(),
         { provide: ToastService, useValue: toast },
+        { provide: KeycloakAuthService, useValue: { enabled: () => keycloakEnabled } },
       ],
     });
     httpClient = TestBed.inject(HttpClient);
@@ -130,5 +134,25 @@ describe('errorToastInterceptor', () => {
         'Something went wrong talking to the API. Please try again.',
       ),
     );
+  });
+
+  it('does not toast a 401 when Keycloak is enabled (the user is being sent to login)', () => {
+    keycloakEnabled = true;
+
+    httpClient.get('/api/code-queries').subscribe({ error: () => {} });
+
+    httpMock
+      .expectOne('/api/code-queries')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('still toasts a 401 when Keycloak is disabled', () => {
+    httpClient.get('/api/code-queries').subscribe({ error: () => {} });
+
+    httpMock
+      .expectOne('/api/code-queries')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    expect(toast.error).toHaveBeenCalled();
   });
 });

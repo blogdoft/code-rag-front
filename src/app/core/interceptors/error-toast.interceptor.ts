@@ -2,6 +2,7 @@ import { HttpContextToken, HttpErrorResponse, type HttpInterceptorFn } from '@an
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import type { ProblemDetails } from '../models/problem-details';
+import { KeycloakAuthService } from '../services/keycloak-auth.service';
 import { ToastService } from '../services/toast.service';
 
 const GENERIC_ERROR_MESSAGE = 'Something went wrong talking to the API. Please try again.';
@@ -15,10 +16,14 @@ export const SUPPRESS_ERROR_TOAST = new HttpContextToken<boolean>(() => false);
 /** Surfaces every failed API call as a toast, per SPEC.md's "toast for success or failure". */
 export const errorToastInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
+  const keycloakAuth = inject(KeycloakAuthService);
 
   return next(req).pipe(
     catchError((error: unknown) => {
-      if (!req.context.get(SUPPRESS_ERROR_TOAST)) {
+      // With Keycloak on, a 401 redirects to the login page (authInterceptor) - no point toasting.
+      const redirectingToLogin =
+        error instanceof HttpErrorResponse && error.status === 401 && keycloakAuth.enabled();
+      if (!req.context.get(SUPPRESS_ERROR_TOAST) && !redirectingToLogin) {
         reportError(error, toast);
       }
       return throwError(() => error);

@@ -12,6 +12,8 @@ import { AuthConfigService } from './auth-config.service';
 export class KeycloakAuthService {
   private readonly authConfigService = inject(AuthConfigService);
   private keycloak?: Keycloak;
+  private loginRedirecting = false;
+  private refreshing?: Promise<string | undefined>;
 
   private readonly enabledSignal = signal(false);
   private readonly usernameSignal = signal<string | undefined>(undefined);
@@ -49,6 +51,42 @@ export class KeycloakAuthService {
 
   token(): string | undefined {
     return this.keycloak?.token;
+  }
+
+  /**
+   * Forces a token refresh (ignoring the token's remaining validity) and resolves with the new
+   * token, or undefined if the refresh failed (e.g. the SSO session itself has expired).
+   * Concurrent callers share one in-flight refresh.
+   */
+  refreshToken(): Promise<string | undefined> {
+    const keycloak = this.keycloak;
+    if (!keycloak) {
+      return Promise.resolve(undefined);
+    }
+    this.refreshing ??= keycloak
+      .updateToken(-1)
+      .then(() => keycloak.token)
+      .catch(() => undefined)
+      .finally(() => {
+        this.refreshing = undefined;
+      });
+    return this.refreshing;
+  }
+
+  /**
+   * Sends the user back through the Keycloak login page (used when the API answers 401, i.e. the
+   * session/token is no longer accepted). Idempotent: concurrent 401s from parallel requests
+   * trigger a single redirect.
+   */
+  login(): void {
+    if (!this.keycloak || this.loginRedirecting) {
+      return;
+    }
+    this.loginRedirecting = true;
+    this.keycloak.login().catch((err) => {
+      this.loginRedirecting = false;
+      console.error('Keycloak login redirect failed', err);
+    });
   }
 
   logout(): void {
