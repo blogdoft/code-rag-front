@@ -88,13 +88,9 @@ export class CodeQueriesService {
     return this.http
       .post<CodeQueryResponseDto>('/api/code-queries', toRequestBody(projectId, question, filters))
       .pipe(
-        map((dto) =>
-          (dto.matches ?? [])
-            .map(toCodeQueryResult)
-            .sort(
-              (left, right) => (right.rerankScore ?? -Infinity) - (left.rerankScore ?? -Infinity),
-            ),
-        ),
+        // Deliberately not re-sorted: the API already orders matches (by rerankScore when reranking
+        // is configured, else similarity), and re-sorting here would silently discard that.
+        map((dto) => (dto.matches ?? []).map(toCodeQueryResult)),
       );
   }
 

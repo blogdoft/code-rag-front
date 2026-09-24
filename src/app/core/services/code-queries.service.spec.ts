@@ -190,7 +190,7 @@ describe('CodeQueriesService', () => {
     req.flush({ matches: [], graph: { nodes: [], edges: [], truncated: false } });
   });
 
-  it('orders results by descending rerank score, placing results without a rerank score last', () => {
+  it('keeps the order the API returned instead of re-sorting by rerank score', () => {
     let result: { id: number; similarity: number }[] | undefined;
     service.ask(PROJECT_1, 'q').subscribe((results) => (result = results));
 
@@ -199,7 +199,7 @@ describe('CodeQueriesService', () => {
       graph: { nodes: [], edges: [], truncated: false },
     });
 
-    expect(result?.map((r) => r.id)).toEqual([3, 4, 1, 2]);
+    expect(result?.map((r) => r.id)).toEqual([1, 2, 3, 4]);
   });
 
   it('submits useful feedback without a reason', () => {
