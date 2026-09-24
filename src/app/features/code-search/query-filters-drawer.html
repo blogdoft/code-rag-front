@@ -41,7 +41,9 @@
             class="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           >
             @for (op of data.qualifiedNameOperators; track op) {
-              <option [value]="op">{{ operatorLabel(op) }}</option>
+              <option [value]="op" [selected]="op === data.qualifiedName().operator">
+                {{ operatorLabel(op) }}
+              </option>
             }
           </select>
           <input
