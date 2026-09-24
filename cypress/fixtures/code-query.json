@@ -1,0 +1,50 @@
+{
+  "matches": [
+    {
+      "id": 101,
+      "kind": "method",
+      "symbolContainer": "PaymentRetryService",
+      "symbolName": "RetryFailedPayments",
+      "symbolQualifiedName": "Billing.PaymentRetryService.RetryFailedPayments",
+      "symbolCanonicalName": "RetryFailedPayments()",
+      "sourceFile": "src/Billing/PaymentRetryService.cs",
+      "gitUrl": "https://forgejo.home.arpa/acme/billing-service/src/branch/main/src/Billing/PaymentRetryService.cs",
+      "gitRawUrl": "https://forgejo.home.arpa/acme/billing-service/raw/branch/main/src/Billing/PaymentRetryService.cs",
+      "embeddingText": "public async Task RetryFailedPayments()\n{\n    // <b>not html</b>\n    await _gateway.RetryAsync();\n}",
+      "similarity": 0.61,
+      "rerankScore": 0.42,
+      "relations": [
+        {
+          "fromId": 101,
+          "toId": 202,
+          "relationType": "calls",
+          "targetSymbol": "Gateway.RetryAsync",
+          "resolutionOrigin": "resolved"
+        },
+        {
+          "fromId": 303,
+          "toId": 101,
+          "relationType": "calls",
+          "targetSymbol": "Scheduler.Tick",
+          "resolutionOrigin": "resolved"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "kind": "class",
+      "symbolContainer": null,
+      "symbolName": "PaymentGateway",
+      "symbolQualifiedName": "Billing.PaymentGateway",
+      "symbolCanonicalName": "PaymentGateway",
+      "sourceFile": "src/Billing/PaymentGateway.cs",
+      "gitUrl": null,
+      "gitRawUrl": null,
+      "embeddingText": "public class PaymentGateway { }",
+      "similarity": 0.9,
+      "rerankScore": 0.88,
+      "relations": []
+    }
+  ],
+  "graph": { "nodes": [], "edges": [] }
+}

@@ -1,0 +1,36 @@
+{
+  "startDate": "2026-08-27T00:00:00Z",
+  "endDate": "2026-09-24T23:59:59Z",
+  "weeks": [
+    {
+      "weekStart": "2026-09-07T00:00:00Z",
+      "weekEnd": "2026-09-13T23:59:59Z",
+      "projects": [
+        {
+          "projectId": "11111111-1111-4111-8111-111111111111",
+          "projectName": "billing-service",
+          "totalCount": 10,
+          "usefulCount": 7,
+          "notUsefulCount": 3,
+          "usefulPercentage": 70,
+          "notUsefulPercentage": 30
+        }
+      ]
+    },
+    {
+      "weekStart": "2026-09-14T00:00:00Z",
+      "weekEnd": "2026-09-20T23:59:59Z",
+      "projects": [
+        {
+          "projectId": "22222222-2222-4222-8222-222222222222",
+          "projectName": "orders-api",
+          "totalCount": 4,
+          "usefulCount": 1,
+          "notUsefulCount": 3,
+          "usefulPercentage": 25,
+          "notUsefulPercentage": 75
+        }
+      ]
+    }
+  ]
+}

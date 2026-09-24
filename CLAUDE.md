@@ -36,6 +36,13 @@ contract only.
 - `npm run build` — production build (`dist/code-rag-front`).
 - `npm test` — unit tests (Vitest, via `@angular/build:unit-test`). Runs once; there's no separate
   `--watch=false` needed, but pass it explicitly in CI-like contexts to be safe.
+- `npm run e2e` — Cypress end-to-end suite (`cypress/e2e/*.cy.ts`), headless, against a running
+  `npm start` (`CYPRESS_BASE_URL` overrides `http://localhost:4200`); `npm run e2e:open` is the
+  interactive runner. Every spec stubs the backend with `cy.intercept` via `cy.stubBackend()`
+  (`cypress/support/commands.ts`) — unstubbed `/api/**` calls fail with an `UNSTUBBED` 599 — and
+  stubs `auth-config.json` as Keycloak-disabled, since the checked-in one enables the login redirect.
+  `cy.type('text{esc}')` in one call races the field's signal; type first, press Escape in a second
+  call.
 - `npm run format` — Prettier (`.prettierrc`: 100 columns, single quotes) over `src/`, in place.
   `npm run format:check` is the read-only version. Prettier is occasionally not idempotent in one
   pass (e.g. some chained calls in specs) — if `format:check` still fails right after `format`, run
