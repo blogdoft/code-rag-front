@@ -12,8 +12,8 @@ import { Combobox, type ComboboxOption } from '../../shared/components/combobox/
 import { EscClearableDirective } from '../../shared/directives/esc-clearable.directive';
 import { FeedbackTrendChart } from './feedback-trend-chart';
 
-/** Sentinel for the "All projects" option; real project ids are positive per the API contract. */
-const ALL_PROJECTS_ID = -1;
+/** Sentinel for the "All projects" option; real project ids are UUIDs, so this can't collide. */
+const ALL_PROJECTS_ID = 'all';
 
 /** One (week, project) slot flattened out of the API's dense week x project grid. */
 interface FlatEntry {
@@ -40,7 +40,7 @@ export class FeedbackStatsPage {
   protected readonly projectOptions = signal<ComboboxOption[]>([
     { id: ALL_PROJECTS_ID, label: 'All projects' },
   ]);
-  protected readonly selectedProjectId = model<number | null>(ALL_PROJECTS_ID);
+  protected readonly selectedProjectId = model<string | null>(ALL_PROJECTS_ID);
   protected readonly startDate = signal(toDateInput(weeksAgo(4)));
   protected readonly endDate = signal(toDateInput(new Date()));
   protected readonly isLoading = signal(false);

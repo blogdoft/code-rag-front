@@ -64,37 +64,36 @@ document this fairly accurately as of the 2026-09-18 gateway move, but this back
 development — re-fetch both `swagger.json`/`openapi/v1.json` from the live API and diff before
 trusting any specific field on a non-trivial change; see `.specs/2026-09-10-ciir-api-migration.md`'s
 note on the contract changing twice within one session, and
-`.specs/2026-09-18-gateway-and-projects-migration.md` for the latest confirmed snapshot. Every
-response body is **snake_case** for code-ciir-api endpoints (`source_file`, `embedding_text`,
-`created_at`, ...) but **camelCase** for CIIR Indexer API (Projects) endpoints
-(`embeddingModel`, `gitUrl`, `createdAt`, ...) — the two services made independent, opposite
-serialization choices; don't assume one implies the other. Query-string parameter *names* stay
-snake_case on both services regardless of body casing (`page_size`, `start_date`, `project_id`, ...).
-If the API's serialization ever changes, the fix point is the DTO interfaces + mapper functions in
-`core/services/projects.service.ts`, `core/services/code-queries.service.ts`, and
+`.specs/2026-09-18-gateway-and-projects-migration.md` for the latest confirmed snapshot. As of
+2026-09-24 (`.specs/2026-09-24-camelcase-and-uuid-contract.md`) **every body and query-string
+parameter is camelCase on both services** (`sourceFile`, `embeddingText`, `createdAt`, `startDate`,
+`projectId`, ...) — the one exception is the CIIR Indexer's `GET /api/indexer/projects` pagination
+params, which stay snake_case (`page`, `page_size`). **Project ids are UUID strings** everywhere
+(not numbers); document/relation ids in code-query results are still int64 numbers. Serialization
+has flipped before (snake_case → camelCase), so don't assume it's stable. If it changes again, the
+fix point is the DTO interfaces + mapper functions in `core/services/projects.service.ts`, `core/services/code-queries.service.ts`, and
 `core/services/feedback-stats.service.ts` — everything else in the app deals only in the camelCase
 `Project`/`CodeQueryResult`/`FeedbackStats` models (`core/models/`).
 
 - `POST /api/code-queries` (code-ciir-api; dropped its `/v1` segment in the 2026-09-18 gateway move —
-  was `/api/v1/code-queries`) body `{ question, project_id, min_similarity?, kind?, qualified_name?,
+  was `/api/v1/code-queries`) body `{ question, projectId, minSimilarity?, kind?, qualifiedName?,
   limit? }` → `{ matches: CodeQueryResultResponse[], graph }`. The project is a body field, not part of
-  the URL — this app always sends `project_id` for the selected project, but the endpoint itself can
+  the URL — this app always sends `projectId` for the selected project, but the endpoint itself can
   search across every project when it's omitted. `kind` is a plain string (exact match only); the old
-  per-field `{operator, value}` filter shape survives only on `qualified_name` (matches
-  `symbol_qualified_name`; `equals`/`contains`/`not_contains`). Results carry `symbol_container`,
-  `symbol_name`, `symbol_qualified_name`, `symbol_canonical_name`, `git_url`/`git_raw_url` (per-symbol,
-  derived from the owning project's git fields), plus `rerank_score` (nullable) and each match's direct
-  `relations[]`. **Results arrive pre-sorted by the API** (by `rerank_score` when reranking is
+  per-field `{operator, value}` filter shape survives only on `qualifiedName` (matches
+  `symbolQualifiedName`; `equals`/`contains`/`notContains`). Results carry `symbolContainer`,
+  `symbolName`, `symbolQualifiedName`, `symbolCanonicalName`, `gitUrl`/`gitRawUrl` (per-symbol,
+  derived from the owning project's git fields), plus `rerankScore` (nullable) and each match's direct
+  `relations[]`. **Results arrive pre-sorted by the API** (by `rerankScore` when reranking is
   configured, else `similarity`) — `CodeQueriesService.ask()` must not re-sort them; doing so would
   silently discard reranking. `graph` (up to 2 hops of the relationship graph) is received but
   intentionally unused by this frontend — it's for the MCP-facing side of this API. Can 404
-  (`project_id` given but unknown) or 400 (blank question, invalid filter).
-- `POST /api/code-queries/feedback` body `{ project_id, question, useful, similarities, reason?, user
+  (`projectId` given but unknown) or 400 (blank question, invalid filter).
+- `POST /api/code-queries/feedback` body `{ projectId, question, useful, similarities, reason?, user
   }` → `201` with the created feedback record (unused by the app — there's no GET to read it back
   later). **As of the 2026-09-18 gateway move this is a flat path** — was
-  `/api/v1/projects/{projectId}/code-queries/feedback`, with `project_id` in the URL instead of the
-  body. Every field name here is already a single lowercase word, so unlike the other DTOs there's no
-  camelCase/snake_case translation to do in `CodeQueriesService.submitFeedback()`. `user` identifies
+  `/api/v1/projects/{projectId}/code-queries/feedback`, with `projectId` in the URL instead of the
+  body. `user` identifies
   the caller and is never guessed — the app prompts for it (see `UserNameDialog` in
   `features/code-search/`) and remembers it via `ConfigService`/`localStorage`, the same way the API
   base URL is remembered. Can 404 (bad project id) or 400 (missing/blank required fields); no 409 —
@@ -102,11 +101,11 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
 - `GET /api/code-queries/feedback/stats` and `GET /api/code-queries/feedback/export` (backing
   `features/reports`) **are now live** as of the 2026-09-18 gateway move (also dropped their `/v1`
   segment) — `FeedbackStatsService` was written ahead of the backend and needed only its URLs updated,
-  not its DTOs. `stats` returns a dense week × project grid (`{ start_date, end_date, weeks: [{
-  week_start, week_end, projects: [{ project_id, project_name, total_count, useful_count,
-  not_useful_count, useful_percentage, not_useful_percentage }] }] }`); `export` streams a `text/csv`
-  file of raw, unaggregated rows. Both take optional `start_date`/`end_date`/`project_id` query params
-  (max 366-day window); `export` also takes `timezone` (IANA name) to render `created_at` in local wall
+  not its DTOs. `stats` returns a dense week × project grid (`{ startDate, endDate, weeks: [{
+  weekStart, weekEnd, projects: [{ projectId, projectName, totalCount, usefulCount,
+  notUsefulCount, usefulPercentage, notUsefulPercentage }] }] }`); `export` streams a `text/csv`
+  file of raw, unaggregated rows. Both take optional `startDate`/`endDate`/`projectId` query params
+  (max 366-day window); `export` also takes `timezone` (IANA name) to render `createdAt` in local wall
   time instead of UTC.
 - `GET /api/indexer/projects` (CIIR Indexer API — moved off code-ciir-api's `/api/v1/projects` in the
   2026-09-18 gateway move) → **paginated** (`{ items, page, pageSize, totalCount, totalPages }` — note
@@ -115,9 +114,13 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   and returns the flattened `Project[]` — every caller (the code-search project combobox, the Projects
   page's own client-side search) is unaware pagination exists. `POST /api/indexer/projects` (create),
   `PUT`/`DELETE /api/indexer/projects/{projectId}` (replace/delete) round out full CRUD;
+  **`gitUrl`/`gitRawUrl` must be `null` when blank, never `""`** — the indexer stores `""` as-is and
+  code-ciir-api then 500s (`new Uri("")`) on every call resolving that project (see
+  `.specs/2026-09-24-camelcase-and-uuid-contract.md` §3);
   `ProjectResponse` is `{ id, name, embeddingModel, embeddingDimensions, gitUrl, gitRawUrl, createdAt,
-  updatedAt }`. `id`/`embeddingDimensions` are typed by the server as int64/int32-or-string (JS-number-
-  precision safety for int64) — `ProjectsService`'s mapper normalizes both through `Number(...)`.
+  updatedAt }`. `id` is a UUID string (`{projectId}` in the item paths is too); `embeddingDimensions`
+  is typed by the server as int32-or-string — `ProjectsService`'s mapper normalizes it through
+  `Number(...)`.
 - `POST /api/indexer/ciir-uploads` (CIIR Indexer API; backing `features/ciir-upload`) takes
   `multipart/form-data` with a `projectId` text field and a `ciirFile` file field, **in that
   order** — the server validates the project before storing any byte of the file, so
@@ -134,8 +137,8 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   is `processed` or `failed` (terminal), and — once `indexationId` is set — also
   `GET /api/indexer/indexations/{indexationId}` for the document/relation counters (its own
   statuses: `pending`/`running`/`resolving_relations`/`completed`/`failed`/`cancelled`). A few
-  transient poll failures are retried; a 404 is not. Bodies are camelCase; int64 fields
-  (`projectId`, counters) are normalized through `Number(...)` like the Projects DTOs.
+  transient poll failures are retried; a 404 is not. Bodies are camelCase; `projectId` is a UUID
+  string and the int64 counters are normalized through `Number(...)` like the Projects DTOs.
 - `GET /version` → `{ version }`, unversioned (no `/api/v1` prefix), for deploy tooling/diagnostics.
   **Not unauthenticated** despite that unversioned-ness suggesting otherwise: when Keycloak is
   enabled (see `KEYCLOAK_ENABLED`/`.specs/2026-09-21-keycloak-conditional-login.md`) the deployed
@@ -144,9 +147,10 @@ If the API's serialization ever changes, the fix point is the DTO interfaces + m
   rewrite described below — confirmed live against `blogdoft.home.arpa/code-brain/version`
   (401 without a token, `content-type: application/problem+json`) after the API version stopped
   showing in the nav sidebar footer.
-  Served by code-ciir-api, but **not exposed through the public gateway** — confirmed by probing
-  `blogdoft.home.arpa/code-brain/version` directly (404; only `/code-brain/api/code-queries` is
-  routed there, see code-ciir-api's own `.eng/k8s/ingress.yaml`). In the k8s deployment this still
+  Served by code-ciir-api. As of 2026-09-24 it's declared in its swagger and the public gateway
+  routes it (401 without a token, confirmed by probing `blogdoft.home.arpa/code-brain/version`); it
+  was a 404 there before. The nginx passthrough below is therefore now belt-and-braces, but it's
+  harmless and still what `ng serve`/`docker-compose` rely on. Historically, in the k8s deployment this still
   works in practice because `ApiVersionService`'s `/version` request goes through
   `baseUrlInterceptor` → `blogdoft.home.arpa/code-brain/version` → falls through to this app's own
   Traefik catch-all (`.eng/k8s/ingress.yaml`) → this app's own nginx, whose `location = /version`

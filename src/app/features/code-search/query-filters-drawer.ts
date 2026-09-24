@@ -2,6 +2,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, inject, type WritableSignal } from '@angular/core';
 import {
   DEFAULT_QUALIFIED_NAME_FILTER,
+  qualifiedNameOperatorLabel,
   type QualifiedNameFilter,
   type QualifiedNameFilterOperator,
 } from '../../core/models/code-query-filters';
@@ -22,6 +23,7 @@ export interface QueryFiltersDrawerData {
 })
 export class QueryFiltersDrawer {
   protected readonly data = inject<QueryFiltersDrawerData>(DIALOG_DATA);
+  protected readonly operatorLabel = qualifiedNameOperatorLabel;
   private readonly dialogRef = inject(DialogRef<void>);
 
   protected updateQualifiedName(patch: Partial<QualifiedNameFilter>): void {

@@ -340,7 +340,7 @@
           {
             "name": "projectId",
             "in": "path",
-            "description": "Identifier of the project, corresponding to the id field returned by `GET /api/projects`.\nMust be a positive 64-bit integer; any other format results in a 400 response.",
+            "description": "Identifier of the project, corresponding to the id field returned by `GET /api/projects`.\nMust be a valid GUID; any other format results in a 400 response.",
             "required": true,
             "schema": {
               "type": "string"
@@ -383,7 +383,7 @@
           {
             "name": "projectId",
             "in": "path",
-            "description": "Identifier of the project to update, corresponding to the id field returned by\n`GET /api/projects`. Must be a positive 64-bit integer; any other format results in a\n400 response.",
+            "description": "Identifier of the project to update, corresponding to the id field returned by\n`GET /api/projects`. Must be a valid GUID; any other format results in a 400 response.",
             "required": true,
             "schema": {
               "type": "string"
@@ -457,7 +457,7 @@
           {
             "name": "projectId",
             "in": "path",
-            "description": "Identifier of the project to delete, corresponding to the id field returned by\n`GET /api/projects`. Must be a positive 64-bit integer; any other format results in a\n400 response.",
+            "description": "Identifier of the project to delete, corresponding to the id field returned by\n`GET /api/projects`. Must be a valid GUID; any other format results in a 400 response.",
             "required": true,
             "schema": {
               "type": "string"
@@ -506,13 +506,9 @@
             "format": "uuid"
           },
           "projectId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "string",
             "description": "The already-registered project this file was submitted for.",
-            "format": "int64"
+            "format": "uuid"
           },
           "status": {
             "type": "string",
@@ -847,13 +843,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "string",
             "description": "The project's id.",
-            "format": "int64"
+            "format": "uuid"
           },
           "name": {
             "type": "string",
@@ -991,8 +983,39 @@
         },
         "description": "Response body for a successful `POST /api/ciir-uploads` (upload spec §4)."
       }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Keycloak access token. Paste the token only, without the 'Bearer ' prefix.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "OAuth2": {
+        "type": "oauth2",
+        "description": "Log in through Keycloak (authorization code flow with PKCE).",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://keycloak.home.arpa/realms/k8s/protocol/openid-connect/auth",
+            "tokenUrl": "https://keycloak.home.arpa/realms/k8s/protocol/openid-connect/token",
+            "scopes": {
+              "openid": "OpenID Connect login"
+            }
+          }
+        }
+      }
     }
   },
+  "security": [
+    {
+      "Bearer": [ ]
+    },
+    {
+      "OAuth2": [
+        "openid"
+      ]
+    }
+  ],
   "tags": [
     {
       "name": "CiirUploads",

@@ -7,12 +7,12 @@ import type { Project, ProjectInput } from '../models/project';
  * Wire shape of the Projects endpoints — moved off code-ciir-api onto the separate CIIR Indexer
  * API (`/api/indexer/projects`, host `blogdoft.home.arpa/code-brain`) as of 2026-09-18, see
  * openapi.indexer.generated.json. Unlike the old code-ciir-api contract, body fields here are
- * camelCase, not snake_case — only the `page`/`page_size` *query* params stay snake_case. `id` and
- * `embeddingDimensions` are typed by the server as int64/int32-or-string (JS-number-precision
- * safety for int64), so both are normalized through `Number(...)` below.
+ * camelCase, not snake_case — only the `page`/`page_size` *query* params stay snake_case. `id` is a
+ * UUID string (it was int64 before the 2026-09-24 contract change); `embeddingDimensions` is typed
+ * by the server as int32-or-string, so it's normalized through `Number(...)` below.
  */
 interface ProjectDto {
-  id: number | string;
+  id: string;
   name: string | null;
   embeddingModel: string | null;
   embeddingDimensions: number | string;
@@ -73,13 +73,13 @@ export class ProjectsService {
     return this.http.post<ProjectDto>('/api/indexer/projects', toDto(input)).pipe(map(toProject));
   }
 
-  update(id: number, input: ProjectInput): Observable<Project> {
+  update(id: string, input: ProjectInput): Observable<Project> {
     return this.http
       .put<ProjectDto>(`/api/indexer/projects/${id}`, toDto(input))
       .pipe(map(toProject));
   }
 
-  remove(id: number): Observable<void> {
+  remove(id: string): Observable<void> {
     return this.http.delete<void>(`/api/indexer/projects/${id}`);
   }
 
@@ -91,7 +91,7 @@ export class ProjectsService {
 
 function toProject(dto: ProjectDto): Project {
   return {
-    id: Number(dto.id),
+    id: dto.id,
     name: dto.name ?? '',
     embeddingModel: dto.embeddingModel,
     embeddingDimensions: Number(dto.embeddingDimensions),

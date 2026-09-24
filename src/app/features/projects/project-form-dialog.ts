@@ -83,8 +83,10 @@ export class ProjectFormDialog {
       name: this.name().trim(),
       embeddingModel: this.embeddingModel().trim(),
       embeddingDimensions: this.embeddingDimensions()!,
-      gitUrl: this.gitUrl().trim(),
-      gitRawUrl: this.gitRawUrl().trim(),
+      // Blank means "no repository": send null, never "". The API stores "" as-is, and code-ciir-api
+      // then fails (500) building a Uri from it on every query/feedback/stats call for this project.
+      gitUrl: this.gitUrl().trim() || null,
+      gitRawUrl: this.gitRawUrl().trim() || null,
     };
     const original = this.data.project;
 

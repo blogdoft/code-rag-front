@@ -24,7 +24,7 @@ import { SUPPRESS_ERROR_TOAST } from '../interceptors/error-toast.interceptor';
 /**
  * Wire shapes of the CIIR upload endpoints on the CIIR Indexer API (see
  * openapi.indexer.generated.json). Like the Projects endpoints served by the same service, bodies
- * are camelCase, and int64 fields (`projectId` and the counters) are typed by the server as
+ * are camelCase; `projectId`/ids are UUID strings, and the int64 counters are typed by the server as
  * number-or-string, so they're normalized through `Number(...)` below.
  */
 interface SubmitCiirUploadResponseDto {
@@ -34,7 +34,7 @@ interface SubmitCiirUploadResponseDto {
 
 interface CiirUploadStatusDto {
   id: string;
-  projectId: number | string;
+  projectId: string;
   status: string;
   createdAt: string;
   processingStartedAt: string | null;
@@ -75,11 +75,11 @@ export class CiirUploadsService {
    * error toast is suppressed because the useful messages here (404 with no body, 413, 429) aren't
    * ProblemDetails the generic interceptor could read.
    */
-  upload(projectId: number, file: File): Observable<CiirUploadEvent> {
+  upload(projectId: string, file: File): Observable<CiirUploadEvent> {
     const body = new FormData();
     // The API validates `projectId` before storing any byte of the file, so it must be the first
     // part of the multipart stream - FormData preserves append order.
-    body.append('projectId', String(projectId));
+    body.append('projectId', projectId);
     body.append('ciirFile', file, file.name);
 
     return this.http
@@ -159,7 +159,7 @@ export class CiirUploadsService {
 function toUploadStatus(dto: CiirUploadStatusDto): CiirUploadStatus {
   return {
     id: dto.id,
-    projectId: Number(dto.projectId),
+    projectId: dto.projectId,
     status: dto.status,
     createdAt: dto.createdAt,
     processingStartedAt: dto.processingStartedAt,

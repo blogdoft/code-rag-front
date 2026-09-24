@@ -7,6 +7,10 @@ import { PopupService } from '../../shared/services/popup.service';
 import { ProjectFormDialog } from './project-form-dialog';
 import { ProjectsPage } from './projects-page';
 
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
+const PROJECT_3 = '00000000-0000-4000-8000-000000000003';
+
 describe('ProjectsPage', () => {
   let fixture: ComponentFixture<ProjectsPage>;
   let component: ProjectsPage;
@@ -16,7 +20,7 @@ describe('ProjectsPage', () => {
 
   const projects: Project[] = [
     {
-      id: 1,
+      id: PROJECT_1,
       name: 'alpha',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -26,7 +30,7 @@ describe('ProjectsPage', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     },
     {
-      id: 2,
+      id: PROJECT_2,
       name: 'beta',
       embeddingModel: null,
       embeddingDimensions: 0,
@@ -143,7 +147,7 @@ describe('ProjectsPage', () => {
     component['addProject']();
 
     const created: Project = {
-      id: 3,
+      id: PROJECT_3,
       name: 'gamma',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -201,7 +205,7 @@ describe('ProjectsPage', () => {
     component['deleteProject'](projects[0]);
     ref.closed.next(true);
 
-    expect(projectsService.remove).toHaveBeenCalledWith(1);
+    expect(projectsService.remove).toHaveBeenCalledWith(PROJECT_1);
     expect(toastService.success).toHaveBeenCalledWith('Project deleted.');
     expect(component['projects']()).toEqual([projects[1]]);
   });

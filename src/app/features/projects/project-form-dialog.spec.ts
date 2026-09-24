@@ -6,6 +6,8 @@ import { ProjectsService } from '../../core/services/projects.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ProjectFormDialog, type ProjectFormDialogData } from './project-form-dialog';
 
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+
 describe('ProjectFormDialog', () => {
   let fixture: ComponentFixture<ProjectFormDialog>;
   let component: ProjectFormDialog;
@@ -14,7 +16,7 @@ describe('ProjectFormDialog', () => {
   let toastService: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   const existingProject: Project = {
-    id: 1,
+    id: PROJECT_1,
     name: 'demo',
     embeddingModel: 'text-embedding-3-small',
     embeddingDimensions: 1536,
@@ -98,11 +100,26 @@ describe('ProjectFormDialog', () => {
         name: 'demo',
         embeddingModel: 'text-embedding-3-small',
         embeddingDimensions: 1536,
-        gitUrl: '',
-        gitRawUrl: '',
+        gitUrl: null,
+        gitRawUrl: null,
       });
       expect(toastService.success).toHaveBeenCalledWith('Project created.');
       expect(dialogRef.close).toHaveBeenCalledWith(existingProject);
+    });
+
+    it('sends null (never an empty string) for blank or whitespace-only git URLs', () => {
+      projectsService.create.mockReturnValue(of(existingProject));
+      component['name'].set('demo');
+      component['embeddingModel'].set('text-embedding-3-small');
+      component['embeddingDimensions'].set(1536);
+      component['gitUrl'].set('   ');
+      component['gitRawUrl'].set('');
+
+      component['save']();
+
+      const sent = projectsService.create.mock.calls[0][0];
+      expect(sent.gitUrl).toBeNull();
+      expect(sent.gitRawUrl).toBeNull();
     });
 
     it('closes with undefined on cancel', () => {
@@ -136,7 +153,7 @@ describe('ProjectFormDialog', () => {
 
       component['save']();
 
-      expect(projectsService.update).toHaveBeenCalledWith(1, {
+      expect(projectsService.update).toHaveBeenCalledWith(PROJECT_1, {
         name: 'renamed',
         embeddingModel: 'text-embedding-3-small',
         embeddingDimensions: 1536,

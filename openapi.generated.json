@@ -2,8 +2,8 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Code CIIR API",
-    "description": "API for querying indexed source code (from code3rag, owned by code-ciir-indexer) using\nnatural language, returning not only the most semantically similar code documents but\nalso up to two levels of their code relationship graph. See .specs/ for the full\nevolutionary implementation plan - this build only exposes a version endpoint so far.\n\nAll endpoints exclusively accept and return application/json. Client errors and server\nerrors are reported using the RFC 7807 \"Problem Details for HTTP APIs\" format, with the\nexception of 404 responses, which are returned with no response body.",
-    "version": "0.5.0"
+    "description": "API for querying indexed source code (from code3rag, owned by code-ciir-indexer) using\nnatural language, returning not only the most semantically similar code documents but\nalso up to two levels of their code relationship graph. See .specs/ for the full\nevolutionary implementation plan.\n\nAll endpoints exclusively accept and return application/json (the feedback export is the\none exception and returns text/csv), with camelCase property names. Client errors (400)\nare reported using the RFC 7807 \"Problem Details for HTTP APIs\" format. 401, 403, 404 and\n5xx responses are returned with no response body.",
+    "version": "0.8.2"
   },
   "servers": [
     {
@@ -14,12 +14,12 @@
     "/api/code-queries": {
       "post": {
         "tags": [
-          "Code Query"
+          "code-queries"
         ],
         "summary": "Query indexed code using natural language",
-        "description": "Accepts a natural language question, converts it into a vector embedding using the single\napp-configured embedding model, and returns the code documents whose stored embeddings are\nmost semantically similar to the question - optionally narrowed to one project and/or by\nstructured filters, reordered by an optional reranking stage, and capped at `limit`.\n            \nWhen no code document scores highly enough to be considered a match, the response is a 200\nOK with an empty array - this is not treated as an error. A 404 is returned only when\n`project_id` is provided and does not correspond to any project.\n            \n<b>Why this endpoint has no page-based pagination:</b> results must always come back\nordered from the single greatest match to the smallest. When a reranker is configured\n(server-side only, see `Reranking:Provider`), that ordering is decided by reranking\nthe entire candidate pool - not by cosine similarity alone - before truncating to\n`limit`. Offset-based paging would rerank each page's candidates in isolation, which\ncan hide a globally better match that happens to land on a later page, and cannot\nguarantee one consistent best-to-worst ordering across pages. Use `limit` to control\nhow many top results you want; there is no `page`. See .specs/10-reranking.md.",
+        "description": "Accepts a natural language question, converts it into a vector embedding using the single\napp-configured embedding model, and returns the code documents whose stored embeddings are\nmost semantically similar to the question - optionally narrowed to one project and/or by\nstructured filters, reordered by an optional reranking stage, and capped at `limit`.\n            \nWhen no code document scores highly enough to be considered a match, the response is a 200\nOK with an empty array - this is not treated as an error. A 404 is returned only when\n`projectId` is provided and does not correspond to any project.\n            \n<b>Why this endpoint has no page-based pagination:</b> results must always come back\nordered from the single greatest match to the smallest. When a reranker is configured\n(server-side only, see `Reranking:Provider`), that ordering is decided by reranking\nthe entire candidate pool - not by cosine similarity alone - before truncating to\n`limit`. Offset-based paging would rerank each page's candidates in isolation, which\ncan hide a globally better match that happens to land on a later page, and cannot\nguarantee one consistent best-to-worst ordering across pages. Use `limit` to control\nhow many top results you want; there is no `page`. See .specs/10-reranking.md.",
         "requestBody": {
-          "description": "The natural language question to search with, plus optional `project_id`,\n`min_similarity`, `kind`, `qualified_name` filters and `limit`.",
+          "description": "The natural language question to search with, plus optional `projectId`,\n`minSimilarity`, `kind`, `qualifiedName` filters and `limit`.",
           "content": {
             "application/json": {
               "schema": {
@@ -30,7 +30,7 @@
         },
         "responses": {
           "200": {
-            "description": "The code documents most semantically similar to the natural language question (`matches`,\nordered by descending `rerank_score` when reranking is configured, otherwise by descending\ncosine `similarity`). Each match carries its own `relations` - every direct (1-hop)\nrelation touching it, both directions, every relation type, always complete regardless of\ngraph size (see .specs/12-match-relations.md). The response also includes up to 2 hops of\nthe matches' code relationship graph (`graph`) - every relation type, both directions -\nwhen `project_id` was provided. `matches` is an empty array when no code document is found\nto be similar enough to the question, or matching the given filters; `graph` is then also\nempty. `graph` is always empty, and every match's `relations` is always an empty array,\nwhen `project_id` is omitted (see .specs/09-code-queries-filters.md).",
+            "description": "The code documents most semantically similar to the natural language question (`matches`,\nordered by descending `rerankScore` when reranking is configured, otherwise by descending\ncosine `similarity`). Each match carries its own `relations` - every direct (1-hop)\nrelation touching it, both directions, every relation type, always complete regardless of\ngraph size (see .specs/12-match-relations.md). The response also includes up to 2 hops of\nthe matches' code relationship graph (`graph`) - every relation type, both directions -\nwhen `projectId` was provided. `matches` is an empty array when no code document is found\nto be similar enough to the question, or matching the given filters; `graph` is then also\nempty. `graph` is always empty, and every match's `relations` is always an empty array,\nwhen `projectId` is omitted (see .specs/09-code-queries-filters.md).",
             "content": {
               "application/json": {
                 "schema": {
@@ -40,7 +40,7 @@
             }
           },
           "400": {
-            "description": "The request body is missing the question field, has an empty/blank question, has an\ninvalid `project_id`/`min_similarity`/`kind`/`qualified_name`, or is otherwise malformed.",
+            "description": "The request body is missing the question field, has an empty/blank question, has an\ninvalid `projectId`/`minSimilarity`/`kind`/`qualifiedName`, or is otherwise malformed.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -50,17 +50,16 @@
             }
           },
           "404": {
-            "description": "`project_id` was provided but does not correspond to any project. This is the only\ncondition under which this endpoint returns 404; the response has no body."
+            "description": "`projectId` was provided but does not correspond to any project. This is the only\ncondition under which this endpoint returns 404; the response has no body."
           },
           "500": {
-            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                }
-              }
-            }
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500; the response has no body."
+          },
+          "401": {
+            "description": "Missing, expired or invalid access token. No response body."
+          },
+          "403": {
+            "description": "Authenticated, but not allowed to perform this operation. No response body."
           }
         }
       }
@@ -68,7 +67,7 @@
     "/api/code-queries/feedback": {
       "post": {
         "tags": [
-          "Code Query"
+          "code-queries"
         ],
         "summary": "Submit feedback on a prior code query",
         "description": "Records whether a previous `POST .../code-queries` call's results were useful, so\neffectiveness can be measured later. Callable by a human (REST) or an AI agent (MCP, via\nthe `submit_code_query_feedback` tool). The caller must always identify itself via\nthe required `user` field - for MCP callers this is the calling agent/tool's own\nname (e.g. \"claude code\", \"codex\", \"crewai\", \"hermes\", \"opencode\"), never a guess or a\ndefault.\n            \nThere is no corresponding GET endpoint for feedback - effectiveness is computed directly\nagainst the database out of band. Accordingly, the 201 response below has no\n`Location` header.",
@@ -84,7 +83,7 @@
         },
         "responses": {
           "201": {
-            "description": "The feedback was recorded. The response body echoes the persisted record, including its\ngenerated id and created_at.",
+            "description": "The feedback was recorded. The response body echoes the persisted record, including its\ngenerated id and createdAt.",
             "content": {
               "application/json": {
                 "schema": {
@@ -94,7 +93,7 @@
             }
           },
           "400": {
-            "description": "The request body is missing or malformed, project_id is missing or not a positive integer,\nquestion/useful/similarities/user is missing or invalid (empty, blank, exceeds its maximum\nlength/count), or reason exceeds its maximum length.",
+            "description": "The request body is missing or malformed, projectId is missing or not a positive integer,\nquestion/useful/similarities/user is missing or invalid (empty, blank, exceeds its maximum\nlength/count), or reason exceeds its maximum length.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -104,17 +103,16 @@
             }
           },
           "404": {
-            "description": "No project exists with the given project_id. This is the only condition under which this\nendpoint returns 404; the response has no body."
+            "description": "No project exists with the given projectId. This is the only condition under which this\nendpoint returns 404; the response has no body."
           },
           "500": {
-            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                }
-              }
-            }
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500; the response has no body."
+          },
+          "401": {
+            "description": "Missing, expired or invalid access token. No response body."
+          },
+          "403": {
+            "description": "Authenticated, but not allowed to perform this operation. No response body."
           }
         }
       }
@@ -122,13 +120,13 @@
     "/api/code-queries/feedback/stats": {
       "get": {
         "tags": [
-          "Code Query"
+          "code-queries"
         ],
         "summary": "Get feedback effectiveness statistics, grouped by week and by project",
         "description": "Returns feedback effectiveness statistics for a time window (up to 12 months), broken down\ninto a dense weekly x project grid: every ISO calendar week (Monday-Sunday) overlapping\nthe window is included, and within every week, every registered project (or the single\nproject matching projectId, if given) is included, even when it has zero feedback in that\nspecific week. Each project entry within a week reports useful vs. not-useful counts and\npercentages for feedback created in that week.\n            \nstartDate and endDate are both optional and independent. When neither is given, the window\ndefaults to the last 30 days ending now (UTC). When only one is given, the other end of the\nwindow is derived as a 30-day span from the given value (startDate + 30 days, or\nendDate - 30 days). When both are given, the exact window requested is used. startDate\nafter endDate is a 400. The effective window (endDate - startDate) must not exceed 366\ndays (12 months); exceeding it is also a 400.",
         "parameters": [
           {
-            "name": "start_date",
+            "name": "startDate",
             "in": "query",
             "description": "Inclusive lower bound (UTC, ISO 8601) of the time window to aggregate feedback over.\nOptional - see the endpoint description for the default-window rules that apply when this\nand/or endDate are omitted, and for the 366-day maximum window size.",
             "schema": {
@@ -137,7 +135,7 @@
             }
           },
           {
-            "name": "end_date",
+            "name": "endDate",
             "in": "query",
             "description": "Inclusive upper bound (UTC, ISO 8601) of the time window to aggregate feedback over.\nOptional - see the endpoint description for the default-window rules that apply when this\nand/or startDate are omitted, and for the 366-day maximum window size.",
             "schema": {
@@ -146,18 +144,18 @@
             }
           },
           {
-            "name": "project_id",
+            "name": "projectId",
             "in": "query",
             "description": "Restrict every week's project list to a single project, instead of all registered\nprojects. Must correspond to a project id returned by the list_projects MCP tool; a\nprojectId that does not match any project results in a 404.",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Feedback statistics for the requested time window, as a dense grid of every week\noverlapping the window, each containing every registered project (or a single project when\nprojectId was given), with zero-filled entries where there was no feedback. start_date/\nend_date in the response body reflect the effective window actually used, including when\nderived by default.",
+            "description": "Feedback statistics for the requested time window, as a dense grid of every week\noverlapping the window, each containing every registered project (or a single project when\nprojectId was given), with zero-filled entries where there was no feedback. startDate/\nendDate in the response body reflect the effective window actually used, including when\nderived by default.",
             "content": {
               "application/json": {
                 "schema": {
@@ -180,14 +178,13 @@
             "description": "projectId was given but does not correspond to any registered project. This is the only\ncondition under which this endpoint returns 404; the response has no body."
           },
           "500": {
-            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                }
-              }
-            }
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500."
+          },
+          "401": {
+            "description": "Missing, expired or invalid access token. No response body."
+          },
+          "403": {
+            "description": "Authenticated, but not allowed to perform this operation. No response body."
           }
         }
       }
@@ -195,13 +192,13 @@
     "/api/code-queries/feedback/export": {
       "get": {
         "tags": [
-          "Code Query"
+          "code-queries"
         ],
         "summary": "Export raw feedback records for a time window (and optionally a single project) as CSV",
         "description": "Returns a downloadable CSV file with one row per feedback record in code_query_feedback\nwhose created_at falls within [startDate, endDate], optionally restricted to a single\nproject. Unlike GET .../feedback/stats, this endpoint returns raw, unaggregated rows\nordered by created_at ascending.\n            \nstartDate and endDate are both optional, and each side defaults independently of the other\nwhen omitted (no ±N-days derivation like GET .../feedback/stats): a missing startDate\ndefaults to the first day of the current UTC month (00:00 UTC), and a missing endDate\ndefaults to now (UTC). The effective window (endDate - startDate, after defaults are\napplied) must not exceed 366 days (12 months); exceeding it is a 400, as is an effective\nstartDate after endDate.",
         "parameters": [
           {
-            "name": "start_date",
+            "name": "startDate",
             "in": "query",
             "description": "Inclusive lower bound (UTC, ISO 8601) of the export window. Optional - defaults to the\nfirst day of the current UTC month (00:00 UTC) when omitted.",
             "schema": {
@@ -210,7 +207,7 @@
             }
           },
           {
-            "name": "end_date",
+            "name": "endDate",
             "in": "query",
             "description": "Inclusive upper bound (UTC, ISO 8601) of the export window. Optional - defaults to now\n(UTC) when omitted.",
             "schema": {
@@ -219,12 +216,12 @@
             }
           },
           {
-            "name": "project_id",
+            "name": "projectId",
             "in": "query",
             "description": "Restrict the export to a single project, instead of all registered projects. Must\ncorrespond to a project id returned by the list_projects MCP tool; a projectId that does\nnot match any project results in a 404.",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -262,14 +259,13 @@
             "description": "projectId was given but does not correspond to any registered project. This is the only\ncondition under which this endpoint returns 404; the response has no body."
           },
           "500": {
-            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerErrorProblemDetails"
-                }
-              }
-            }
+            "description": "An unhandled exception occurred while processing the request. This is the only condition\nunder which this endpoint returns 500."
+          },
+          "401": {
+            "description": "Missing, expired or invalid access token. No response body."
+          },
+          "403": {
+            "description": "Authenticated, but not allowed to perform this operation. No response body."
           }
         }
       }
@@ -277,7 +273,7 @@
     "/version": {
       "get": {
         "tags": [
-          "Version"
+          "version"
         ],
         "summary": "Get the API version",
         "description": "Returns the version this instance was built and published from. Deliberately unversioned\n(no /api prefix) and health-check-style, for use by deploy tooling and diagnostics rather\nthan API consumers.",
@@ -291,6 +287,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing, expired or invalid access token. No response body."
+          },
+          "403": {
+            "description": "Authenticated, but not allowed to perform this operation. No response body."
           }
         }
       }
@@ -301,10 +303,10 @@
       "CodeQueryFeedbackRequest": {
         "type": "object",
         "properties": {
-          "project_id": {
-            "type": "integer",
-            "description": "Identifier of the project the original code-queries call was scoped to, corresponding to the\nid of a project returned by the list_projects MCP tool. Required, must be a positive 64-bit\ninteger.",
-            "format": "int64",
+          "projectId": {
+            "type": "string",
+            "description": "Identifier of the project the original code-queries call was scoped to, corresponding to the\nid of a project returned by the list_projects MCP tool. Required.",
+            "format": "uuid",
             "nullable": true
           },
           "question": {
@@ -338,7 +340,19 @@
           }
         },
         "additionalProperties": false,
-        "description": "Feedback on a prior `POST .../code-queries` call, scoped to a single project."
+        "description": "Feedback on a prior `POST .../code-queries` call, scoped to a single project.",
+        "example": {
+          "projectId": 1,
+          "question": "Where is the user's password hashed before it is stored?",
+          "useful": true,
+          "similarities": [
+            0.91,
+            0.84,
+            0.77
+          ],
+          "reason": "The first match was exactly the method I was looking for.",
+          "user": "claude code"
+        }
       },
       "CodeQueryFeedbackResponse": {
         "type": "object",
@@ -347,9 +361,9 @@
             "type": "integer",
             "format": "int64"
           },
-          "project_id": {
-            "type": "integer",
-            "format": "int64"
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
           },
           "question": {
             "type": "string",
@@ -374,23 +388,23 @@
             "type": "string",
             "nullable": true
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time"
           }
         },
         "additionalProperties": false,
-        "description": "A recorded piece of feedback on a prior code query. Serializes as snake_case. There is no\nGET endpoint for retrieving it later - this response is the only view of it."
+        "description": "A recorded piece of feedback on a prior code query. Serializes as camelCase. There is no\nGET endpoint for retrieving it later - this response is the only view of it."
       },
       "CodeQueryFeedbackStatsResponse": {
         "type": "object",
         "properties": {
-          "start_date": {
+          "startDate": {
             "type": "string",
             "description": "Effective inclusive lower bound (UTC) of the aggregated window.",
             "format": "date-time"
           },
-          "end_date": {
+          "endDate": {
             "type": "string",
             "description": "Effective inclusive upper bound (UTC) of the aggregated window.",
             "format": "date-time"
@@ -400,35 +414,35 @@
             "items": {
               "$ref": "#/components/schemas/WeeklyFeedbackStatsResponse"
             },
-            "description": "Every ISO calendar week (Monday-Sunday) overlapping the effective window, ordered by\n`week_start` ascending. Always includes every overlapping week, even ones with zero\nfeedback across all projects.",
+            "description": "Every ISO calendar week (Monday-Sunday) overlapping the effective window, ordered by\n`weekStart` ascending. Always includes every overlapping week, even ones with zero\nfeedback across all projects.",
             "nullable": true
           }
         },
         "additionalProperties": false,
-        "description": "Feedback effectiveness statistics for a time window, as a dense week × project grid.\nSerializes as snake_case."
+        "description": "Feedback effectiveness statistics for a time window, as a dense week × project grid.\nSerializes as camelCase."
       },
       "CodeQueryGraphEdgeResponse": {
         "type": "object",
         "properties": {
-          "from_id": {
+          "fromId": {
             "type": "integer",
             "format": "int64",
             "nullable": true
           },
-          "to_id": {
+          "toId": {
             "type": "integer",
             "format": "int64",
             "nullable": true
           },
-          "relation_type": {
+          "relationType": {
             "type": "string",
             "nullable": true
           },
-          "target_symbol": {
+          "targetSymbol": {
             "type": "string",
             "nullable": true
           },
-          "resolution_origin": {
+          "resolutionOrigin": {
             "type": "string",
             "nullable": true
           },
@@ -438,7 +452,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "A relation touching at least one node in the expanded graph. `to_id` is null when the\nrelation's target is outside the indexed universe (external/unresolved - e.g. a framework or\ndependency symbol); `target_symbol` still names it in that case."
+        "description": "A relation touching at least one node in the expanded graph. `toId` is null when the\nrelation's target is outside the indexed universe (external/unresolved - e.g. a framework or\ndependency symbol); `targetSymbol` still names it in that case."
       },
       "CodeQueryGraphNodeResponse": {
         "type": "object",
@@ -451,23 +465,23 @@
             "type": "string",
             "nullable": true
           },
-          "symbol_container": {
+          "symbolContainer": {
             "type": "string",
             "nullable": true
           },
-          "symbol_name": {
+          "symbolName": {
             "type": "string",
             "nullable": true
           },
-          "symbol_qualified_name": {
+          "symbolQualifiedName": {
             "type": "string",
             "nullable": true
           },
-          "symbol_canonical_name": {
+          "symbolCanonicalName": {
             "type": "string",
             "nullable": true
           },
-          "source_file": {
+          "sourceFile": {
             "type": "string",
             "nullable": true
           },
@@ -520,30 +534,34 @@
           }
         },
         "additionalProperties": false,
-        "description": "Optional filter narrowing results to code documents matching a `symbol_qualified_name`\ncondition (the member's full name including its namespace/package or language equivalent)."
+        "description": "Optional filter narrowing results to code documents matching a `symbolQualifiedName`\ncondition (the member's full name including its namespace/package or language equivalent).",
+        "example": {
+          "operator": "contains",
+          "value": "PasswordHasher"
+        }
       },
       "CodeQueryRelationResponse": {
         "type": "object",
         "properties": {
-          "from_id": {
+          "fromId": {
             "type": "integer",
             "format": "int64",
             "nullable": true
           },
-          "to_id": {
+          "toId": {
             "type": "integer",
             "format": "int64",
             "nullable": true
           },
-          "relation_type": {
+          "relationType": {
             "type": "string",
             "nullable": true
           },
-          "target_symbol": {
+          "targetSymbol": {
             "type": "string",
             "nullable": true
           },
-          "resolution_origin": {
+          "resolutionOrigin": {
             "type": "string",
             "nullable": true
           }
@@ -559,13 +577,13 @@
             "description": "A natural language ask describing the code the caller is looking for. This text is embedded\n(using the app-wide configured embedding model, see EmbeddingOptions) and compared against\nthe stored code documents' embeddings using cosine similarity. Always required, must not be\nempty or blank.",
             "nullable": true
           },
-          "project_id": {
-            "type": "integer",
-            "description": "Optional filter narrowing results to a single project, corresponding to a project id returned\nby the list_projects MCP tool. Omit to search across every project. When provided, must be\na positive 64-bit integer and must correspond to an existing project (404 otherwise).",
-            "format": "int64",
+          "projectId": {
+            "type": "string",
+            "description": "Optional filter narrowing results to a single project, corresponding to a project id returned\nby the list_projects MCP tool. Omit to search across every project. When provided, must\ncorrespond to an existing project (404 otherwise).",
+            "format": "uuid",
             "nullable": true
           },
-          "min_similarity": {
+          "minSimilarity": {
             "type": "number",
             "description": "Optional minimum cosine similarity (0.0-1.0) a match must have to be included.",
             "format": "double",
@@ -576,7 +594,7 @@
             "description": "Optional filter narrowing results to code documents whose `kind` equals this value exactly. Omit for no filtering on this field.",
             "nullable": true
           },
-          "qualified_name": {
+          "qualifiedName": {
             "$ref": "#/components/schemas/CodeQueryQualifiedNameFilterRequest"
           },
           "limit": {
@@ -587,7 +605,18 @@
           }
         },
         "additionalProperties": false,
-        "description": "Natural language search request, optionally narrowed by project and structured filters."
+        "description": "Natural language search request, optionally narrowed by project and structured filters.",
+        "example": {
+          "question": "Where is the user's password hashed before it is stored?",
+          "projectId": 1,
+          "minSimilarity": 0.5,
+          "kind": "method",
+          "qualifiedName": {
+            "operator": "contains",
+            "value": "PasswordHasher"
+          },
+          "limit": 10
+        }
       },
       "CodeQueryResponse": {
         "type": "object",
@@ -619,44 +648,44 @@
             "description": "The document's kind (e.g. `method`, `type`, `property`).",
             "nullable": true
           },
-          "symbol_container": {
+          "symbolContainer": {
             "type": "string",
             "description": "Fully qualified name of the container the symbol belongs to.",
             "nullable": true
           },
-          "symbol_name": {
+          "symbolName": {
             "type": "string",
             "description": "Short name of the symbol.",
             "nullable": true
           },
-          "symbol_qualified_name": {
+          "symbolQualifiedName": {
             "type": "string",
             "description": "Dotted qualified name, without parameter types.",
             "nullable": true
           },
-          "symbol_canonical_name": {
+          "symbolCanonicalName": {
             "type": "string",
             "description": "Full signature, disambiguating overloads.",
             "nullable": true
           },
-          "source_file": {
+          "sourceFile": {
             "type": "string",
             "description": "Path of the source file the symbol was indexed from.",
             "nullable": true
           },
-          "git_url": {
+          "gitUrl": {
             "type": "string",
             "description": "Public Git URL of the project that owns the symbol.",
             "format": "uri",
             "nullable": true
           },
-          "git_raw_url": {
+          "gitRawUrl": {
             "type": "string",
-            "description": "Public raw-file URL for the symbol. This is the project's `git_raw_url` concatenated\nwith the indexed source path; null when the project has no `git_raw_url`.",
+            "description": "Public raw-file URL for the symbol. This is the project's `gitRawUrl` concatenated\nwith the indexed source path; null when the project has no `gitRawUrl`.",
             "format": "uri",
             "nullable": true
           },
-          "embedding_text": {
+          "embeddingText": {
             "type": "string",
             "description": "The text that was actually embedded for this document.",
             "nullable": true
@@ -666,7 +695,7 @@
             "description": "Cosine similarity between the question and this document, 0.0-1.0.",
             "format": "double"
           },
-          "rerank_score": {
+          "rerankScore": {
             "type": "number",
             "description": "Relevance score assigned by the reranking stage, normalized to 0.0-1.0 (higher is more\nrelevant). Null when reranking is disabled (the default) or not configured - see\n.specs/10-reranking.md.",
             "format": "double",
@@ -677,34 +706,12 @@
             "items": {
               "$ref": "#/components/schemas/CodeQueryRelationResponse"
             },
-            "description": "This match's complete set of direct (1-hop) relations, in either direction - every relation\ntype, not subject to the 2-hop `graph`'s node-count truncation. Empty array when the\nmatch has no direct relations, or when `project_id` was omitted from the request (see\n.specs/12-match-relations.md).",
+            "description": "This match's complete set of direct (1-hop) relations, in either direction - every relation\ntype, not subject to the 2-hop `graph`'s node-count truncation. Empty array when the\nmatch has no direct relations, or when `projectId` was omitted from the request (see\n.specs/12-match-relations.md).",
             "nullable": true
           }
         },
         "additionalProperties": false,
-        "description": "A single code document matched against a natural language query, annotated with its computed\nsimilarity score. Field names mirror ciir_documents' own columns rather than code-rag-api's\nnamespace/type_name/member, which have no equivalent in code3rag - see\n.specs/04-code-queries-baseline.md. Serializes as snake_case."
-      },
-      "ExceptionDetails": {
-        "type": "object",
-        "properties": {
-          "exception_type": {
-            "type": "string",
-            "description": "Fully-qualified type name of the exception that was raised.",
-            "nullable": true
-          },
-          "message": {
-            "type": "string",
-            "description": "The exception's message.",
-            "nullable": true
-          },
-          "stack_trace": {
-            "type": "string",
-            "description": "The exception's captured stack trace.",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Details of the unhandled exception that caused the request to fail."
+        "description": "A single code document matched against a natural language query, annotated with its computed\nsimilarity score. Field names mirror ciir_documents' own columns rather than code-rag-api's\nnamespace/type_name/member, which have no equivalent in code3rag - see\n.specs/04-code-queries-baseline.md. Serializes as camelCase."
       },
       "ProblemDetails": {
         "type": "object",
@@ -731,42 +738,42 @@
             "nullable": true
           }
         },
-        "additionalProperties": {}
+        "additionalProperties": { }
       },
       "ProjectFeedbackStatsResponse": {
         "type": "object",
         "properties": {
-          "project_id": {
-            "type": "integer",
+          "projectId": {
+            "type": "string",
             "description": "Id of the project these statistics belong to.",
-            "format": "int64"
+            "format": "uuid"
           },
-          "project_name": {
+          "projectName": {
             "type": "string",
             "description": "Name of the project these statistics belong to.",
             "nullable": true
           },
-          "total_count": {
+          "totalCount": {
             "type": "integer",
             "description": "Total number of feedback records for this project within this week.",
             "format": "int64"
           },
-          "useful_count": {
+          "usefulCount": {
             "type": "integer",
             "description": "Number of feedback records with `useful = true` within this week.",
             "format": "int64"
           },
-          "not_useful_count": {
+          "notUsefulCount": {
             "type": "integer",
             "description": "Number of feedback records with `useful = false` within this week.",
             "format": "int64"
           },
-          "useful_percentage": {
+          "usefulPercentage": {
             "type": "number",
             "description": "UsefulCount as a percentage of TotalCount for this week,\n            rounded to 2 decimal places. 0 when TotalCount is 0.",
             "format": "double"
           },
-          "not_useful_percentage": {
+          "notUsefulPercentage": {
             "type": "number",
             "description": "NotUsefulCount as a percentage of TotalCount for this\n            week, rounded to 2 decimal places. 0 when TotalCount is 0.",
             "format": "double"
@@ -779,40 +786,9 @@
         "enum": [
           "equals",
           "contains",
-          "not_contains"
+          "notContains"
         ],
         "type": "string"
-      },
-      "ServerErrorProblemDetails": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "nullable": true
-          },
-          "title": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "detail": {
-            "type": "string",
-            "nullable": true
-          },
-          "instance": {
-            "type": "string",
-            "nullable": true
-          },
-          "exception": {
-            "$ref": "#/components/schemas/ExceptionDetails"
-          }
-        },
-        "additionalProperties": {},
-        "description": "Problem Details payload for 500 responses. Exposing the raised exception's details is a\ndeliberate trade-off for ease of debugging in this API, mirroring code-rag-api's contract,\nand should be disabled or redacted in a hardened deployment."
       },
       "VersionResponse": {
         "type": "object",
@@ -824,17 +800,17 @@
           }
         },
         "additionalProperties": false,
-        "description": "The running API's own build version. Serializes as snake_case."
+        "description": "The running API's own build version. Serializes as camelCase."
       },
       "WeeklyFeedbackStatsResponse": {
         "type": "object",
         "properties": {
-          "week_start": {
+          "weekStart": {
             "type": "string",
             "description": "Monday of this ISO calendar week.",
             "format": "date"
           },
-          "week_end": {
+          "weekEnd": {
             "type": "string",
             "description": "Sunday of this ISO calendar week.",
             "format": "date"
@@ -844,22 +820,53 @@
             "items": {
               "$ref": "#/components/schemas/ProjectFeedbackStatsResponse"
             },
-            "description": "Every registered project (or the single project matching `project_id`, if given), ordered\nby `project_id`, with counts/percentages for feedback created within this week and within\nthe overall requested window. Zero-filled when a project had no feedback in this specific week.",
+            "description": "Every registered project (or the single project matching `projectId`, if given), ordered\nby `projectId`, with counts/percentages for feedback created within this week and within\nthe overall requested window. Zero-filled when a project had no feedback in this specific week.",
             "nullable": true
           }
         },
         "additionalProperties": false,
         "description": "Feedback effectiveness statistics for a single ISO calendar week (Monday-Sunday)."
       }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Keycloak access token. Paste the token only, without the 'Bearer ' prefix.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "OAuth2": {
+        "type": "oauth2",
+        "description": "Log in through Keycloak (authorization code flow with PKCE).",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://keycloak.home.arpa/realms/k8s/protocol/openid-connect/auth",
+            "tokenUrl": "https://keycloak.home.arpa/realms/k8s/protocol/openid-connect/token",
+            "scopes": {
+              "openid": "OpenID Connect login"
+            }
+          }
+        }
+      }
     }
   },
+  "security": [
+    {
+      "Bearer": [ ]
+    },
+    {
+      "OAuth2": [
+        "openid"
+      ]
+    }
+  ],
   "tags": [
     {
-      "name": "Code Query",
+      "name": "code-queries",
       "description": "Operations for querying indexed source code using natural language."
     },
     {
-      "name": "Version",
+      "name": "version",
       "description": "Reports the running API's own build version."
     }
   ]

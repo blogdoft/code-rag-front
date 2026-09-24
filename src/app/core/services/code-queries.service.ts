@@ -5,11 +5,10 @@ import type { CodeQueryFilters, QualifiedNameFilterOperator } from '../models/co
 import type { CodeQueryRelation, CodeQueryResult } from '../models/code-query-result';
 
 /**
- * Wire shape of `POST /api/code-queries`. Serializes snake_case throughout — confirmed against the
- * live swagger.json at the shared `blogdoft.home.arpa/code-brain` gateway, see
- * .specs/2026-09-18-gateway-and-projects-migration.md. As of that move the path dropped its `/v1`
- * segment (was `/api/v1/code-queries`); the project is still a body field (`project_id`), not part
- * of the URL, and the response is still an envelope (`matches` + `graph`), not a bare array.
+ * Wire shape of `POST /api/code-queries`. Serializes camelCase throughout as of the 2026-09-24
+ * contract change (see .specs/2026-09-24-camelcase-and-uuid-contract.md) — it was snake_case
+ * before. The project is a body field (`projectId`, a UUID string), not part of the URL, and the
+ * response is still an envelope (`matches` + `graph`), not a bare array.
  */
 interface CodeQueryQualifiedNameFilterDto {
   operator: QualifiedNameFilterOperator;
@@ -18,34 +17,34 @@ interface CodeQueryQualifiedNameFilterDto {
 
 interface CodeQueryRequestDto {
   question: string;
-  project_id?: number;
-  min_similarity?: number;
+  projectId?: string;
+  minSimilarity?: number;
   kind?: string;
-  qualified_name?: CodeQueryQualifiedNameFilterDto;
+  qualifiedName?: CodeQueryQualifiedNameFilterDto;
   limit?: number;
 }
 
 interface CodeQueryRelationDto {
-  from_id: number | null;
-  to_id: number | null;
-  relation_type: string | null;
-  target_symbol: string | null;
-  resolution_origin: string | null;
+  fromId: number | null;
+  toId: number | null;
+  relationType: string | null;
+  targetSymbol: string | null;
+  resolutionOrigin: string | null;
 }
 
 interface CodeQueryResultDto {
   id: number;
   kind: string | null;
-  symbol_container: string | null;
-  symbol_name: string | null;
-  symbol_qualified_name: string | null;
-  symbol_canonical_name: string | null;
-  source_file: string | null;
-  git_url: string | null;
-  git_raw_url: string | null;
-  embedding_text: string | null;
+  symbolContainer: string | null;
+  symbolName: string | null;
+  symbolQualifiedName: string | null;
+  symbolCanonicalName: string | null;
+  sourceFile: string | null;
+  gitUrl: string | null;
+  gitRawUrl: string | null;
+  embeddingText: string | null;
   similarity: number;
-  rerank_score: number | null;
+  rerankScore: number | null;
   relations: CodeQueryRelationDto[] | null;
 }
 
@@ -65,13 +64,11 @@ export interface CodeQueryFeedbackParams {
 }
 
 /**
- * Wire shape of `POST /api/code-queries/feedback` — as of the 2026-09-18 gateway move this is a
- * flat path (was nested under `/api/v1/projects/{projectId}/...`), so `project_id` is now a body
- * field instead of a URL segment. Every field name is already a single lowercase word, so there's
- * still no camelCase/snake_case translation to do here.
+ * Wire shape of `POST /api/code-queries/feedback` — a flat path, with `projectId` (a UUID string)
+ * as a body field rather than a URL segment. Every other field is a single lowercase word.
  */
 interface CodeQueryFeedbackRequestDto {
-  project_id: number;
+  projectId: string;
   question: string;
   useful: boolean;
   similarities: number[];
@@ -84,7 +81,7 @@ export class CodeQueriesService {
   private readonly http = inject(HttpClient);
 
   ask(
-    projectId: number | null,
+    projectId: string | null,
     question: string,
     filters?: CodeQueryFilters,
   ): Observable<CodeQueryResult[]> {
@@ -101,9 +98,9 @@ export class CodeQueriesService {
       );
   }
 
-  submitFeedback(projectId: number, params: CodeQueryFeedbackParams): Observable<void> {
+  submitFeedback(projectId: string, params: CodeQueryFeedbackParams): Observable<void> {
     const body: CodeQueryFeedbackRequestDto = {
-      project_id: projectId,
+      projectId,
       question: params.question,
       useful: params.useful,
       similarities: params.similarities,
@@ -115,13 +112,13 @@ export class CodeQueriesService {
 }
 
 function toRequestBody(
-  projectId: number | null,
+  projectId: string | null,
   question: string,
   filters?: CodeQueryFilters,
 ): CodeQueryRequestDto {
   const body: CodeQueryRequestDto = { question };
   if (projectId !== null) {
-    body.project_id = projectId;
+    body.projectId = projectId;
   }
 
   const kind = filters?.kind?.trim();
@@ -131,11 +128,11 @@ function toRequestBody(
 
   const qualifiedNameValue = filters?.qualifiedName?.value.trim();
   if (qualifiedNameValue) {
-    body.qualified_name = { operator: filters!.qualifiedName!.operator, value: qualifiedNameValue };
+    body.qualifiedName = { operator: filters!.qualifiedName!.operator, value: qualifiedNameValue };
   }
 
   if (filters?.minSimilarity != null) {
-    body.min_similarity = filters.minSimilarity;
+    body.minSimilarity = filters.minSimilarity;
   }
 
   if (filters?.limit != null) {
@@ -149,26 +146,26 @@ function toCodeQueryResult(dto: CodeQueryResultDto): CodeQueryResult {
   return {
     id: dto.id,
     kind: dto.kind,
-    symbolContainer: dto.symbol_container,
-    symbolName: dto.symbol_name,
-    symbolQualifiedName: dto.symbol_qualified_name,
-    symbolCanonicalName: dto.symbol_canonical_name,
-    sourceFile: dto.source_file,
-    gitUrl: dto.git_url,
-    gitRawUrl: dto.git_raw_url,
-    embeddingText: dto.embedding_text,
+    symbolContainer: dto.symbolContainer,
+    symbolName: dto.symbolName,
+    symbolQualifiedName: dto.symbolQualifiedName,
+    symbolCanonicalName: dto.symbolCanonicalName,
+    sourceFile: dto.sourceFile,
+    gitUrl: dto.gitUrl,
+    gitRawUrl: dto.gitRawUrl,
+    embeddingText: dto.embeddingText,
     similarity: dto.similarity,
-    rerankScore: dto.rerank_score,
+    rerankScore: dto.rerankScore,
     relations: (dto.relations ?? []).map(toCodeQueryRelation),
   };
 }
 
 function toCodeQueryRelation(dto: CodeQueryRelationDto): CodeQueryRelation {
   return {
-    fromId: dto.from_id,
-    toId: dto.to_id,
-    relationType: dto.relation_type,
-    targetSymbol: dto.target_symbol,
-    resolutionOrigin: dto.resolution_origin,
+    fromId: dto.fromId,
+    toId: dto.toId,
+    relationType: dto.relationType,
+    targetSymbol: dto.targetSymbol,
+    resolutionOrigin: dto.resolutionOrigin,
   };
 }

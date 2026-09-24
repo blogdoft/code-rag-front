@@ -11,6 +11,9 @@ import { NotUsefulReasonDialog } from './not-useful-reason-dialog';
 import { QueryFiltersDrawer } from './query-filters-drawer';
 import { UserNameDialog } from './user-name-dialog';
 
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
+
 describe('CodeSearchPage', () => {
   let fixture: ComponentFixture<CodeSearchPage>;
   let component: CodeSearchPage;
@@ -24,7 +27,7 @@ describe('CodeSearchPage', () => {
 
   const projects: Project[] = [
     {
-      id: 1,
+      id: PROJECT_1,
       name: 'alpha',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -34,7 +37,7 @@ describe('CodeSearchPage', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     },
     {
-      id: 2,
+      id: PROJECT_2,
       name: 'beta',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -103,7 +106,7 @@ describe('CodeSearchPage', () => {
     const combobox = fixture.debugElement.query(
       (debugEl) => debugEl.name === 'app-combobox',
     ).componentInstance;
-    combobox.selected.emit({ id: 1, label: 'alpha' });
+    combobox.selected.emit({ id: PROJECT_1, label: 'alpha' });
     fixture.detectChanges();
 
     expect(document.activeElement).toBe(
@@ -117,8 +120,8 @@ describe('CodeSearchPage', () => {
     setup();
     expect(projectsService.list).toHaveBeenCalled();
     expect(component['projectOptions']()).toEqual([
-      { id: 1, label: 'alpha' },
-      { id: 2, label: 'beta' },
+      { id: PROJECT_1, label: 'alpha' },
+      { id: PROJECT_2, label: 'beta' },
     ]);
   });
 
@@ -135,16 +138,16 @@ describe('CodeSearchPage', () => {
 
   it('submits a question and records history, leaving the question field populated', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('Where is retry logic?');
 
     component['submit']();
 
-    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {});
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(PROJECT_1, 'Where is retry logic?', {});
     expect(component['history']()).toEqual([
       {
         id: 0,
-        projectId: 1,
+        projectId: PROJECT_1,
         projectName: 'alpha',
         projectGitUrl: 'https://forgejo.example/alpha',
         question: 'Where is retry logic?',
@@ -159,7 +162,7 @@ describe('CodeSearchPage', () => {
 
   it('keeps the question field populated across consecutive searches', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('first question');
 
     component['submit']();
@@ -173,7 +176,7 @@ describe('CodeSearchPage', () => {
 
   it('renders the selected project name with a repository link', () => {
     setup();
-    component['selectedProjectId'].set(2);
+    component['selectedProjectId'].set(PROJECT_2);
     component['question'].set('Where is retry logic?');
 
     component['submit']();
@@ -203,7 +206,7 @@ describe('CodeSearchPage', () => {
 
   it('does not submit a blank question', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('   ');
 
     component['submit']();
@@ -214,7 +217,7 @@ describe('CodeSearchPage', () => {
   it('resets isSubmitting and skips history when the query errors', () => {
     const askSubject = new Subject<CodeQueryResult[]>();
     setup(askSubject);
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('boom');
 
     component['submit']();
@@ -238,7 +241,7 @@ describe('CodeSearchPage', () => {
 
   it('renders "No results" for a query that returns nothing', () => {
     setup(of([]));
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('empty query');
 
     component['submit']();
@@ -249,7 +252,7 @@ describe('CodeSearchPage', () => {
 
   it('renders a results table row and opens the popup when it is clicked', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('Where is retry logic?');
 
     component['submit']();
@@ -278,7 +281,7 @@ describe('CodeSearchPage', () => {
 
   it('removes a history entry when its close button is clicked', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('Where is retry logic?');
 
     component['submit']();
@@ -361,7 +364,7 @@ describe('CodeSearchPage', () => {
   it('disables the Ask button while submitting and re-enables it once done', () => {
     const askSubject = new Subject<CodeQueryResult[]>();
     setup(askSubject);
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('Where is retry logic?');
     fixture.detectChanges();
 
@@ -428,25 +431,25 @@ describe('CodeSearchPage', () => {
 
   it('persists filter values across searches without reopening the drawer', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['kindFilter'].set('method');
 
     component['question'].set('first question');
     component['submit']();
-    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'first question', {
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(PROJECT_1, 'first question', {
       kind: 'method',
     });
 
     component['question'].set('second question');
     component['submit']();
-    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(1, 'second question', {
+    expect(codeQueriesService.ask).toHaveBeenLastCalledWith(PROJECT_1, 'second question', {
       kind: 'method',
     });
   });
 
   it('submits active filter values and records them on the history entry', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('Where is retry logic?');
     component['kindFilter'].set('method');
     component['qualifiedNameFilter'].set({ operator: 'contains', value: '  *Controller  ' });
@@ -462,7 +465,7 @@ describe('CodeSearchPage', () => {
       limit: 5,
     };
     expect(codeQueriesService.ask).toHaveBeenCalledWith(
-      1,
+      PROJECT_1,
       'Where is retry logic?',
       expectedFilters,
     );
@@ -471,21 +474,21 @@ describe('CodeSearchPage', () => {
 
   it('omits a filter left blank (or only whitespace) from the request', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('Where is retry logic?');
     component['kindFilter'].set('   ');
 
     component['submit']();
 
-    expect(codeQueriesService.ask).toHaveBeenCalledWith(1, 'Where is retry logic?', {});
+    expect(codeQueriesService.ask).toHaveBeenCalledWith(PROJECT_1, 'Where is retry logic?', {});
   });
 
   it('renders active filters as badges on the history entry, in Kind then Qualified-name order', () => {
     setup();
-    component['selectedProjectId'].set(1);
+    component['selectedProjectId'].set(PROJECT_1);
     component['question'].set('Where is retry logic?');
     component['kindFilter'].set('method');
-    component['qualifiedNameFilter'].set({ operator: 'not_contains', value: 'Legacy' });
+    component['qualifiedNameFilter'].set({ operator: 'notContains', value: 'Legacy' });
 
     component['submit']();
     fixture.detectChanges();
@@ -498,7 +501,7 @@ describe('CodeSearchPage', () => {
 
   describe('feedback', () => {
     function askQuestion(): void {
-      component['selectedProjectId'].set(1);
+      component['selectedProjectId'].set(PROJECT_1);
       component['question'].set('Where is retry logic?');
       component['submit']();
       fixture.detectChanges();
@@ -528,7 +531,7 @@ describe('CodeSearchPage', () => {
       fixture.detectChanges();
 
       expect(popupService.open).not.toHaveBeenCalled();
-      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(1, {
+      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(PROJECT_1, {
         question: 'Where is retry logic?',
         useful: true,
         similarities: [0.9],
@@ -559,7 +562,7 @@ describe('CodeSearchPage', () => {
       closed.next(true);
       fixture.detectChanges();
 
-      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(1, {
+      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(PROJECT_1, {
         question: 'Where is retry logic?',
         useful: false,
         similarities: [0.9],
@@ -620,7 +623,7 @@ describe('CodeSearchPage', () => {
       fixture.detectChanges();
 
       expect(configService.setUserName).toHaveBeenCalledWith('Grace Hopper');
-      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(1, {
+      expect(codeQueriesService.submitFeedback).toHaveBeenCalledWith(PROJECT_1, {
         question: 'Where is retry logic?',
         useful: true,
         similarities: [0.9],

@@ -9,36 +9,35 @@ import type {
 import { ConfigService } from './config.service';
 
 /**
- * Wire shape of `GET /api/code-queries/feedback/stats` — live as of the 2026-09-18 gateway move
- * (was previously undeployed; the path also dropped its `/v1` segment). Snake_case, confirmed
- * against the live swagger.json (per CLAUDE.md's "trust the live response" rule).
+ * Wire shape of `GET /api/code-queries/feedback/stats`. camelCase (body and query params) as of the
+ * 2026-09-24 contract change — it was snake_case before; `projectId` is a UUID string.
  */
 interface ProjectFeedbackStatsDto {
-  project_id: number;
-  project_name: string | null;
-  total_count: number;
-  useful_count: number;
-  not_useful_count: number;
-  useful_percentage: number;
-  not_useful_percentage: number;
+  projectId: string;
+  projectName: string | null;
+  totalCount: number;
+  usefulCount: number;
+  notUsefulCount: number;
+  usefulPercentage: number;
+  notUsefulPercentage: number;
 }
 
 interface WeeklyFeedbackStatsDto {
-  week_start: string;
-  week_end: string;
+  weekStart: string;
+  weekEnd: string;
   projects: ProjectFeedbackStatsDto[] | null;
 }
 
 interface FeedbackStatsDto {
-  start_date: string;
-  end_date: string;
+  startDate: string;
+  endDate: string;
   weeks: WeeklyFeedbackStatsDto[] | null;
 }
 
 export interface FeedbackStatsQuery {
   startDate?: string;
   endDate?: string;
-  projectId?: number;
+  projectId?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -54,7 +53,7 @@ export class FeedbackStatsService {
 
   /**
    * Downloads the raw, unaggregated feedback rows for the same kind of window as `getStats`, as a
-   * CSV file. `created_at` is rendered by the API in the configured export timezone (Settings) -
+   * CSV file. `createdAt` is rendered by the API in the configured export timezone (Settings) -
    * see code-rag-api's .specs/code-query-feedback-timezone.md - not left to be UTC by default like
    * the JSON contract, since a human is expected to read this file directly.
    */
@@ -76,41 +75,41 @@ export class FeedbackStatsService {
 function buildParams(query: FeedbackStatsQuery): HttpParams {
   let params = new HttpParams();
   if (query.startDate) {
-    params = params.set('start_date', query.startDate);
+    params = params.set('startDate', query.startDate);
   }
   if (query.endDate) {
-    params = params.set('end_date', query.endDate);
+    params = params.set('endDate', query.endDate);
   }
   if (query.projectId != null) {
-    params = params.set('project_id', query.projectId);
+    params = params.set('projectId', query.projectId);
   }
   return params;
 }
 
 function toFeedbackStats(dto: FeedbackStatsDto): FeedbackStats {
   return {
-    startDate: dto.start_date,
-    endDate: dto.end_date,
+    startDate: dto.startDate,
+    endDate: dto.endDate,
     weeks: (dto.weeks ?? []).map(toWeeklyFeedbackStats),
   };
 }
 
 function toWeeklyFeedbackStats(dto: WeeklyFeedbackStatsDto): WeeklyFeedbackStats {
   return {
-    weekStart: dto.week_start,
-    weekEnd: dto.week_end,
+    weekStart: dto.weekStart,
+    weekEnd: dto.weekEnd,
     projects: (dto.projects ?? []).map(toProjectFeedbackStats),
   };
 }
 
 function toProjectFeedbackStats(dto: ProjectFeedbackStatsDto): ProjectFeedbackStats {
   return {
-    projectId: dto.project_id,
-    projectName: dto.project_name,
-    totalCount: dto.total_count,
-    usefulCount: dto.useful_count,
-    notUsefulCount: dto.not_useful_count,
-    usefulPercentage: dto.useful_percentage,
-    notUsefulPercentage: dto.not_useful_percentage,
+    projectId: dto.projectId,
+    projectName: dto.projectName,
+    totalCount: dto.totalCount,
+    usefulCount: dto.usefulCount,
+    notUsefulCount: dto.notUsefulCount,
+    usefulPercentage: dto.usefulPercentage,
+    notUsefulPercentage: dto.notUsefulPercentage,
   };
 }

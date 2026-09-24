@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { ProjectsService } from './projects.service';
 
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+
 describe('ProjectsService', () => {
   let service: ProjectsService;
   let httpMock: HttpTestingController;
@@ -30,7 +32,7 @@ describe('ProjectsService', () => {
     req.flush({
       items: [
         {
-          id: 1,
+          id: PROJECT_1,
           name: 'demo',
           embeddingModel: 'text-embedding-3-small',
           embeddingDimensions: 1536,
@@ -48,7 +50,7 @@ describe('ProjectsService', () => {
 
     expect(result).toEqual([
       {
-        id: 1,
+        id: PROJECT_1,
         name: 'demo',
         embeddingModel: 'text-embedding-3-small',
         embeddingDimensions: 1536,
@@ -61,7 +63,7 @@ describe('ProjectsService', () => {
   });
 
   it('follows pagination across multiple pages and flattens the items, in order', () => {
-    let result: { id: number }[] | undefined;
+    let result: { id: string }[] | undefined;
     service.list().subscribe((projects) => (result = projects));
 
     const firstReq = httpMock.expectOne(
@@ -86,7 +88,7 @@ describe('ProjectsService', () => {
       totalPages: 2,
     });
 
-    expect(result?.map((p) => p.id)).toEqual([1, 2, 3]);
+    expect(result?.map((p) => p.id)).toEqual([projectId(1), projectId(2), projectId(3)]);
   });
 
   it('returns an empty array when there are no projects', () => {
@@ -122,7 +124,7 @@ describe('ProjectsService', () => {
       gitRawUrl: 'https://forgejo.example/demo/raw/main/',
     });
     req.flush({
-      id: 1,
+      id: PROJECT_1,
       name: 'demo',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -133,7 +135,7 @@ describe('ProjectsService', () => {
     });
 
     expect(result).toEqual({
-      id: 1,
+      id: PROJECT_1,
       name: 'demo',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -147,7 +149,7 @@ describe('ProjectsService', () => {
   it('updates a project by id, sending a camelCase body and mapping the response', () => {
     let result: unknown;
     service
-      .update(1, {
+      .update(PROJECT_1, {
         name: 'renamed',
         embeddingModel: 'text-embedding-3-large',
         embeddingDimensions: 3072,
@@ -156,7 +158,7 @@ describe('ProjectsService', () => {
       })
       .subscribe((project) => (result = project));
 
-    const req = httpMock.expectOne('/api/indexer/projects/1');
+    const req = httpMock.expectOne(`/api/indexer/projects/${PROJECT_1}`);
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual({
       name: 'renamed',
@@ -166,7 +168,7 @@ describe('ProjectsService', () => {
       gitRawUrl: null,
     });
     req.flush({
-      id: 1,
+      id: PROJECT_1,
       name: 'renamed',
       embeddingModel: 'text-embedding-3-large',
       embeddingDimensions: 3072,
@@ -177,7 +179,7 @@ describe('ProjectsService', () => {
     });
 
     expect(result).toEqual({
-      id: 1,
+      id: PROJECT_1,
       name: 'renamed',
       embeddingModel: 'text-embedding-3-large',
       embeddingDimensions: 3072,
@@ -190,9 +192,9 @@ describe('ProjectsService', () => {
 
   it('deletes a project by id', () => {
     let completed = false;
-    service.remove(1).subscribe(() => (completed = true));
+    service.remove(PROJECT_1).subscribe(() => (completed = true));
 
-    const req = httpMock.expectOne('/api/indexer/projects/1');
+    const req = httpMock.expectOne(`/api/indexer/projects/${PROJECT_1}`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
 
@@ -200,10 +202,14 @@ describe('ProjectsService', () => {
   });
 });
 
-function projectDto(id: number) {
+function projectId(n: number): string {
+  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+}
+
+function projectDto(n: number) {
   return {
-    id,
-    name: `project-${id}`,
+    id: projectId(n),
+    name: `project-${n}`,
     embeddingModel: 'text-embedding-3-small',
     embeddingDimensions: 1536,
     gitUrl: null,

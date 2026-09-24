@@ -12,7 +12,7 @@ describe('QueryFiltersDrawer', () => {
     data = {
       kind: signal(''),
       qualifiedName: signal({ operator: 'contains', value: '' }),
-      qualifiedNameOperators: ['equals', 'contains', 'not_contains'],
+      qualifiedNameOperators: ['equals', 'contains', 'notContains'],
       minSimilarity: signal(null),
       limit: signal(null),
     };
@@ -32,7 +32,7 @@ describe('QueryFiltersDrawer', () => {
     setup();
     const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
-    expect(optionValues).toEqual(['equals', 'contains', 'not_contains']);
+    expect(optionValues).toEqual(['equals', 'contains', 'notContains']);
   });
 
   it('updates the kind signal immediately as a value is typed', () => {
@@ -116,7 +116,7 @@ describe('QueryFiltersDrawer', () => {
   it('resets all four fields to their default and closes when Clear is clicked', () => {
     setup();
     data.kind.set('method');
-    data.qualifiedName.set({ operator: 'not_contains', value: 'Legacy' });
+    data.qualifiedName.set({ operator: 'notContains', value: 'Legacy' });
     data.minSimilarity.set(0.5);
     data.limit.set(25);
 

@@ -13,6 +13,7 @@ import { CodeQueriesService } from '../../core/services/code-queries.service';
 import { ConfigService } from '../../core/services/config.service';
 import {
   DEFAULT_QUALIFIED_NAME_FILTER,
+  qualifiedNameOperatorLabel,
   type CodeQueryFilters,
   type QualifiedNameFilter,
   type QualifiedNameFilterOperator,
@@ -33,7 +34,7 @@ type FeedbackState =
 
 interface QueryHistoryEntry {
   id: number;
-  projectId: number | null;
+  projectId: string | null;
   projectName: string;
   projectGitUrl: string | null;
   question: string;
@@ -59,7 +60,7 @@ export class CodeSearchPage {
 
   protected readonly projectOptions = signal<ComboboxOption[]>([]);
   private readonly projects = signal<Project[]>([]);
-  protected readonly selectedProjectId = model<number | null>(null);
+  protected readonly selectedProjectId = model<string | null>(null);
   protected readonly question = signal('');
   protected readonly isSubmitting = signal(false);
   protected readonly history = signal<QueryHistoryEntry[]>([]);
@@ -74,7 +75,7 @@ export class CodeSearchPage {
   protected readonly qualifiedNameOperators: readonly QualifiedNameFilterOperator[] = [
     'equals',
     'contains',
-    'not_contains',
+    'notContains',
   ];
 
   protected readonly activeFilterCount = computed(() => {
@@ -144,7 +145,7 @@ export class CodeSearchPage {
     }
     if (filters.qualifiedName) {
       entries.push({
-        text: `qualified name ${filters.qualifiedName.operator.replace('_', ' ')} "${filters.qualifiedName.value}"`,
+        text: `qualified name ${qualifiedNameOperatorLabel(filters.qualifiedName.operator)} "${filters.qualifiedName.value}"`,
       });
     }
     return entries;

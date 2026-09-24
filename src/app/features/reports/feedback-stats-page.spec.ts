@@ -32,6 +32,9 @@ vi.mock('chart.js', () => ({
 
 vi.mock('chartjs-plugin-datalabels', () => ({ default: {} }));
 
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
+
 describe('FeedbackStatsPage', () => {
   let fixture: ComponentFixture<FeedbackStatsPage>;
   let projectsService: { list: ReturnType<typeof vi.fn> };
@@ -44,7 +47,7 @@ describe('FeedbackStatsPage', () => {
 
   const projects: Project[] = [
     {
-      id: 1,
+      id: PROJECT_1,
       name: 'alpha',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -54,7 +57,7 @@ describe('FeedbackStatsPage', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     },
     {
-      id: 2,
+      id: PROJECT_2,
       name: 'beta',
       embeddingModel: 'text-embedding-3-small',
       embeddingDimensions: 1536,
@@ -74,7 +77,7 @@ describe('FeedbackStatsPage', () => {
         weekEnd: '2026-08-02',
         projects: [
           {
-            projectId: 1,
+            projectId: PROJECT_1,
             projectName: 'alpha',
             totalCount: 10,
             usefulCount: 6,
@@ -83,7 +86,7 @@ describe('FeedbackStatsPage', () => {
             notUsefulPercentage: 40,
           },
           {
-            projectId: 2,
+            projectId: PROJECT_2,
             projectName: 'beta',
             totalCount: 5,
             usefulCount: 5,
@@ -124,8 +127,8 @@ describe('FeedbackStatsPage', () => {
   }
 
   function combobox(): {
-    options: () => { id: number; label: string }[];
-    value: { set: (v: number | null) => void };
+    options: () => { id: string; label: string }[];
+    value: { set: (v: string | null) => void };
   } {
     return fixture.debugElement.query((debugEl) => debugEl.name === 'app-combobox')
       .componentInstance;
@@ -177,9 +180,9 @@ describe('FeedbackStatsPage', () => {
   it('loads projects into the combobox with an "All projects" option first', () => {
     setup();
     expect(combobox().options()).toEqual([
-      { id: -1, label: 'All projects' },
-      { id: 1, label: 'alpha' },
-      { id: 2, label: 'beta' },
+      { id: 'all', label: 'All projects' },
+      { id: PROJECT_1, label: 'alpha' },
+      { id: PROJECT_2, label: 'beta' },
     ]);
   });
 
@@ -247,9 +250,9 @@ describe('FeedbackStatsPage', () => {
         { weekStart: '2026-07-27', weekEnd: '2026-08-02', projects: [stats.weeks[0].projects[0]] },
       ],
     };
-    setup((query) => of(query.projectId === 1 ? alphaOnly : stats));
+    setup((query) => of(query.projectId === PROJECT_1 ? alphaOnly : stats));
 
-    combobox().value.set(1);
+    combobox().value.set(PROJECT_1);
     fixture.detectChanges();
     refreshButton().click();
     fixture.detectChanges();
@@ -261,7 +264,7 @@ describe('FeedbackStatsPage', () => {
 
   it('refresh re-fetches with the currently selected project and date range', () => {
     setup();
-    combobox().value.set(2);
+    combobox().value.set(PROJECT_2);
     const [start, end] = dateInputs();
     setDate(start, '2026-08-01');
     setDate(end, '2026-08-31');
@@ -272,7 +275,7 @@ describe('FeedbackStatsPage', () => {
     expect(feedbackStatsService.getStats).toHaveBeenCalledWith({
       startDate: '2026-08-01T00:00:00.000Z',
       endDate: '2026-08-31T23:59:59.999Z',
-      projectId: 2,
+      projectId: PROJECT_2,
     });
   });
 
@@ -417,7 +420,7 @@ describe('FeedbackStatsPage', () => {
 
     it('exports with the currently selected filters', () => {
       setup();
-      combobox().value.set(2);
+      combobox().value.set(PROJECT_2);
       const [start, end] = dateInputs();
       setDate(start, '2026-08-01');
       setDate(end, '2026-08-31');
@@ -428,7 +431,7 @@ describe('FeedbackStatsPage', () => {
       expect(feedbackStatsService.exportCsv).toHaveBeenCalledWith({
         startDate: '2026-08-01T00:00:00.000Z',
         endDate: '2026-08-31T23:59:59.999Z',
-        projectId: 2,
+        projectId: PROJECT_2,
       });
     });
 

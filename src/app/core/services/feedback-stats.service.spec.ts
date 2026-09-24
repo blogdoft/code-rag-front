@@ -4,6 +4,9 @@ import { TestBed } from '@angular/core/testing';
 import { ConfigService } from './config.service';
 import { FeedbackStatsService } from './feedback-stats.service';
 
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+const PROJECT_7 = '00000000-0000-4000-8000-000000000007';
+
 describe('FeedbackStatsService', () => {
   let service: FeedbackStatsService;
   let httpMock: HttpTestingController;
@@ -26,7 +29,7 @@ describe('FeedbackStatsService', () => {
     const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/stats');
     expect(req.request.method).toBe('GET');
     expect(req.request.params.keys()).toEqual([]);
-    req.flush({ start_date: '2026-08-01T00:00:00Z', end_date: '2026-08-31T00:00:00Z', weeks: [] });
+    req.flush({ startDate: '2026-08-01T00:00:00Z', endDate: '2026-08-31T00:00:00Z', weeks: [] });
   });
 
   it('sends all three query params when given', () => {
@@ -34,47 +37,47 @@ describe('FeedbackStatsService', () => {
       .getStats({
         startDate: '2026-08-01T00:00:00Z',
         endDate: '2026-08-31T00:00:00Z',
-        projectId: 7,
+        projectId: PROJECT_7,
       })
       .subscribe();
 
     const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/stats');
-    expect(req.request.params.get('start_date')).toBe('2026-08-01T00:00:00Z');
-    expect(req.request.params.get('end_date')).toBe('2026-08-31T00:00:00Z');
-    expect(req.request.params.get('project_id')).toBe('7');
-    req.flush({ start_date: '2026-08-01T00:00:00Z', end_date: '2026-08-31T00:00:00Z', weeks: [] });
+    expect(req.request.params.get('startDate')).toBe('2026-08-01T00:00:00Z');
+    expect(req.request.params.get('endDate')).toBe('2026-08-31T00:00:00Z');
+    expect(req.request.params.get('projectId')).toBe(PROJECT_7);
+    req.flush({ startDate: '2026-08-01T00:00:00Z', endDate: '2026-08-31T00:00:00Z', weeks: [] });
   });
 
-  it('omits project_id when not given', () => {
+  it('omits projectId when not given', () => {
     service.getStats({ startDate: '2026-08-01T00:00:00Z' }).subscribe();
 
     const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/stats');
-    expect(req.request.params.has('project_id')).toBe(false);
-    req.flush({ start_date: '2026-08-01T00:00:00Z', end_date: '2026-08-31T00:00:00Z', weeks: [] });
+    expect(req.request.params.has('projectId')).toBe(false);
+    req.flush({ startDate: '2026-08-01T00:00:00Z', endDate: '2026-08-31T00:00:00Z', weeks: [] });
   });
 
-  it('maps snake_case DTOs to camelCase models', () => {
+  it('maps the DTO to the app model', () => {
     let result: unknown;
     service.getStats().subscribe((stats) => (result = stats));
 
     httpMock
       .expectOne((r) => r.url === '/api/code-queries/feedback/stats')
       .flush({
-        start_date: '2026-08-01T00:00:00Z',
-        end_date: '2026-08-31T00:00:00Z',
+        startDate: '2026-08-01T00:00:00Z',
+        endDate: '2026-08-31T00:00:00Z',
         weeks: [
           {
-            week_start: '2026-07-27',
-            week_end: '2026-08-02',
+            weekStart: '2026-07-27',
+            weekEnd: '2026-08-02',
             projects: [
               {
-                project_id: 1,
-                project_name: 'example',
-                total_count: 12,
-                useful_count: 9,
-                not_useful_count: 3,
-                useful_percentage: 75,
-                not_useful_percentage: 25,
+                projectId: PROJECT_1,
+                projectName: 'example',
+                totalCount: 12,
+                usefulCount: 9,
+                notUsefulCount: 3,
+                usefulPercentage: 75,
+                notUsefulPercentage: 25,
               },
             ],
           },
@@ -90,7 +93,7 @@ describe('FeedbackStatsService', () => {
           weekEnd: '2026-08-02',
           projects: [
             {
-              projectId: 1,
+              projectId: PROJECT_1,
               projectName: 'example',
               totalCount: 12,
               usefulCount: 9,
@@ -110,7 +113,7 @@ describe('FeedbackStatsService', () => {
 
     httpMock
       .expectOne((r) => r.url === '/api/code-queries/feedback/stats')
-      .flush({ start_date: '2026-08-01T00:00:00Z', end_date: '2026-08-31T00:00:00Z', weeks: null });
+      .flush({ startDate: '2026-08-01T00:00:00Z', endDate: '2026-08-31T00:00:00Z', weeks: null });
 
     expect(result).toEqual({
       startDate: '2026-08-01T00:00:00Z',
@@ -126,9 +129,9 @@ describe('FeedbackStatsService', () => {
     httpMock
       .expectOne((r) => r.url === '/api/code-queries/feedback/stats')
       .flush({
-        start_date: '2026-08-01T00:00:00Z',
-        end_date: '2026-08-31T00:00:00Z',
-        weeks: [{ week_start: '2026-07-27', week_end: '2026-08-02', projects: null }],
+        startDate: '2026-08-01T00:00:00Z',
+        endDate: '2026-08-31T00:00:00Z',
+        weeks: [{ weekStart: '2026-07-27', weekEnd: '2026-08-02', projects: null }],
       });
 
     expect(result).toEqual({
@@ -158,14 +161,14 @@ describe('FeedbackStatsService', () => {
         .exportCsv({
           startDate: '2026-08-01T00:00:00Z',
           endDate: '2026-08-31T00:00:00Z',
-          projectId: 7,
+          projectId: PROJECT_7,
         })
         .subscribe();
 
       const req = httpMock.expectOne((r) => r.url === '/api/code-queries/feedback/export');
-      expect(req.request.params.get('start_date')).toBe('2026-08-01T00:00:00Z');
-      expect(req.request.params.get('end_date')).toBe('2026-08-31T00:00:00Z');
-      expect(req.request.params.get('project_id')).toBe('7');
+      expect(req.request.params.get('startDate')).toBe('2026-08-01T00:00:00Z');
+      expect(req.request.params.get('endDate')).toBe('2026-08-31T00:00:00Z');
+      expect(req.request.params.get('projectId')).toBe(PROJECT_7);
       expect(req.request.params.get('timezone')).toBe('America/Manaus');
       req.flush(new Blob(['csv,data']));
     });

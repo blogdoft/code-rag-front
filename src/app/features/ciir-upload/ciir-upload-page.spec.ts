@@ -11,9 +11,12 @@ import { Combobox } from '../../shared/components/combobox/combobox';
 import { PopupService } from '../../shared/services/popup.service';
 import { CiirUploadPage } from './ciir-upload-page';
 
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
+
 const MB = 1024 * 1024;
 
-function project(id: number, name: string): Project {
+function project(id: string, name: string): Project {
   return {
     id,
     name,
@@ -40,7 +43,7 @@ function progressSnapshot(
   return {
     upload: {
       id: 'upload-1',
-      projectId: 1,
+      projectId: PROJECT_1,
       status: uploadStatus,
       createdAt: '2026-09-20T10:00:00Z',
       processingStartedAt: null,
@@ -87,7 +90,9 @@ describe('CiirUploadPage', () => {
       providers: [
         {
           provide: ProjectsService,
-          useValue: { list: vi.fn(() => of([project(1, 'alpha'), project(2, 'beta')])) },
+          useValue: {
+            list: vi.fn(() => of([project(PROJECT_1, 'alpha'), project(PROJECT_2, 'beta')])),
+          },
         },
         { provide: CiirUploadsService, useValue: uploadsService },
         { provide: PopupService, useValue: popupService },
@@ -110,7 +115,7 @@ describe('CiirUploadPage', () => {
   const combobox = (): Combobox =>
     fixture.debugElement.query(By.directive(Combobox)).componentInstance;
 
-  function chooseProject(id: number): void {
+  function chooseProject(id: string): void {
     combobox().value.set(id);
     fixture.detectChanges();
   }
@@ -122,7 +127,7 @@ describe('CiirUploadPage', () => {
   }
 
   function startUpload(file = fakeFile('ciir.jsonl', 100 * MB)): void {
-    chooseProject(1);
+    chooseProject(PROJECT_1);
     chooseFile(file);
     uploadButton().click();
     fixture.detectChanges();
@@ -140,8 +145,8 @@ describe('CiirUploadPage', () => {
 
   it('lists the projects from the API in the project combobox', () => {
     expect(combobox().options()).toEqual([
-      { id: 1, label: 'alpha' },
-      { id: 2, label: 'beta' },
+      { id: PROJECT_1, label: 'alpha' },
+      { id: PROJECT_2, label: 'beta' },
     ]);
   });
 
@@ -149,7 +154,7 @@ describe('CiirUploadPage', () => {
     it('keeps Upload disabled until both a project and a file are chosen', () => {
       expect(uploadButton().disabled).toBe(true);
 
-      chooseProject(1);
+      chooseProject(PROJECT_1);
       expect(uploadButton().disabled).toBe(true);
 
       chooseFile(fakeFile('ciir.jsonl', MB));
@@ -164,7 +169,7 @@ describe('CiirUploadPage', () => {
     });
 
     it('rejects a file that is not .jsonl', () => {
-      chooseProject(1);
+      chooseProject(PROJECT_1);
       chooseFile(fakeFile('ciir.json', MB));
 
       expect(toast.error).toHaveBeenCalledWith('CIIR file must be a .jsonl file.');
@@ -172,7 +177,7 @@ describe('CiirUploadPage', () => {
     });
 
     it('accepts the .jsonl extension case-insensitively', () => {
-      chooseProject(1);
+      chooseProject(PROJECT_1);
       chooseFile(fakeFile('CIIR.JSONL', MB));
 
       expect(toast.error).not.toHaveBeenCalled();
@@ -180,7 +185,7 @@ describe('CiirUploadPage', () => {
     });
 
     it('rejects an empty file', () => {
-      chooseProject(1);
+      chooseProject(PROJECT_1);
       chooseFile(fakeFile('ciir.jsonl', 0));
 
       expect(toast.error).toHaveBeenCalledWith('CIIR file is empty.');
@@ -188,7 +193,7 @@ describe('CiirUploadPage', () => {
     });
 
     it('accepts a file dropped on the drop zone', () => {
-      chooseProject(1);
+      chooseProject(PROJECT_1);
       const drop = Object.assign(new Event('drop', { bubbles: true, cancelable: true }), {
         dataTransfer: { files: [fakeFile('dropped.jsonl', MB)] },
       });
@@ -207,7 +212,7 @@ describe('CiirUploadPage', () => {
       const file = fakeFile('ciir.jsonl', 100 * MB);
       startUpload(file);
 
-      expect(uploadsService.upload).toHaveBeenCalledWith(1, file);
+      expect(uploadsService.upload).toHaveBeenCalledWith(PROJECT_1, file);
     });
 
     it('shows bytes sent, total and percentage as progress events arrive', () => {

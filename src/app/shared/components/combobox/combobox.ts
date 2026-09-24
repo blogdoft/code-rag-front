@@ -11,7 +11,7 @@ import {
 import { EscClearableDirective } from '../../directives/esc-clearable.directive';
 
 export interface ComboboxOption {
-  id: number;
+  id: string;
   label: string;
 }
 
@@ -31,7 +31,7 @@ export class Combobox {
   readonly placeholder = input('Type to search...');
   readonly disabled = input(false);
 
-  readonly value = model<number | null>(null);
+  readonly value = model<string | null>(null);
   readonly selected = output<ComboboxOption>();
 
   private readonly inputElement = viewChild.required<ElementRef<HTMLInputElement>>('input');

@@ -14,17 +14,20 @@ import { Combobox, type ComboboxOption } from './combobox';
 })
 class HostComponent {
   readonly options = signal<ComboboxOption[]>([
-    { id: 1, label: 'alpha' },
-    { id: 2, label: 'beta' },
+    { id: PROJECT_1, label: 'alpha' },
+    { id: PROJECT_2, label: 'beta' },
   ]);
   readonly disabled = signal(false);
-  value: number | null = null;
+  value: string | null = null;
   selectedOption: ComboboxOption | null = null;
 
   onSelected(option: ComboboxOption): void {
     this.selectedOption = option;
   }
 }
+
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
 
 describe('Combobox', () => {
   let fixture: ComponentFixture<HostComponent>;
@@ -96,7 +99,7 @@ describe('Combobox', () => {
     options()[1].dispatchEvent(new Event('mousedown', { bubbles: true }));
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.value).toBe(2);
+    expect(fixture.componentInstance.value).toBe(PROJECT_2);
     expect(options().length).toBe(0);
   });
 
@@ -105,7 +108,7 @@ describe('Combobox', () => {
     pressKey('ArrowDown');
     pressKey('Enter');
 
-    expect(fixture.componentInstance.value).toBe(2);
+    expect(fixture.componentInstance.value).toBe(PROJECT_2);
   });
 
   it('navigates backward with ArrowUp, wrapping to the last option', () => {
@@ -113,7 +116,7 @@ describe('Combobox', () => {
     pressKey('ArrowUp');
     pressKey('Enter');
 
-    expect(fixture.componentInstance.value).toBe(2);
+    expect(fixture.componentInstance.value).toBe(PROJECT_2);
   });
 
   it('clears an edited selection on blur', async () => {
@@ -147,7 +150,7 @@ describe('Combobox', () => {
     options()[1].dispatchEvent(new Event('mousedown', { bubbles: true }));
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.selectedOption).toEqual({ id: 2, label: 'beta' });
+    expect(fixture.componentInstance.selectedOption).toEqual({ id: PROJECT_2, label: 'beta' });
   });
 
   it('emits selected when an option is chosen via keyboard', () => {
@@ -155,7 +158,7 @@ describe('Combobox', () => {
     pressKey('ArrowDown');
     pressKey('Enter');
 
-    expect(fixture.componentInstance.selectedOption).toEqual({ id: 2, label: 'beta' });
+    expect(fixture.componentInstance.selectedOption).toEqual({ id: PROJECT_2, label: 'beta' });
   });
 
   it('exposes a focus() method that focuses the input', () => {

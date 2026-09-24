@@ -5,7 +5,7 @@
  */
 export interface CiirUploadStatus {
   id: string;
-  projectId: number;
+  projectId: string;
   /** `pending` | `processing` | `processed` | `failed`. */
   status: string;
   createdAt: string;

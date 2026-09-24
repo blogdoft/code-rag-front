@@ -1,5 +1,5 @@
 export interface ProjectFeedbackStats {
-  projectId: number;
+  projectId: string;
   projectName: string | null;
   totalCount: number;
   usefulCount: number;

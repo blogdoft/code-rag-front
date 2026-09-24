@@ -61,7 +61,7 @@ export class CiirUploadPage {
   private watchSubscription: Subscription | null = null;
 
   protected readonly projectOptions = signal<ComboboxOption[]>([]);
-  protected readonly selectedProjectId = model<number | null>(null);
+  protected readonly selectedProjectId = model<string | null>(null);
   protected readonly file = signal<File | null>(null);
   protected readonly isDragging = signal(false);
 

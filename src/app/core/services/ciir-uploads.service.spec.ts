@@ -9,13 +9,14 @@ import { SUPPRESS_ERROR_TOAST } from '../interceptors/error-toast.interceptor';
 import type { CiirUploadEvent, CiirUploadProgress } from '../models/ciir-upload';
 import { CiirUploadsService } from './ciir-uploads.service';
 
+const PROJECT_ID = '00000000-0000-4000-8000-000000000007';
 const UPLOAD_ID = '11111111-1111-1111-1111-111111111111';
 const INDEXATION_ID = '22222222-2222-2222-2222-222222222222';
 
 function uploadDto(overrides: Record<string, unknown> = {}) {
   return {
     id: UPLOAD_ID,
-    projectId: '7',
+    projectId: PROJECT_ID,
     status: 'pending',
     createdAt: '2026-09-20T10:00:00Z',
     processingStartedAt: null,
@@ -63,13 +64,13 @@ describe('CiirUploadsService', () => {
   describe('upload()', () => {
     it('posts multipart with projectId before ciirFile, since the API validates it before storing the file', () => {
       const file = new File(['{"a":1}\n'], 'ciir.jsonl', { type: 'application/x-ndjson' });
-      service.upload(7, file).subscribe();
+      service.upload(PROJECT_ID, file).subscribe();
 
       const req = httpMock.expectOne('/api/indexer/ciir-uploads');
       expect(req.request.method).toBe('POST');
       const body = req.request.body as FormData;
       expect(Array.from(body.keys())).toEqual(['projectId', 'ciirFile']);
-      expect(body.get('projectId')).toBe('7');
+      expect(body.get('projectId')).toBe(PROJECT_ID);
       expect((body.get('ciirFile') as File).name).toBe('ciir.jsonl');
       expect(req.request.reportProgress).toBe(true);
       req.flush(
@@ -79,7 +80,9 @@ describe('CiirUploadsService', () => {
     });
 
     it('suppresses the global error toast so the caller can explain the failure', () => {
-      service.upload(7, new File(['x'], 'ciir.jsonl')).subscribe({ error: () => undefined });
+      service
+        .upload(PROJECT_ID, new File(['x'], 'ciir.jsonl'))
+        .subscribe({ error: () => undefined });
 
       const req = httpMock.expectOne('/api/indexer/ciir-uploads');
       expect(req.request.context.get(SUPPRESS_ERROR_TOAST)).toBe(true);
@@ -88,7 +91,9 @@ describe('CiirUploadsService', () => {
 
     it('emits progress events, then the accepted upload id', () => {
       const events: CiirUploadEvent[] = [];
-      service.upload(7, new File(['x'], 'ciir.jsonl')).subscribe((event) => events.push(event));
+      service
+        .upload(PROJECT_ID, new File(['x'], 'ciir.jsonl'))
+        .subscribe((event) => events.push(event));
 
       const req = httpMock.expectOne('/api/indexer/ciir-uploads');
       req.event({ type: HttpEventType.Sent });
@@ -108,7 +113,9 @@ describe('CiirUploadsService', () => {
 
     it('reports an unknown total as null', () => {
       const events: CiirUploadEvent[] = [];
-      service.upload(7, new File(['x'], 'ciir.jsonl')).subscribe((event) => events.push(event));
+      service
+        .upload(PROJECT_ID, new File(['x'], 'ciir.jsonl'))
+        .subscribe((event) => events.push(event));
 
       httpMock
         .expectOne('/api/indexer/ciir-uploads')
@@ -118,7 +125,7 @@ describe('CiirUploadsService', () => {
     });
 
     it('aborts the request when unsubscribed', () => {
-      const subscription = service.upload(7, new File(['x'], 'ciir.jsonl')).subscribe();
+      const subscription = service.upload(PROJECT_ID, new File(['x'], 'ciir.jsonl')).subscribe();
       const req = httpMock.expectOne('/api/indexer/ciir-uploads');
 
       subscription.unsubscribe();
@@ -151,7 +158,7 @@ describe('CiirUploadsService', () => {
       expect(seen).toHaveLength(1);
       expect(seen[0].upload).toMatchObject({
         id: UPLOAD_ID,
-        projectId: 7,
+        projectId: PROJECT_ID,
         status: 'pending',
         indexationId: null,
       });
