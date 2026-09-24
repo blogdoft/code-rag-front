@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A UI/UX layer for the Code CIIR API (`code-ciir-api`). The user selects a project and asks
 natural-language questions about its code; the API returns candidate code snippets — each with its
 direct code-relationship data — and clicking one opens a popup with its full content. Product
-requirements are in `SPEC.md` (Portuguese, not yet updated for this backend — see
-`.specs/2026-09-10-ciir-api-migration.md`).
+requirements are in `SPEC.md` (English; rewritten 2026-09-24 to describe the whole product as it
+stands — per-feature history and rationale live in `.specs/`).
 
 As of 2026-09-18 (`.specs/2026-09-18-gateway-and-projects-migration.md`) the backend is split across
 **two services behind one shared gateway**, `https://blogdoft.home.arpa/code-brain`:
@@ -235,7 +235,8 @@ src/app/
                      with PopupCoordinatorService
   features/
     code-search/    "/rag" route — project combobox, question input, Q&A history, ResultDetailDialog
-    projects/       "/projects" route — project CRUD (list/search, add/edit/delete via ProjectFormDialog)
+    projects/       "/projects" route — project CRUD (list/search, add/edit/delete via ProjectFormDialog);
+                     `ProjectsDialog` hosts the same `ProjectsPage` in a popup for other screens
     ciir-upload/    "/uploads" route — upload a CIIR `.jsonl` file into a project, with upload progress
                      and server-side indexing status (see the API contract section above)
     reports/        "/reports" route — feedback-stats dashboard; backend endpoints went live in the

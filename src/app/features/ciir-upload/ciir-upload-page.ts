@@ -21,6 +21,7 @@ import {
   type ConfirmDialogData,
 } from '../../shared/components/confirm-dialog/confirm-dialog';
 import { PopupService } from '../../shared/services/popup.service';
+import { ProjectsDialog } from '../projects/projects-dialog';
 
 /**
  * - `uploading`: the file is still being sent (cancellable, aborts the request).
@@ -146,12 +147,7 @@ export class CiirUploadPage {
   protected readonly formatBytes = formatBytes;
 
   constructor() {
-    this.projectsService.list().subscribe({
-      next: (projects) =>
-        this.projectOptions.set(
-          projects.map((project) => ({ id: project.id, label: project.name })),
-        ),
-    });
+    this.loadProjects();
 
     // Leaving the page (once confirmed via canLeave()) abandons whatever is in flight: aborts an
     // unfinished upload request, and stops polling an accepted one - which keeps processing
@@ -160,6 +156,13 @@ export class CiirUploadPage {
       this.uploadSubscription?.unsubscribe();
       this.watchSubscription?.unsubscribe();
     });
+  }
+
+  /** Opens the projects screen in a popup; on close, reloads the combobox with any changes made. */
+  protected manageProjects(): void {
+    this.popupService
+      .open<void, unknown, ProjectsDialog>(ProjectsDialog)
+      .closed.subscribe(() => this.loadProjects());
   }
 
   protected onFileInput(event: Event): void {
@@ -247,6 +250,21 @@ export class CiirUploadPage {
     if (this.phase() === 'uploading') {
       event.preventDefault();
     }
+  }
+
+  private loadProjects(): void {
+    this.projectsService.list().subscribe({
+      next: (projects) => {
+        this.projectOptions.set(
+          projects.map((project) => ({ id: project.id, label: project.name })),
+        );
+        // The selected project may have been deleted while the projects popup was open.
+        const selected = this.selectedProjectId();
+        if (selected !== null && !projects.some((project) => project.id === selected)) {
+          this.selectedProjectId.set(null);
+        }
+      },
+    });
   }
 
   private track(uploadId: string): void {

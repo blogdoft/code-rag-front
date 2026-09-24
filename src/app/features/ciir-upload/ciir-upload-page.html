@@ -10,14 +10,23 @@
       </p>
     </div>
 
-    <div class="max-w-md">
-      <app-combobox
-        label="Project"
-        placeholder="Search projects..."
-        [options]="projectOptions()"
-        [disabled]="isBusy()"
-        [(value)]="selectedProjectId"
-      />
+    <div class="flex max-w-md items-end gap-2">
+      <div class="min-w-0 flex-1">
+        <app-combobox
+          label="Project"
+          placeholder="Search projects..."
+          [options]="projectOptions()"
+          [disabled]="isBusy()"
+          [(value)]="selectedProjectId"
+        />
+      </div>
+      <button
+        type="button"
+        (click)="manageProjects()"
+        class="shrink-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+      >
+        Manage projects
+      </button>
     </div>
 
     <div>

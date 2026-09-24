@@ -9,6 +9,7 @@ import { ProjectsService } from '../../core/services/projects.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Combobox } from '../../shared/components/combobox/combobox';
 import { PopupService } from '../../shared/services/popup.service';
+import { ProjectsDialog } from '../projects/projects-dialog';
 import { CiirUploadPage } from './ciir-upload-page';
 
 const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
@@ -379,6 +380,64 @@ describe('CiirUploadPage', () => {
       failWith(new HttpErrorResponse({ status: 0 }));
 
       expect(uploadButton().disabled).toBe(false);
+    });
+  });
+
+  describe('managing projects', () => {
+    const manageButton = (): HTMLButtonElement =>
+      Array.from(root().querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Manage projects',
+      )!;
+
+    it('opens the projects dialog', () => {
+      manageButton().click();
+
+      expect(popupService.open).toHaveBeenCalledWith(ProjectsDialog);
+    });
+
+    it('reloads the project options once the dialog closes', () => {
+      const projectsService = TestBed.inject(ProjectsService) as unknown as {
+        list: ReturnType<typeof vi.fn>;
+      };
+      projectsService.list.mockReturnValue(
+        of([project(PROJECT_1, 'alpha'), project(PROJECT_2, 'beta'), project('3', 'gamma')]),
+      );
+
+      manageButton().click();
+      expect(projectsService.list).toHaveBeenCalledTimes(1);
+      confirmClosed.next(undefined);
+      fixture.detectChanges();
+
+      expect(projectsService.list).toHaveBeenCalledTimes(2);
+      expect(
+        combobox()
+          .options()
+          .map((o) => o.label),
+      ).toEqual(['alpha', 'beta', 'gamma']);
+    });
+
+    it('clears the selection when the selected project was deleted meanwhile', () => {
+      chooseProject(PROJECT_1);
+      const projectsService = TestBed.inject(ProjectsService) as unknown as {
+        list: ReturnType<typeof vi.fn>;
+      };
+      projectsService.list.mockReturnValue(of([project(PROJECT_2, 'beta')]));
+
+      manageButton().click();
+      confirmClosed.next(undefined);
+      fixture.detectChanges();
+
+      expect(combobox().value()).toBeNull();
+    });
+
+    it('keeps the selection when it still exists', () => {
+      chooseProject(PROJECT_1);
+
+      manageButton().click();
+      confirmClosed.next(undefined);
+      fixture.detectChanges();
+
+      expect(combobox().value()).toBe(PROJECT_1);
     });
   });
 
