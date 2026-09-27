@@ -89,7 +89,7 @@
           "CiirUploads"
         ],
         "summary": "Registers a CIIR JSONL file already placed directly in object storage.",
-        "description": "For files too large to push through `POST /api/ciir-uploads`'s own request body: upload\nthe `.jsonl` file directly to this service's configured MinIO bucket yourself (e.g. via\n`mc cp`), then call this endpoint with the object key you uploaded it under. The\nobject's existence is verified before registering it, so a typo in `objectKey` fails\nimmediately rather than leaving a pending upload that can never be processed. From here on,\nthis behaves exactly like `POST /api/ciir-uploads` - poll\n`GET /api/ciir-uploads/{uploadId}` with the id returned here to observe progress.",
+        "description": "For files too large to push through `POST /api/ciir-uploads`'s own request body: upload\nthe `.jsonl` file directly to this service's configured object storage bucket yourself (e.g. via\n`aws s3 cp`), then call this endpoint with the object key you uploaded it under. The\nobject's existence is verified before registering it, so a typo in `objectKey` fails\nimmediately rather than leaving a pending upload that can never be processed. From here on,\nthis behaves exactly like `POST /api/ciir-uploads` - poll\n`GET /api/ciir-uploads/{uploadId}` with the id returned here to observe progress.",
         "requestBody": {
           "description": "Propagates request cancellation.",
           "content": {
@@ -959,7 +959,7 @@
               "null",
               "string"
             ],
-            "description": "Required. The key the `.jsonl` file was already stored under in this service's configured\nMinIO bucket - upload it there yourself first (e.g. via `mc cp`), then pass the same key\nhere."
+            "description": "Required. The key the `.jsonl` file was already stored under in this service's configured\nobject storage bucket - upload it there yourself first (e.g. via `aws s3 cp`), then pass the same key\nhere."
           }
         },
         "description": "Request body for `POST /api/ciir-uploads/register` (bring-your-own-upload)."
