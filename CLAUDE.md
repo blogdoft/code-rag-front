@@ -17,7 +17,7 @@ As of 2026-09-18 (`.specs/2026-09-18-gateway-and-projects-migration.md`) the bac
   `.../code-brain/api/code-queries/swagger/v1/swagger.json`).
 - **CIIR Indexer API** — Projects CRUD (`/api/indexer/projects`), CIIR file upload + indexation
   status (`/api/indexer/ciir-uploads`, `/api/indexer/indexations`; used by `features/ciir-upload`),
-  and a `POST .../ciir-uploads/register` (bring-your-own-upload via MinIO) this frontend doesn't
+  and a `POST .../ciir-uploads/register` (bring-your-own-upload straight into the Garage object storage) this frontend doesn't
   use. Contract in `openapi.indexer.generated.json` (fetched live from
   `.../code-brain/api/indexer/openapi/v1.json`).
 
