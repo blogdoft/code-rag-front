@@ -114,7 +114,7 @@ describe('ProjectsPage', () => {
 
     const [component_, options] = popupService.open.mock.calls[0];
     expect(component_).toBe(ProjectFormDialog);
-    expect(options.data).toEqual({ project: undefined });
+    expect(options.data).toEqual({ project: undefined, onCreated: expect.any(Function) });
   });
 
   it('opens the form dialog with the project data when editing', () => {
@@ -125,7 +125,7 @@ describe('ProjectsPage', () => {
     component['editProject'](projects[0]);
 
     const [, options] = popupService.open.mock.calls[0];
-    expect(options.data).toEqual({ project: projects[0] });
+    expect(options.data).toEqual({ project: projects[0], onCreated: expect.any(Function) });
   });
 
   it('delegates isDirty to the opened form dialog instance', () => {
@@ -158,6 +158,20 @@ describe('ProjectsPage', () => {
     };
     ref.closed.next(created);
 
+    expect(component['projects']()).toEqual([...projects, created]);
+  });
+
+  it('adds a created project as soon as the dialog reports it, without duplicating it on close', () => {
+    setup();
+    const ref = fakeDialogRef();
+    popupService.open.mockReturnValue(ref);
+    component['addProject']();
+    const created: Project = { ...projects[0], id: PROJECT_3, name: 'gamma' };
+
+    popupService.open.mock.calls[0][1].data.onCreated(created);
+    expect(component['projects']()).toEqual([...projects, created]);
+
+    ref.closed.next(created);
     expect(component['projects']()).toEqual([...projects, created]);
   });
 

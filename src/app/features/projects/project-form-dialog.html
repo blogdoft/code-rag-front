@@ -3,16 +3,43 @@
 >
   <header class="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
     <h2 class="text-base font-medium text-slate-900 dark:text-slate-100">
-      {{ isEditMode ? 'Edit project' : 'Add project' }}
+      {{ isEditMode ? 'Edit project' : createdProject() ? 'Project created' : 'Add project' }}
     </h2>
   </header>
 
   <div class="flex min-h-0 flex-col gap-4 overflow-auto px-5 py-4">
     <div>
+      <label
+        for="project-id"
+        class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >Project ID</label
+      >
+      <div class="flex gap-2">
+        <input
+          id="project-id"
+          type="text"
+          readonly
+          [value]="projectId() ?? ''"
+          placeholder="Generated when the project is saved"
+          class="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-700 shadow-sm outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
+        />
+        <button
+          type="button"
+          [disabled]="!projectId()"
+          (click)="copyProjectId()"
+          class="shrink-0 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <div>
       <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
       <input
         type="text"
         [value]="name()"
+        [readOnly]="!!createdProject()"
         [appEscClearable]="name()"
         (cleared)="clearName()"
         (input)="name.set($any($event.target).value)"
@@ -29,6 +56,7 @@
         type="text"
         placeholder="text-embedding-3-small"
         [value]="embeddingModel()"
+        [readOnly]="!!createdProject()"
         [appEscClearable]="embeddingModel()"
         (cleared)="clearEmbeddingModel()"
         (input)="embeddingModel.set($any($event.target).value)"
@@ -47,6 +75,7 @@
         step="1"
         placeholder="1536"
         [value]="embeddingDimensions() ?? ''"
+        [readOnly]="!!createdProject()"
         (input)="onEmbeddingDimensionsInput($any($event.target).value)"
         (keydown.enter)="save()"
         class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
@@ -61,6 +90,7 @@
         type="text"
         placeholder="https://forgejo.home.arpa/user/meu-repo"
         [value]="gitUrl()"
+        [readOnly]="!!createdProject()"
         [appEscClearable]="gitUrl()"
         (cleared)="clearGitUrl()"
         (input)="gitUrl.set($any($event.target).value)"
@@ -77,6 +107,7 @@
         type="text"
         placeholder="https://forgejo.home.arpa/user/repo/raw/branch/main/"
         [value]="gitRawUrl()"
+        [readOnly]="!!createdProject()"
         [appEscClearable]="gitRawUrl()"
         (cleared)="clearGitRawUrl()"
         (input)="gitRawUrl.set($any($event.target).value)"
@@ -89,20 +120,30 @@
   <footer
     class="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-700"
   >
-    <button
-      type="button"
-      (click)="cancel()"
-      class="rounded-md px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
-    >
-      Cancel
-    </button>
-    <button
-      type="button"
-      [disabled]="!canSave"
-      (click)="save()"
-      class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {{ isSaving() ? 'Saving...' : 'Save' }}
-    </button>
+    @if (createdProject()) {
+      <button
+        type="button"
+        (click)="close()"
+        class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+      >
+        Close
+      </button>
+    } @else {
+      <button
+        type="button"
+        (click)="cancel()"
+        class="rounded-md px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        [disabled]="!canSave"
+        (click)="save()"
+        class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {{ isSaving() ? 'Saving...' : 'Save' }}
+      </button>
+    }
   </footer>
 </div>

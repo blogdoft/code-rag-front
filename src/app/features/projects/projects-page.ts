@@ -84,7 +84,7 @@ export class ProjectsPage {
     formRef = this.popupService.open<Project | undefined, ProjectFormDialogData, ProjectFormDialog>(
       ProjectFormDialog,
       {
-        data: { project },
+        data: { project, onCreated: (created) => this.upsertProject(created) },
         isDirty: () => formRef.componentInstance?.isDirty() ?? false,
       },
     );
@@ -93,15 +93,20 @@ export class ProjectsPage {
       if (!result) {
         return;
       }
-      this.projects.update((list) => {
-        const index = list.findIndex((p) => p.id === result.id);
-        if (index === -1) {
-          return [...list, result];
-        }
-        const next = [...list];
-        next[index] = result;
-        return next;
-      });
+      this.upsertProject(result);
+    });
+  }
+
+  /** Idempotent: a created project is reported on creation and again when the dialog closes. */
+  private upsertProject(project: Project): void {
+    this.projects.update((list) => {
+      const index = list.findIndex((p) => p.id === project.id);
+      if (index === -1) {
+        return [...list, project];
+      }
+      const next = [...list];
+      next[index] = project;
+      return next;
     });
   }
 

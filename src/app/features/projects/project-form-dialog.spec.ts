@@ -26,7 +26,11 @@ describe('ProjectFormDialog', () => {
     updatedAt: '2026-01-01T00:00:00Z',
   };
 
+  let onCreated: ReturnType<typeof vi.fn<(project: Project) => void>>;
+
   function setup(data: ProjectFormDialogData): void {
+    onCreated = vi.fn<(project: Project) => void>();
+    data = { ...data, onCreated };
     dialogRef = { close: vi.fn() };
     projectsService = { create: vi.fn(), update: vi.fn() };
     toastService = { success: vi.fn(), error: vi.fn() };
@@ -88,13 +92,22 @@ describe('ProjectFormDialog', () => {
       expect(component.isDirty()).toBe(true);
     });
 
-    it('creates the project and closes with the result on save', () => {
+    it('shows a placeholder instead of an id before the project exists', () => {
+      const input: HTMLInputElement = fixture.nativeElement.querySelector('#project-id');
+      expect(input.value).toBe('');
+      expect(input.readOnly).toBe(true);
+      expect(input.placeholder).toBe('Generated when the project is saved');
+      expect(findButton('Copy').disabled).toBe(true);
+    });
+
+    it('creates the project and stays open showing its generated id', () => {
       projectsService.create.mockReturnValue(of(existingProject));
       component['name'].set('demo');
       component['embeddingModel'].set('text-embedding-3-small');
       component['embeddingDimensions'].set(1536);
 
       component['save']();
+      fixture.detectChanges();
 
       expect(projectsService.create).toHaveBeenCalledWith({
         name: 'demo',
@@ -104,6 +117,25 @@ describe('ProjectFormDialog', () => {
         gitRawUrl: null,
       });
       expect(toastService.success).toHaveBeenCalledWith('Project created.');
+      expect(onCreated).toHaveBeenCalledWith(existingProject);
+      expect(dialogRef.close).not.toHaveBeenCalled();
+      const input: HTMLInputElement = fixture.nativeElement.querySelector('#project-id');
+      expect(input.value).toBe(PROJECT_1);
+      expect(fixture.nativeElement.textContent).toContain('Project created');
+      expect(component['canSave']).toBe(false);
+      expect(component.isDirty()).toBe(false);
+    });
+
+    it('closes with the created project when Close is clicked after creating', () => {
+      projectsService.create.mockReturnValue(of(existingProject));
+      component['name'].set('demo');
+      component['embeddingModel'].set('text-embedding-3-small');
+      component['embeddingDimensions'].set(1536);
+      component['save']();
+      fixture.detectChanges();
+
+      findButton('Close').click();
+
       expect(dialogRef.close).toHaveBeenCalledWith(existingProject);
     });
 
@@ -138,6 +170,21 @@ describe('ProjectFormDialog', () => {
       expect(component['gitUrl']()).toBe('https://forgejo.example/demo');
       expect(component['gitRawUrl']()).toBe('https://forgejo.example/demo/raw/main/');
       expect(fixture.nativeElement.textContent).toContain('Edit project');
+    });
+
+    it('shows the project id read-only and copies it to the clipboard', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      vi.stubGlobal('navigator', { clipboard: { writeText } });
+      const input: HTMLInputElement = fixture.nativeElement.querySelector('#project-id');
+      expect(input.value).toBe(PROJECT_1);
+      expect(input.readOnly).toBe(true);
+
+      findButton('Copy').click();
+      await fixture.whenStable();
+
+      expect(writeText).toHaveBeenCalledWith(PROJECT_1);
+      expect(toastService.success).toHaveBeenCalledWith('Project ID copied.');
+      vi.unstubAllGlobals();
     });
 
     it('is not dirty until a field changes', () => {

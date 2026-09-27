@@ -116,6 +116,7 @@ describe('Projects page', () => {
       cy.contains('button', 'Add project').click();
       cy.dialog().contains('h2', 'Add project');
       cy.dialog().contains('button', 'Save').should('be.disabled');
+      cy.get('#project-id').should('have.value', '').and('have.attr', 'readonly');
     });
 
     it('enables Save only when name, model and a positive integer dimension are set', () => {
@@ -159,6 +160,10 @@ describe('Projects page', () => {
         gitRawUrl: null,
       });
       cy.toast('Project created.').should('be.visible');
+      // The dialog stays open so the API-generated id can be read and copied.
+      cy.dialog().contains('h2', 'Project created');
+      cy.get('#project-id').should('have.value', '44444444-4444-4444-8444-444444444444');
+      cy.dialog().contains('button', 'Close').click();
       cy.get('.cdk-dialog-container').should('not.exist');
       rowFor('new-service').should('contain.text', 'text-embedding-3-small (1536)');
     });
@@ -269,6 +274,7 @@ describe('Projects page', () => {
       cy.visit('/projects');
       rowFor('billing-service').contains('button', 'Edit').click();
       cy.dialog().contains('h2', 'Edit project');
+      cy.get('#project-id').should('have.value', PROJECT_IDS.billing).and('have.attr', 'readonly');
       cy.contains('label', 'Name').parent().find('input').should('have.value', 'billing-service');
       cy.contains('label', 'Embedding dimensions')
         .parent()
