@@ -124,10 +124,9 @@ fix point is the DTO interfaces + mapper functions in `core/services/projects.se
   **`gitUrl`/`gitRawUrl` must be `null` when blank, never `""`** — the indexer stores `""` as-is and
   code-ciir-api then 500s (`new Uri("")`) on every call resolving that project (see
   `.specs/2026-09-24-camelcase-and-uuid-contract.md` §3);
-  `ProjectResponse` is `{ id, name, embeddingModel, embeddingDimensions, gitUrl, gitRawUrl, createdAt,
-  updatedAt }`. `id` is a UUID string (`{projectId}` in the item paths is too); `embeddingDimensions`
-  is typed by the server as int32-or-string — `ProjectsService`'s mapper normalizes it through
-  `Number(...)`.
+  `ProjectResponse` is `{ id, name, gitUrl, gitRawUrl, createdAt, updatedAt }` (the embedding model /
+  dimensions fields were dropped from the projects table and the API). `id` is a UUID string
+  (`{projectId}` in the item paths is too).
 - `POST /api/indexer/ciir-uploads` (CIIR Indexer API; backing `features/ciir-upload`) takes
   `multipart/form-data` with a `projectId` text field and a `ciirFile` file field, **in that
   order** — the server validates the project before storing any byte of the file, so

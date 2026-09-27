@@ -726,9 +726,7 @@
       },
       "ProjectCreateRequest": {
         "required": [
-          "name",
-          "embeddingModel",
-          "embeddingDimensions"
+          "name"
         ],
         "type": "object",
         "properties": {
@@ -738,23 +736,6 @@
               "string"
             ],
             "description": "Required. The project's name. Must not be empty or blank, and must not already be used by another project (409 otherwise)."
-          },
-          "embeddingModel": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Required. The embedding model this project's code documents are (or will be) embedded with. Must not be empty or blank."
-          },
-          "embeddingDimensions": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "description": "Required. The dimensionality of that embedding model's vectors. Must be a positive integer.",
-            "format": "int32"
           },
           "gitUrl": {
             "type": [
@@ -833,8 +814,6 @@
         "required": [
           "id",
           "name",
-          "embeddingModel",
-          "embeddingDimensions",
           "gitUrl",
           "gitRawUrl",
           "createdAt",
@@ -850,19 +829,6 @@
           "name": {
             "type": "string",
             "description": "The project's name, unique across every project."
-          },
-          "embeddingModel": {
-            "type": "string",
-            "description": "The embedding model this project's code documents are (or will be) embedded with."
-          },
-          "embeddingDimensions": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "description": "The dimensionality of that embedding model's vectors.",
-            "format": "int32"
           },
           "gitUrl": {
             "type": [
@@ -893,9 +859,7 @@
       },
       "ProjectUpdateRequest": {
         "required": [
-          "name",
-          "embeddingModel",
-          "embeddingDimensions"
+          "name"
         ],
         "type": "object",
         "properties": {
@@ -905,23 +869,6 @@
               "string"
             ],
             "description": "The project's new name. Must not be empty or blank, and must not already be used by another project (409 otherwise)."
-          },
-          "embeddingModel": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The project's new embedding model. Must not be empty or blank."
-          },
-          "embeddingDimensions": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "description": "The project's new embedding dimensionality. Must be a positive integer.",
-            "format": "int32"
           },
           "gitUrl": {
             "type": [
@@ -1008,7 +955,7 @@
   },
   "security": [
     {
-      "Bearer": [ ]
+      "Bearer": []
     },
     {
       "OAuth2": [

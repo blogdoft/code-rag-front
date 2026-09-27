@@ -34,8 +34,6 @@ describe('ProjectsService', () => {
         {
           id: PROJECT_1,
           name: 'demo',
-          embeddingModel: 'text-embedding-3-small',
-          embeddingDimensions: 1536,
           gitUrl: 'https://forgejo.example/demo',
           gitRawUrl: 'https://forgejo.example/demo/raw/main/',
           createdAt: '2026-01-01T00:00:00Z',
@@ -52,8 +50,6 @@ describe('ProjectsService', () => {
       {
         id: PROJECT_1,
         name: 'demo',
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 1536,
         gitUrl: 'https://forgejo.example/demo',
         gitRawUrl: 'https://forgejo.example/demo/raw/main/',
         createdAt: '2026-01-01T00:00:00Z',
@@ -107,8 +103,6 @@ describe('ProjectsService', () => {
     service
       .create({
         name: 'demo',
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 1536,
         gitUrl: 'https://forgejo.example/demo',
         gitRawUrl: 'https://forgejo.example/demo/raw/main/',
       })
@@ -118,16 +112,12 @@ describe('ProjectsService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({
       name: 'demo',
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 1536,
       gitUrl: 'https://forgejo.example/demo',
       gitRawUrl: 'https://forgejo.example/demo/raw/main/',
     });
     req.flush({
       id: PROJECT_1,
       name: 'demo',
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 1536,
       gitUrl: 'https://forgejo.example/demo',
       gitRawUrl: 'https://forgejo.example/demo/raw/main/',
       createdAt: '2026-01-01T00:00:00Z',
@@ -137,8 +127,6 @@ describe('ProjectsService', () => {
     expect(result).toEqual({
       id: PROJECT_1,
       name: 'demo',
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 1536,
       gitUrl: 'https://forgejo.example/demo',
       gitRawUrl: 'https://forgejo.example/demo/raw/main/',
       createdAt: '2026-01-01T00:00:00Z',
@@ -151,8 +139,6 @@ describe('ProjectsService', () => {
     service
       .update(PROJECT_1, {
         name: 'renamed',
-        embeddingModel: 'text-embedding-3-large',
-        embeddingDimensions: 3072,
         gitUrl: null,
         gitRawUrl: null,
       })
@@ -162,16 +148,12 @@ describe('ProjectsService', () => {
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual({
       name: 'renamed',
-      embeddingModel: 'text-embedding-3-large',
-      embeddingDimensions: 3072,
       gitUrl: null,
       gitRawUrl: null,
     });
     req.flush({
       id: PROJECT_1,
       name: 'renamed',
-      embeddingModel: 'text-embedding-3-large',
-      embeddingDimensions: 3072,
       gitUrl: null,
       gitRawUrl: null,
       createdAt: '2026-01-01T00:00:00Z',
@@ -181,8 +163,6 @@ describe('ProjectsService', () => {
     expect(result).toEqual({
       id: PROJECT_1,
       name: 'renamed',
-      embeddingModel: 'text-embedding-3-large',
-      embeddingDimensions: 3072,
       gitUrl: null,
       gitRawUrl: null,
       createdAt: '2026-01-01T00:00:00Z',
@@ -210,8 +190,6 @@ function projectDto(n: number) {
   return {
     id: projectId(n),
     name: `project-${n}`,
-    embeddingModel: 'text-embedding-3-small',
-    embeddingDimensions: 1536,
     gitUrl: null,
     gitRawUrl: null,
     createdAt: '2026-01-01T00:00:00Z',

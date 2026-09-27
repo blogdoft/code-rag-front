@@ -22,8 +22,6 @@ describe('ProjectsPage', () => {
     {
       id: PROJECT_1,
       name: 'alpha',
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 1536,
       gitUrl: null,
       gitRawUrl: null,
       createdAt: '2026-01-01T00:00:00Z',
@@ -32,8 +30,6 @@ describe('ProjectsPage', () => {
     {
       id: PROJECT_2,
       name: 'beta',
-      embeddingModel: null,
-      embeddingDimensions: 0,
       gitUrl: null,
       gitRawUrl: null,
       createdAt: '2026-01-02T00:00:00Z',
@@ -85,7 +81,6 @@ describe('ProjectsPage', () => {
     const rows = fixture.nativeElement.querySelectorAll('tbody tr');
     expect(rows.length).toBe(2);
     expect(rows[0].textContent).toContain('alpha');
-    expect(rows[0].textContent).toContain('text-embedding-3-small');
   });
 
   it('shows an empty state when there are no projects', () => {
@@ -149,8 +144,6 @@ describe('ProjectsPage', () => {
     const created: Project = {
       id: PROJECT_3,
       name: 'gamma',
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 1536,
       gitUrl: null,
       gitRawUrl: null,
       createdAt: '2026-01-03T00:00:00Z',

@@ -21,8 +21,6 @@ function project(id: string, name: string): Project {
   return {
     id,
     name,
-    embeddingModel: 'text-embedding-3-small',
-    embeddingDimensions: 1536,
     gitUrl: null,
     gitRawUrl: null,
     createdAt: '2026-01-01T00:00:00Z',

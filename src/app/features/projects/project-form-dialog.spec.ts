@@ -18,8 +18,6 @@ describe('ProjectFormDialog', () => {
   const existingProject: Project = {
     id: PROJECT_1,
     name: 'demo',
-    embeddingModel: 'text-embedding-3-small',
-    embeddingDimensions: 1536,
     gitUrl: 'https://forgejo.example/demo',
     gitRawUrl: 'https://forgejo.example/demo/raw/main/',
     createdAt: '2026-01-01T00:00:00Z',
@@ -63,26 +61,18 @@ describe('ProjectFormDialog', () => {
 
     it('starts with empty fields and the "Add project" heading', () => {
       expect(component['name']()).toBe('');
-      expect(component['embeddingModel']()).toBe('');
-      expect(component['embeddingDimensions']()).toBeNull();
       expect(component['gitUrl']()).toBe('');
       expect(component['gitRawUrl']()).toBe('');
       expect(fixture.nativeElement.textContent).toContain('Add project');
     });
 
-    it('cannot save until all three fields are filled with a positive integer dimensions', () => {
+    it('cannot save until the name is filled', () => {
+      expect(component['canSave']).toBe(false);
+
+      component['name'].set('   ');
       expect(component['canSave']).toBe(false);
 
       component['name'].set('demo');
-      expect(component['canSave']).toBe(false);
-
-      component['embeddingModel'].set('text-embedding-3-small');
-      expect(component['canSave']).toBe(false);
-
-      component['embeddingDimensions'].set(0);
-      expect(component['canSave']).toBe(false);
-
-      component['embeddingDimensions'].set(1536);
       expect(component['canSave']).toBe(true);
     });
 
@@ -103,16 +93,12 @@ describe('ProjectFormDialog', () => {
     it('creates the project and stays open showing its generated id', () => {
       projectsService.create.mockReturnValue(of(existingProject));
       component['name'].set('demo');
-      component['embeddingModel'].set('text-embedding-3-small');
-      component['embeddingDimensions'].set(1536);
 
       component['save']();
       fixture.detectChanges();
 
       expect(projectsService.create).toHaveBeenCalledWith({
         name: 'demo',
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 1536,
         gitUrl: null,
         gitRawUrl: null,
       });
@@ -129,8 +115,6 @@ describe('ProjectFormDialog', () => {
     it('closes with the created project when Close is clicked after creating', () => {
       projectsService.create.mockReturnValue(of(existingProject));
       component['name'].set('demo');
-      component['embeddingModel'].set('text-embedding-3-small');
-      component['embeddingDimensions'].set(1536);
       component['save']();
       fixture.detectChanges();
 
@@ -142,8 +126,6 @@ describe('ProjectFormDialog', () => {
     it('sends null (never an empty string) for blank or whitespace-only git URLs', () => {
       projectsService.create.mockReturnValue(of(existingProject));
       component['name'].set('demo');
-      component['embeddingModel'].set('text-embedding-3-small');
-      component['embeddingDimensions'].set(1536);
       component['gitUrl'].set('   ');
       component['gitRawUrl'].set('');
 
@@ -165,8 +147,6 @@ describe('ProjectFormDialog', () => {
 
     it('prefills fields from the existing project and shows the "Edit project" heading', () => {
       expect(component['name']()).toBe('demo');
-      expect(component['embeddingModel']()).toBe('text-embedding-3-small');
-      expect(component['embeddingDimensions']()).toBe(1536);
       expect(component['gitUrl']()).toBe('https://forgejo.example/demo');
       expect(component['gitRawUrl']()).toBe('https://forgejo.example/demo/raw/main/');
       expect(fixture.nativeElement.textContent).toContain('Edit project');
@@ -202,8 +182,6 @@ describe('ProjectFormDialog', () => {
 
       expect(projectsService.update).toHaveBeenCalledWith(PROJECT_1, {
         name: 'renamed',
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 1536,
         gitUrl: 'https://forgejo.example/demo',
         gitRawUrl: 'https://forgejo.example/demo/raw/main/',
       });

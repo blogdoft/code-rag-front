@@ -8,13 +8,11 @@ describe('Projects page', () => {
   });
 
   describe('listing', () => {
-    it('lists every project with model, dimensions and created date', () => {
+    it('lists every project with its name and created date', () => {
       cy.visit('/projects');
       cy.wait('@projects');
       cy.get('tbody tr').should('have.length', 3);
-      rowFor('billing-service').should('contain.text', 'text-embedding-3-small (1536)');
-      // embeddingDimensions arrives as a string for orders-api and must be normalized
-      rowFor('orders-api').should('contain.text', 'nomic-embed-text (768)');
+      rowFor('orders-api').should('exist');
       rowFor('billing-service').should('contain.text', 'Sep 1, 2026');
     });
 
@@ -46,31 +44,6 @@ describe('Projects page', () => {
       cy.visit('/projects');
       cy.contains('No projects yet.').should('be.visible');
       cy.get('table').should('not.exist');
-    });
-
-    it('shows "—" for a project without embedding model', () => {
-      cy.stubBackend({
-        projects: {
-          items: [
-            {
-              id: PROJECT_IDS.billing,
-              name: 'bare',
-              embeddingModel: null,
-              embeddingDimensions: 0,
-              gitUrl: null,
-              gitRawUrl: null,
-              createdAt: '2026-09-01T12:00:00Z',
-              updatedAt: '2026-09-01T12:00:00Z',
-            },
-          ],
-          page: 0,
-          pageSize: 100,
-          totalCount: 1,
-          totalPages: 1,
-        },
-      });
-      cy.visit('/projects');
-      rowFor('bare').should('contain.text', '—');
     });
 
     it('toasts the API problem detail when listing fails', () => {
@@ -107,8 +80,6 @@ describe('Projects page', () => {
   describe('add project', () => {
     const fill = () => {
       cy.contains('label', 'Name').parent().find('input').type('new-service');
-      cy.contains('label', 'Embedding model').parent().find('input').type('text-embedding-3-small');
-      cy.contains('label', 'Embedding dimensions').parent().find('input').type('1536');
     };
 
     it('opens an empty "Add project" dialog with Save disabled', () => {
@@ -119,16 +90,11 @@ describe('Projects page', () => {
       cy.get('#project-id').should('have.value', '').and('have.attr', 'readonly');
     });
 
-    it('enables Save only when name, model and a positive integer dimension are set', () => {
+    it('enables Save only when the name is set', () => {
       cy.visit('/projects');
       cy.contains('button', 'Add project').click();
+      cy.dialog().contains('button', 'Save').should('be.disabled');
       cy.contains('label', 'Name').parent().find('input').type('x');
-      cy.dialog().contains('button', 'Save').should('be.disabled');
-      cy.contains('label', 'Embedding model').parent().find('input').type('m');
-      cy.dialog().contains('button', 'Save').should('be.disabled');
-      cy.contains('label', 'Embedding dimensions').parent().find('input').type('0');
-      cy.dialog().contains('button', 'Save').should('be.disabled');
-      cy.contains('label', 'Embedding dimensions').parent().find('input').clear().type('3');
       cy.dialog().contains('button', 'Save').should('be.enabled');
     });
 
@@ -139,8 +105,6 @@ describe('Projects page', () => {
           body: {
             id: '44444444-4444-4444-8444-444444444444',
             name: req.body.name,
-            embeddingModel: req.body.embeddingModel,
-            embeddingDimensions: req.body.embeddingDimensions,
             gitUrl: req.body.gitUrl,
             gitRawUrl: req.body.gitRawUrl,
             createdAt: '2026-09-24T12:00:00Z',
@@ -154,8 +118,6 @@ describe('Projects page', () => {
       cy.dialog().contains('button', 'Save').click();
       cy.wait('@createProject').its('request.body').should('deep.equal', {
         name: 'new-service',
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 1536,
         gitUrl: null,
         gitRawUrl: null,
       });
@@ -165,7 +127,7 @@ describe('Projects page', () => {
       cy.get('#project-id').should('have.value', '44444444-4444-4444-8444-444444444444');
       cy.dialog().contains('button', 'Close').click();
       cy.get('.cdk-dialog-container').should('not.exist');
-      rowFor('new-service').should('contain.text', 'text-embedding-3-small (1536)');
+      rowFor('new-service').should('exist');
     });
 
     it('sends the git urls when provided', () => {
@@ -276,10 +238,6 @@ describe('Projects page', () => {
       cy.dialog().contains('h2', 'Edit project');
       cy.get('#project-id').should('have.value', PROJECT_IDS.billing).and('have.attr', 'readonly');
       cy.contains('label', 'Name').parent().find('input').should('have.value', 'billing-service');
-      cy.contains('label', 'Embedding dimensions')
-        .parent()
-        .find('input')
-        .should('have.value', '1536');
       cy.contains('label', 'Git URL')
         .parent()
         .find('input')

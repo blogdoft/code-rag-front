@@ -29,8 +29,6 @@ describe('CodeSearchPage', () => {
     {
       id: PROJECT_1,
       name: 'alpha',
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 1536,
       gitUrl: 'https://forgejo.example/alpha',
       gitRawUrl: null,
       createdAt: '2026-01-01T00:00:00Z',
@@ -39,8 +37,6 @@ describe('CodeSearchPage', () => {
     {
       id: PROJECT_2,
       name: 'beta',
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 1536,
       gitUrl: 'https://forgejo.example/beta',
       gitRawUrl: null,
       createdAt: '2026-01-02T00:00:00Z',

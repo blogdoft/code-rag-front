@@ -29,10 +29,6 @@ export class ProjectFormDialog {
 
   protected readonly isEditMode = !!this.data.project;
   protected readonly name = signal(this.data.project?.name ?? '');
-  protected readonly embeddingModel = signal(this.data.project?.embeddingModel ?? '');
-  protected readonly embeddingDimensions = signal<number | null>(
-    this.data.project?.embeddingDimensions ?? null,
-  );
   protected readonly gitUrl = signal(this.data.project?.gitUrl ?? '');
   protected readonly gitRawUrl = signal(this.data.project?.gitRawUrl ?? '');
   protected readonly isSaving = signal(false);
@@ -44,13 +40,7 @@ export class ProjectFormDialog {
   );
 
   protected get canSave(): boolean {
-    return (
-      this.name().trim().length > 0 &&
-      this.embeddingModel().trim().length > 0 &&
-      isPositiveInteger(this.embeddingDimensions()) &&
-      !this.isSaving() &&
-      !this.createdProject()
-    );
+    return this.name().trim().length > 0 && !this.isSaving() && !this.createdProject();
   }
 
   /** Exposed for PopupService's `isDirty` option, so Escape confirms before discarding edits. */
@@ -59,19 +49,11 @@ export class ProjectFormDialog {
       return false;
     }
     const original = this.data.project;
-    return (
-      this.name().trim() !== (original?.name ?? '') ||
-      this.embeddingModel().trim() !== (original?.embeddingModel ?? '') ||
-      this.embeddingDimensions() !== (original?.embeddingDimensions ?? null)
-    );
+    return this.name().trim() !== (original?.name ?? '');
   }
 
   protected clearName(): void {
     this.name.set('');
-  }
-
-  protected clearEmbeddingModel(): void {
-    this.embeddingModel.set('');
   }
 
   protected clearGitUrl(): void {
@@ -80,10 +62,6 @@ export class ProjectFormDialog {
 
   protected clearGitRawUrl(): void {
     this.gitRawUrl.set('');
-  }
-
-  protected onEmbeddingDimensionsInput(value: string): void {
-    this.embeddingDimensions.set(value === '' ? null : Number(value));
   }
 
   protected cancel(): void {
@@ -112,8 +90,6 @@ export class ProjectFormDialog {
 
     const input = {
       name: this.name().trim(),
-      embeddingModel: this.embeddingModel().trim(),
-      embeddingDimensions: this.embeddingDimensions()!,
       // Blank means "no repository": send null, never "". The API stores "" as-is, and code-ciir-api
       // then fails (500) building a Uri from it on every query/feedback/stats call for this project.
       gitUrl: this.gitUrl().trim() || null,
@@ -140,8 +116,4 @@ export class ProjectFormDialog {
       error: () => this.isSaving.set(false),
     });
   }
-}
-
-function isPositiveInteger(value: number | null): boolean {
-  return value != null && Number.isInteger(value) && value > 0;
 }

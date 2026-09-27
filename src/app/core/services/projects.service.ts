@@ -8,14 +8,11 @@ import type { Project, ProjectInput } from '../models/project';
  * API (`/api/indexer/projects`, host `blogdoft.home.arpa/code-brain`) as of 2026-09-18, see
  * openapi.indexer.generated.json. Unlike the old code-ciir-api contract, body fields here are
  * camelCase, not snake_case — only the `page`/`page_size` *query* params stay snake_case. `id` is a
- * UUID string (it was int64 before the 2026-09-24 contract change); `embeddingDimensions` is typed
- * by the server as int32-or-string, so it's normalized through `Number(...)` below.
+ * UUID string (it was int64 before the 2026-09-24 contract change).
  */
 interface ProjectDto {
   id: string;
   name: string | null;
-  embeddingModel: string | null;
-  embeddingDimensions: number | string;
   gitUrl: string | null;
   gitRawUrl: string | null;
   createdAt: string;
@@ -32,8 +29,6 @@ interface ProjectListResponseDto {
 
 interface ProjectRequestDto {
   name: string;
-  embeddingModel: string;
-  embeddingDimensions: number;
   gitUrl: string | null;
   gitRawUrl: string | null;
 }
@@ -93,8 +88,6 @@ function toProject(dto: ProjectDto): Project {
   return {
     id: dto.id,
     name: dto.name ?? '',
-    embeddingModel: dto.embeddingModel,
-    embeddingDimensions: Number(dto.embeddingDimensions),
     gitUrl: dto.gitUrl,
     gitRawUrl: dto.gitRawUrl,
     createdAt: dto.createdAt,
@@ -105,8 +98,6 @@ function toProject(dto: ProjectDto): Project {
 function toDto(input: ProjectInput): ProjectRequestDto {
   return {
     name: input.name,
-    embeddingModel: input.embeddingModel,
-    embeddingDimensions: input.embeddingDimensions,
     gitUrl: input.gitUrl,
     gitRawUrl: input.gitRawUrl,
   };

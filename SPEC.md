@@ -89,10 +89,8 @@ the front-end and API versions (the API version silently disappears if the call 
 
 ### 6.2 Projects — `/projects`
 
-- Lists projects (name, embedding model with dimensions, creation date) with client-side **search by
-  name**.
-- **Add**, **edit** and **delete** (with confirmation). Fields: name, embedding model and dimensions
-  (required), git URL and git raw URL (optional — blank values are sent as `null`, never `""`).
+- Lists projects (name, creation date) with client-side **search by name**.
+- **Add**, **edit** and **delete** (with confirmation). Fields: name (required), git URL and git raw URL (optional — blank values are sent as `null`, never `""`).
 - Pressing Escape while editing with pending changes asks for confirmation before discarding.
 - The same screen can be opened **in a popup** by other screens (see 6.3), without duplicating the
   implementation.
