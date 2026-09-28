@@ -40,9 +40,9 @@ needed its URLs updated (dropping `/v1`), not its request/response shapes.
 
 ### 2.1 `POST /api/code-queries` (was `/api/v1/code-queries`)
 
-Request/response DTOs unchanged (see `.specs/2026-09-10-ciir-api-migration.md` §2.1 for the full
-shape) — `CodeQueryResultResponse` still carries `git_url`/`git_raw_url` per match, still snake_case.
-Only the path changed.
+Request/response DTOs unchanged (see `CLAUDE.md`'s API contract section for the full shape) —
+`CodeQueryResultResponse` still carries `git_url`/`git_raw_url` per match, still snake_case. Only the
+path changed.
 
 ### 2.2 `POST /api/code-queries/feedback` (was `/api/v1/projects/{projectId}/code-queries/feedback`)
 
@@ -65,7 +65,9 @@ from code-ciir-api's `/api/v1/projects*`)
 `ProjectResponse`: `{ id, name, embeddingModel, embeddingDimensions, gitUrl, gitRawUrl, createdAt,
 updatedAt }`. `ProjectListResponse`: `{ items, page, pageSize, totalCount, totalPages }`.
 `ProjectCreateRequest`/`ProjectUpdateRequest`: `{ name, embeddingModel, embeddingDimensions, gitUrl,
-gitRawUrl }`. Query params for pagination stay snake_case-*named* (`page`, `page_size`) despite the
+gitRawUrl }`. **`embeddingModel`/`embeddingDimensions` were later dropped from this shape entirely**
+(`refactor(projects)!: drop embedding model/dimensions fields`, no dedicated spec) — see `CLAUDE.md`
+for the current `ProjectResponse`. Query params for pagination stay snake_case-*named* (`page`, `page_size`) despite the
 body casing flip — the indexer API didn't carry the snake_case convention into query strings either
 way (code-ciir-api's query params were always snake_case too), so no functional change there, just
 worth noting the inconsistency is real and not a mistake in the frontend.
@@ -145,6 +147,6 @@ attention: `API_UPSTREAM`/`proxy.conf.json`'s `target` now needs to include a pa
   `GET /api/indexer/indexations/{id}`) — this frontend has no UI for indexing and none was requested;
   noted here only so a future reader of `openapi.indexer.generated.json` doesn't wonder why they're
   undocumented in `CLAUDE.md`'s API contract section.
-- No new `ProjectsService.get(id)` method — still true per
-  `.specs/2026-09-10-ciir-api-migration.md` §9.
+- No new `ProjectsService.get(id)` method — nothing in this app needs single-project lookup yet,
+  same as when Projects first moved onto this contract.
 - `.eng/k8s/*` changes beyond confirming `deployment.yaml` doesn't hardcode an upstream — see §3.

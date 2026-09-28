@@ -141,6 +141,5 @@ invariant.
   make `/version` reachable through the gateway on its own merits instead of relying on this app's
   nginx passthrough. Not this repo's to change unprompted; `CLAUDE.md`'s `GET /version` bullet
   documents the current, working-but-indirect path instead.
-- `SPEC.md` (line 3) still references `https://code-ciir-api.home.arpa` as this app's target API,
-  predating even `.specs/2026-09-10-ciir-api-migration.md` — pre-existing staleness, not touched
-  here, same as prior migrations.
+- `SPEC.md`'s stale API host reference was left as-is at the time of this spec — it was fixed when
+  `SPEC.md` was rewritten wholesale on 2026-09-24 to describe the product as it stands.

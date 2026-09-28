@@ -56,7 +56,9 @@ counters are still int64-or-string and go through `Number(...)`; `embeddingDimen
   with `""` are repaired by a `PUT` with `gitUrl: null, gitRawUrl: null`.
 - The Indexer ignores the requested `embeddingModel`/`embeddingDimensions` on create (a project
   created with `text-embedding-3-small`/1536 came back `bge-m3`/1024); the UI just shows what the
-  server returns.
+  server returns. **Both fields were dropped entirely shortly after this spec**
+  (`refactor(projects)!: drop embedding model/dimensions fields`) — this bullet is history only, see
+  `CLAUDE.md`'s current `ProjectResponse` shape.
 - `DELETE /api/indexer/projects/{id}` answers **500** (`DatabaseUnavailableException`, no detail in
   the pod logs) for projects that have dependents (uploads/indexations, feedback); a project with
   none deletes fine (204). Presumably foreign keys — the server should answer 409, not 500. Not

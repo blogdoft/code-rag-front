@@ -8,6 +8,13 @@ given alternating week-band shading, then given a pre-filled default date range;
 notes below, newest first)
 Source: `https://code-ciir-api.home.arpa/swagger/v1/swagger.json` (confirmed live, 2026-09-03)
 
+**Note (2026-09-28):** the endpoint path and snake_case field/param names throughout this document
+(`GET /api/v1/code-queries/feedback/stats`, `start_date`/`project_id`/etc.) are stale — see
+`CLAUDE.md`'s API contract section for the current path and camelCase shape. The chart design itself
+(Chart.js setup, plugins, week/project flattening) is unaffected and still describes the current
+implementation. Also, §12's "No CSV/image export of the chart" is superseded by
+`.specs/2026-09-03-feedback-csv-export.md`, which shipped CSV export shortly after this spec.
+
 ## Revision note (2026-09-03, seventh pass — pre-fill the date fields with the last 4 weeks)
 
 Previously `startDate`/`endDate` defaulted to `''` (empty), relying entirely on the API's own
@@ -660,6 +667,6 @@ Behavior:
   the existing MCP tool (`submit_code_query_feedback`) and isn't part of this UI.
 - No persistence of the selected project/date range across page reloads (consistent with how
   `code-search`'s filters/question are not persisted either — session-only state).
-- No CSV/image export of the chart.
-- No changes to `SPEC.md` (Portuguese product spec) as part of this — same rationale as the
-  code-query-filters spec's out-of-scope note: a follow-up once the feature is built and reviewed.
+- No CSV/image export of the chart (superseded — see the note at the top of this document).
+- No changes to `SPEC.md` as part of this — it has since been rewritten wholesale (2026-09-24) to
+  describe the product as it stands, superseding this note too.

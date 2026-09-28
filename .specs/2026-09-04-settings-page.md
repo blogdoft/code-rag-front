@@ -17,8 +17,8 @@ Single route `/settings` (`SettingsPage`), reachable from the nav sidebar (`NavS
 icon, see `.specs/2026-09-03-app-shell-redesign.md` §3.2). The template
 (`features/settings/settings-page.html`) renders three `<section>` cards inside a
 `mx-auto max-w-xl` column: **API settings**, **Feedback**, **Appearance**. Every setting persists
-to `localStorage` through `core/services/config.service.ts` — per `SPEC.md`, "Todas as
-configurações são armazenadas no local storage."
+to `localStorage` through `core/services/config.service.ts` — per `SPEC.md` §6.5, "Everything is
+stored in `localStorage`."
 
 Two save behaviors coexist on this one page:
 
@@ -41,10 +41,15 @@ then updates the signal.
 
 | Field            | `localStorage` key       | Default              | Setter                |
 |-------------------|--------------------------|-----------------------|------------------------|
-| API base URL       | `code-rag.apiBaseUrl`    | `''` (same-origin)   | `setApiBaseUrl`       |
+| API base URL       | `code-rag.apiBaseUrl`    | derived from `<base href>` (same-origin) — see note below | `setApiBaseUrl` |
 | User name          | `code-rag.userName`      | `''`                 | `setUserName`         |
 | Export timezone    | `code-rag.exportTimezone`| `America/Sao_Paulo`  | `setExportTimezone`   |
 | Theme              | `code-rag.theme`         | `system`              | `setTheme`            |
+
+**Note (2026-09-28):** the API base URL default was originally a hardcoded `''`; as of
+`.specs/2026-09-18-front-on-code-brain-gateway.md` it's derived at module load from the page's own
+`<base href>` instead, so it resolves to `/code-brain` in production and `''` in `ng serve`
+automatically. Still same-origin by default either way — see `CLAUDE.md`'s API base URL section.
 
 `readTheme()` additionally guards against a corrupted/foreign stored value: it only accepts
 `'light' | 'dark' | 'system'` (checked against a `VALID_THEMES` array) and falls back to
@@ -116,8 +121,8 @@ matters because a single injected instance lives for the app's whole lifetime an
 called many times as the user changes their mind in Settings (§5.3).
 
 - `'light'` / `'dark'` — force `.dark` on `<html>` on or off, ignoring the OS setting entirely.
-- `'system'` — mirrors `SPEC.md`'s original requirement ("tema light e dark, orientados conforme a
-  configuração do navegador"): applies the current `prefers-color-scheme: dark` match immediately,
+- `'system'` — mirrors `SPEC.md`'s requirement that the default theme follow the browser setting:
+  applies the current `prefers-color-scheme: dark` match immediately,
   then keeps listening for OS-level changes (e.g. the OS switching from light to dark at sunset)
   for as long as `'system'` stays selected.
 

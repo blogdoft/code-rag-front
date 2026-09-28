@@ -57,6 +57,15 @@ and diagnostics rather than API consumers"). §3 covers why that matters for thi
 Not yet reflected in `openapi.generated.json` (that file has no `version` path at all — confirmed
 by reading it) or in `CLAUDE.md`'s endpoint list; updating either is out of scope here (§8).
 
+**Note (2026-09-28):** §3's specific hosts/targets (`code-ciir-api.home.arpa`) and the
+`proxy.conf.json`/`nginx.conf.template` snippets are stale — both were superseded by the shared
+gateway (`.specs/2026-09-18-gateway-and-projects-migration.md` §3) and, for this app's own hosting,
+by `.specs/2026-09-18-front-on-code-brain-gateway.md`. The underlying problem this section solves
+(`/version` has no `/api` prefix, so it needs its own routing rule everywhere `/api` gets one) is
+still exactly why `CLAUDE.md`'s `GET /version` bullet describes a dedicated `location = /version`
+nginx rule today. The `ApiVersionService`/`NavSidebar` footer design in §4-§6 is current and
+unaffected.
+
 ## 3. Routing fix (prerequisite) — `/version` isn't `/api`-prefixed
 
 Because the endpoint intentionally omits the `/api` prefix, none of the app's three existing

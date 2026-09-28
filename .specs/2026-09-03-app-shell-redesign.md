@@ -287,7 +287,9 @@ asideClasses = computed(() =>
 
 ## 5. Out of scope
 
-- No manual dark/light theme toggle (`ThemeService` remains OS-driven only).
+- No manual dark/light theme toggle at the time of this feature (`ThemeService` was OS-driven only).
+  **Superseded**: `.specs/2026-09-04-settings-page.md` §5 later added a Light/Dark/Match-device
+  choice in Settings.
 - No changes to `ProjectsPage`, `SettingsPage`, `FeedbackStatsPage`, or `CodeSearchPage` internals
   — only `CodeSearchPage`'s route changed (`/` → `/rag`).
 - No icon library addition — all icons (hamburger + the four nav icons) are hand-written inline

@@ -14,6 +14,12 @@ voting, the controls are replaced by a static colored label.
 
 ## 2. API contract
 
+**Note (2026-09-28):** the path below (`POST /api/v1/projects/{projectId}/code-queries/feedback`)
+is stale — the 2026-09-18 gateway move flattened it to `POST /api/code-queries/feedback` with
+`projectId` moved into the request body (camelCase, per the 2026-09-24 casing migration). See
+`CLAUDE.md`'s API contract section for the current shape. The feature design below (per-question
+scope, the two-popup reason/name flow, `ConfigService.userName`) is unaffected.
+
 Confirmed via `https://code-ciir-api.home.arpa/swagger/v1/swagger.json` and cross-checked against
 the `submit_code_query_feedback` MCP tool schema (already available in this environment, backed
 by the same endpoint).

@@ -70,7 +70,7 @@ Always follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refacto
 document this fairly accurately as of the 2026-09-18 gateway move, but this backend is under active
 development — re-fetch both `swagger.json`/`openapi/v1.json` from the live API and diff before
 trusting any specific field on a non-trivial change; see `.specs/2026-09-10-ciir-api-migration.md`'s
-note on the contract changing twice within one session, and
+background note on the contract changing twice within one session, and
 `.specs/2026-09-18-gateway-and-projects-migration.md` for the latest confirmed snapshot. As of
 2026-09-24 (`.specs/2026-09-24-camelcase-and-uuid-contract.md`) **every body and query-string
 parameter is camelCase on both services** (`sourceFile`, `embeddingText`, `createdAt`, `startDate`,
@@ -276,5 +276,5 @@ pagination internally, see the API contract section above) rather than wiring th
 server-side search — with the current project counts, fetching the full list once is enough. The
 API's own `name` partial-match filter on `GET /api/indexer/projects` isn't used by this app (and,
 same as on code-ciir-api before it, isn't even a declared query parameter in the live openapi doc
-despite being mentioned in the endpoint's description — see `.specs/2026-09-10-ciir-api-migration.md`
-§2.3, still true after the 2026-09-18 move to the indexer service).
+despite being mentioned in the endpoint's description — confirmed on both services, still true after
+the 2026-09-18 move to the indexer service).

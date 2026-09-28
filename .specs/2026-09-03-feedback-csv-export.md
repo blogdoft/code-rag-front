@@ -29,6 +29,13 @@ Intl-based, no new dependency) before sending either `getStats` or `exportCsv` -
 display column from the first amendment above. No backend change needed: the API already accepts
 any UTC `start_date`/`end_date`.
 
+**Note (2026-09-28):** the endpoint path below (`GET /api/v1/code-queries/feedback/export`) and its
+snake_case query params (`start_date`/`end_date`/`project_id`) are stale — the path dropped `/v1`
+in the 2026-09-18 gateway move and every param went camelCase in the 2026-09-24 casing migration
+(`startDate`/`endDate`/`projectId`). See `CLAUDE.md`'s API contract section for the current shape.
+The filename-resolution, blob-download and Blob-bodied-error-interceptor design below is unaffected
+and still describes the current implementation.
+
 ## 1. Background
 
 The Reports page (`features/reports/feedback-stats-page.ts`, added by
@@ -414,5 +421,5 @@ already inlines four icons the same way).
   returns it.
 - No retry/resume for large exports — the 366-day server-side cap (§2) keeps worst-case payloads
   bounded, and this app has no precedent for retry logic on any other request.
-- No change to `SPEC.md` (Portuguese product spec), same rationale as prior specs in this repo: a
-  follow-up once the feature is built and reviewed.
+- No change to `SPEC.md` as part of this — it has since been rewritten wholesale (2026-09-24) and
+  now documents CSV export in §6.4.
