@@ -20,6 +20,15 @@
 #   - Secrets: REGISTRY_PASSWORD (a token with package-write scope for this registry),
 #     ARGO_DEPLOY_SSH_KEY (an SSH private key registered as a write-access deploy key on
 #     argo-local-apps.git)
+#
+# The `ciir` job analyzes this repository with the published code-brain-angular npm CLI (dogfooding,
+# same idea as that repository's own `ciir` job in its ci.yml) and, once tests pass, runs in
+# parallel with `publish`/`update-gitops` - it neither depends on nor blocks the image build/deploy
+# path. It sends the resulting ciir.jsonl to the code-ciir-indexer only when CIIR_BASE_URL is
+# configured, so a repository without the indexer settings still gets a green pipeline. Needs the
+# repo/org variables CIIR_BASE_URL, CIIR_PROJECT_ID (this repository's own project id in the
+# indexer) and CIIR_CLIENT_ID, and the repo secret CIIR_CLIENT_SECRET (a confidential Keycloak
+# client with Service accounts enabled) - see .specs/2026-09-28-self-indexing-ci.md.
 
 name: Docker publish
 
@@ -65,6 +74,45 @@ jobs:
 
       - name: Push image
         run: docker push "${{ vars.REGISTRY }}/${{ vars.REGISTRY_IMAGE }}:${{ steps.tag.outputs.tag }}"
+
+  ciir:
+    needs: test
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Without node_modules, imports of npm packages end up as unresolved relations
+      # (code-brain-angular's own README).
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Analyze this repository with code-brain-angular
+        env:
+          CIIR_BASE_URL: ${{ vars.CIIR_BASE_URL }}
+          CIIR_PROJECT_ID: ${{ vars.CIIR_PROJECT_ID }}
+          CIIR_CLIENT_ID: ${{ vars.CIIR_CLIENT_ID }}
+          CIIR_CLIENT_SECRET: ${{ secrets.CIIR_CLIENT_SECRET }}
+          CIIR_NOLOGO: "1"
+        run: |
+          args=(. --output ciir-output --fail-on-error --no-progress)
+          if [[ -n "$CIIR_BASE_URL" ]]; then
+            args+=(--send "$CIIR_BASE_URL" --projectId "$CIIR_PROJECT_ID" --clientId "$CIIR_CLIENT_ID" --clientSecret "$CIIR_CLIENT_SECRET" --insecure)
+          fi
+          npx --yes code-brain-angular@latest "${args[@]}"
+        shell: bash
+
+      - name: Upload ciir-output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ciir-output
+          path: ciir-output
+          if-no-files-found: ignore
 
   update-gitops:
     needs: publish
