@@ -44,9 +44,14 @@ workflow file — see §5 for why this superseded the first draft of this spec):
   depending on whichever self-hosted runner happens to pick up the job. Without `CIIR_BASE_URL` the
   job still runs and still fails the pipeline on an analysis error — it just skips the upload — so
   this job can land and go green before the indexer-side project exists.
-- **Artifact:** `ciir-output/` (the JSONL, manifest, analysis report) is uploaded via
-  `actions/upload-artifact@v4` with `if: always()` / `if-no-files-found: ignore`, so a failed or
-  skipped-send run still leaves something to inspect.
+- **No artifact upload.** An initial version of this job also uploaded `ciir-output/` via
+  `actions/upload-artifact@v4` for debugging. Dropped after v1.12.1's actual run: the self-hosted
+  runner's `actions/setup-node` tool cache can go missing by the time a later step needs node again
+  — the `test` job's own `Post actions/setup-node@v4`/`Post actions/checkout@v4` cleanup hit the
+  identical `fork/exec .../node: no such file or directory` error and survived it (a post-step
+  failure doesn't fail a job), but the artifact-upload step is a *main* step needing node, so it
+  failed the job outright even though the CLI run immediately before it had already succeeded (838
+  records analyzed, uploaded to the indexer, `uploadId` returned). See §6.
 
 Out of scope, deliberately: running this on pull requests or on plain pushes to `main` (see §5), and
 adding a general "run tests on every push to main" workflow (this repo currently only tests on tag
@@ -92,3 +97,25 @@ change's blast radius.
   keeping `ciir` separate means a CIIR-specific failure (e.g. the indexer being briefly unreachable)
   shows up as its own red job rather than obscuring the actual test/build result, and the two run
   concurrently instead of serially.
+
+## 6. Incident: v1.12.1's first live run
+
+Tag `v1.12.1` was the first real exercise of this job. Three attempts on Forgejo run #168, job
+`ciir` (fetched via `GET /api/v1/repos/sauron/code-rag-front/actions/tasks` and each attempt's
+`.../actions/runs/168/jobs/2/attempt/<n>/logs`):
+
+1. **Attempt 1:** failed fast with `error: --send requires --projectId <guid> (the id of a project
+   already registered in the indexer)` — `CIIR_PROJECT_ID` wasn't configured yet at that point (the
+   manual prerequisite from §4 hadn't landed). Confirms the `CIIR_BASE_URL`-only gate in §2 works as
+   designed: `CIIR_BASE_URL` was already set (inherited or configured ahead of `CIIR_PROJECT_ID`),
+   so the job took the `--send` branch and only then hit the CLI's own required-argument check.
+2. **Attempts 2 and 3:** the CLI itself succeeded both times (`CIIR written to .../ciir-output (838
+   records)`, `Sent to the indexer: uploadId=... status=pending`) — the manual prerequisites were in
+   place by then. Both attempts were still reported as job failures, traced to the
+   `actions/upload-artifact@v4` step that followed (see §2's "No artifact upload" note and the
+   `docker-publish.yml` comment above the `ciir` job) — a self-hosted-runner tool-cache issue, not a
+   bug in the analysis/send logic itself. Removed as the fix; not re-verified live as of this
+   writing (would need a new tag).
+
+No changes were made to Forgejo/Keycloak settings or the indexer to investigate this — read-only
+log inspection via the Forgejo Actions API only.

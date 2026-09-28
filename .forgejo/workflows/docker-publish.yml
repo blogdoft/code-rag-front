@@ -29,6 +29,14 @@
 # repo/org variables CIIR_BASE_URL, CIIR_PROJECT_ID (this repository's own project id in the
 # indexer) and CIIR_CLIENT_ID, and the repo secret CIIR_CLIENT_SECRET (a confidential Keycloak
 # client with Service accounts enabled) - see .specs/2026-09-28-self-indexing-ci.md.
+#
+# No artifact-upload step here on purpose: this self-hosted runner's cached node binary
+# (actions/setup-node's tool_cache) can go missing again by the time a later step needs it - the
+# `test` job's own Post-checkout/Post-setup-node cleanup hits the same "no such file" error and
+# survives it (post-step failures don't fail a job), but a *main* step depending on node run after
+# the CLI (e.g. an artifact upload) does fail the job for real. Confirmed on v1.12.1's run: the CLI
+# itself succeeded (838 records sent, uploadId returned) both times, but the job still went red
+# solely because of the artifact-upload step that used to follow it.
 
 name: Docker publish
 
@@ -105,14 +113,6 @@ jobs:
           fi
           npx --yes code-brain-angular@latest "${args[@]}"
         shell: bash
-
-      - name: Upload ciir-output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ciir-output
-          path: ciir-output
-          if-no-files-found: ignore
 
   update-gitops:
     needs: publish
