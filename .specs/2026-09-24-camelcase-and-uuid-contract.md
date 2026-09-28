@@ -20,8 +20,10 @@ Per `CLAUDE.md`, the live response is authoritative over this spec.
    query param on `feedback/stats` / `feedback/export`, and the `{projectId}` path segment on
    `/api/indexer/projects/{projectId}`. Previously int64 (number).
 3. **`qualifiedName.operator` is `notContains`** (was `not_contains`). `equals`/`contains` unchanged.
-4. `GET /version` is now declared in code-ciir-api's swagger, and the gateway routes it (401 without
-   a token, no longer 404).
+4. `GET /version` is now declared in code-ciir-api's swagger and answers through
+   `blogdoft.home.arpa/code-brain/version` (401 without a token, no longer 404). There is no
+   gateway rule of its own: the request falls through to this app's catch-all and its nginx
+   `location = /version` passthrough forwards it to code-ciir-api.
 
 Unchanged: document/relation ids in code-query results (`id`, `fromId`, `toId`) stay int64; upload
 and indexation ids were already UUIDs; `CodeQueryFeedbackResponse.id` stays int64; the Indexer's

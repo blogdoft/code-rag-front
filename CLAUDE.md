@@ -145,27 +145,21 @@ fix point is the DTO interfaces + mapper functions in `core/services/projects.se
   statuses: `pending`/`running`/`resolving_relations`/`completed`/`failed`/`cancelled`). A few
   transient poll failures are retried; a 404 is not. Bodies are camelCase; `projectId` is a UUID
   string and the int64 counters are normalized through `Number(...)` like the Projects DTOs.
-- `GET /version` → `{ version }`, unversioned (no `/api/v1` prefix), for deploy tooling/diagnostics.
-  **Not unauthenticated** despite that unversioned-ness suggesting otherwise: when Keycloak is
-  enabled (see `KEYCLOAK_ENABLED`/`.specs/2026-09-21-keycloak-conditional-login.md`) the deployed
-  API 401s this endpoint (`WWW-Authenticate: Bearer`) exactly like every `/api` route, so
-  `auth.interceptor.ts` attaches the token here too, on top of the usual `baseUrlInterceptor`
-  rewrite described below — confirmed live against `blogdoft.home.arpa/code-brain/version`
-  (401 without a token, `content-type: application/problem+json`) after the API version stopped
-  showing in the nav sidebar footer.
-  Served by code-ciir-api. As of 2026-09-24 it's declared in its swagger and the public gateway
-  routes it (401 without a token, confirmed by probing `blogdoft.home.arpa/code-brain/version`); it
-  was a 404 there before. The nginx passthrough below is therefore now belt-and-braces, but it's
-  harmless and still what `ng serve`/`docker-compose` rely on. Historically, in the k8s deployment this still
-  works in practice because `ApiVersionService`'s `/version` request goes through
-  `baseUrlInterceptor` → `blogdoft.home.arpa/code-brain/version` → falls through to this app's own
-  Traefik catch-all (`.eng/k8s/ingress.yaml`) → this app's own nginx, whose `location = /version`
-  block proxies it onward to `API_UPSTREAM` — a **direct in-cluster Service DNS name**
+- `GET /version` → `{ version }`, unversioned (no `/api` prefix), served by code-ciir-api, for
+  deploy tooling/diagnostics. **Not unauthenticated** despite that unversioned-ness suggesting
+  otherwise: when Keycloak is enabled (see `KEYCLOAK_ENABLED`/
+  `.specs/2026-09-21-keycloak-conditional-login.md`) the deployed API 401s this endpoint
+  (`WWW-Authenticate: Bearer`, no body) exactly like every `/api` route, so `auth.interceptor.ts`
+  attaches the token here too, on top of the usual `baseUrlInterceptor` rewrite described below.
+  There is no dedicated gateway rule for it: in the k8s deployment `ApiVersionService`'s request
+  goes `baseUrlInterceptor` → `blogdoft.home.arpa/code-brain/version` → this app's own Traefik
+  catch-all (`.eng/k8s/ingress.yaml`) → this app's own nginx, whose `location = /version` block
+  proxies it onward to `API_UPSTREAM` — a **direct in-cluster Service DNS name**
   (`code-ciir-api.code-brain.svc.cluster.local`, see `.eng/k8s/deployment.yaml`), not the public
   gateway host, so it reaches the real endpoint without looping back through Traefik. `ng serve`/
-  `docker-compose` deployments rely on the same nginx passthrough. `ApiVersionService` already
-  degrades to an empty string on any failure (network or otherwise), so this isn't user-visible
-  even where it doesn't resolve.
+  `docker-compose` deployments rely on the same nginx passthrough. `ApiVersionService` degrades to
+  an empty string on any failure (network or otherwise), so this isn't user-visible even where it
+  doesn't resolve.
 - Errors are RFC7807 `ProblemDetails` (`type`, `title`, `status`, `detail`, `instance` — plain lowercase,
   unaffected by either service's body-casing policy). `core/interceptors/error-toast.interceptor.ts`
   reads `detail`/`title` and reports every failed request as a toast.

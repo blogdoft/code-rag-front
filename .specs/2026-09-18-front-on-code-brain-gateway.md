@@ -10,7 +10,7 @@ frontend *also* moves onto that host, which is what this spec does.
 ## 1. Background
 
 Confirmed by inspecting the two backend services' own `.eng/k8s/` directories (local clones at
-`/home/ftathiago/src/forgejo/code-ciir-api` and `/home/ftathiago/src/forgejo/code-ciir-indexer`):
+sibling `code-ciir-api` and `code-ciir-indexer` checkouts):
 both already route through Traefik on host `blogdoft.home.arpa`, at
 `/code-brain/api/code-queries` and `/code-brain/api/indexer` respectively (`pathType: Prefix`),
 each with its own `stripPrefix` Middleware removing `/code-brain` before forwarding, since neither

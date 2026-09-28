@@ -1,12 +1,15 @@
 # code-rag-front
 
-A UI/UX layer for the CodeRAG API. The user selects a project and asks natural-language questions
-about its code; the API returns candidate code snippets, and clicking one opens a popup with its
-full content. Product requirements are in `SPEC.md` (Portuguese); the backend contract is
-documented in `v1.json` / `openapi.generated.json` (see the API contract note in `CLAUDE.md` for
-where the live API actually diverges from those docs).
+The web UI of **code-brain**. The user picks a project and asks natural-language questions about
+its code; the API returns candidate code snippets, each with its direct code relationships, and
+clicking one opens a popup with its full content. The app also manages projects, uploads CIIR
+files for indexing, and reports on the feedback given to the answers. Product requirements are in
+`SPEC.md`; the backend contracts are `openapi.generated.json` (code-ciir-api) and
+`openapi.indexer.generated.json` (CIIR Indexer API) — see the API contract section in
+`CLAUDE.md` for where the live APIs may diverge from those files.
 
-Built with Angular 22 (standalone components, signals, no NgModules), Tailwind CSS, and Vitest.
+Built with Angular 22 (standalone components, signals, no NgModules), Tailwind CSS, Vitest and
+Cypress.
 
 ## Development server
 
@@ -15,7 +18,8 @@ npm start
 ```
 
 Starts the Angular CLI dev server on `http://localhost:4200/` with the API proxy
-(`proxy.conf.json`) enabled, so same-origin `/api/...` calls are forwarded to the real CodeRAG API.
+(`proxy.conf.json`) enabled, so same-origin `/api/...` and `/version` calls are forwarded to the
+shared gateway `https://blogdoft.home.arpa/code-brain` (code-ciir-api and the CIIR Indexer API).
 Copy `proxy.conf.local.example.json` over `proxy.conf.json` to point at a local API instance
 instead.
 
@@ -48,6 +52,15 @@ NODE_PATH="$(pwd)/node_modules" node your-script.js
 
 Requires a running dev server (`npm start`).
 
+## End-to-end tests
+
+```bash
+npm run e2e
+```
+
+Runs the Cypress suite headless against a running `npm start`, with the backend stubbed
+(`cy.stubBackend()`). `npm run e2e:open` opens the interactive runner.
+
 ## Architecture
 
 Standalone components throughout (no `NgModule`), with lazy-loaded route-level feature
@@ -56,19 +69,24 @@ components. No state-management library — local/component state uses signals.
 ```
 src/app/
   core/
-    models/         Project, CodeQueryResult, ProblemDetails — camelCase app-facing shapes
-    services/        ConfigService (localStorage base URL), ThemeService (OS dark/light),
-                      ToastService, ProjectsService, CodeQueriesService, PopupCoordinatorService
-    interceptors/    baseUrlInterceptor, errorToastInterceptor
+    models/         Project, CodeQueryResult, FeedbackStats, ProblemDetails — camelCase shapes
+    services/       ConfigService, ThemeService, ToastService, ProjectsService,
+                    CodeQueriesService, CiirUploadsService, FeedbackStatsService,
+                    KeycloakAuthService, PopupCoordinatorService, version services
+    interceptors/   baseUrlInterceptor, authInterceptor, errorToastInterceptor
   shared/
-    directives/      EscClearableDirective — field-level half of the Escape rule
-    components/      Combobox (autocomplete), ToastContainer, ConfirmDialog
-    services/        PopupService — opens popups via @angular/cdk/dialog and registers them
-                      with PopupCoordinatorService
+    directives/     EscClearableDirective — field-level half of the Escape rule
+    components/     Combobox (autocomplete), ToastContainer, ConfirmDialog, NavSidebar
+    services/       PopupService — opens popups via @angular/cdk/dialog and registers them
+                    with PopupCoordinatorService
   features/
-    code-search/     "/" route — project combobox, question input, Q&A history,
-                      ResultDetailDialog
-    settings/        "/settings" route — API base URL form
+    home/           "/" — landing page
+    code-search/    "/rag" — project combobox, question, filters, Q&A history,
+                    ResultDetailDialog, feedback
+    projects/       "/projects" — project CRUD (also hosted in a popup by other screens)
+    ciir-upload/    "/uploads" — CIIR file upload with progress and indexing status
+    reports/        "/reports" — feedback dashboard and CSV export
+    settings/       "/settings" — API base URL, user name, timezone, appearance
 ```
 
 Key behaviors (see `CLAUDE.md` for the full write-up):
@@ -82,10 +100,12 @@ Key behaviors (see `CLAUDE.md` for the full write-up):
   `<pre>`.
 - **Combobox**: client-side substring filtering over a full options list fetched once, not
   server-side type-ahead.
-- **Configurable API base URL**: stored in `localStorage`, defaults to empty (same-origin) so
-  requests go through whichever proxy is in front of the app; overridable from the Settings page
-  for a genuinely different, browser-trusted origin.
-- **App version display**: the running app fetches `/version.json` at runtime (baked into the
+- **Configurable API base URL**: stored in `localStorage`, defaults to the app's own `<base href>`
+  (same origin, `/code-brain` in production) so requests go through whichever gateway/proxy is in
+  front of the app; overridable from the Settings page for a different, browser-trusted origin.
+- **Conditional login**: when Keycloak is enabled at deploy time (`auth-config.json`), the whole
+  app requires login and API calls carry the token.
+- **App version display**: the running app fetches `version.json` at runtime (baked into the
   Docker image at container start from the `APP_VERSION` build arg) and shows it in the UI.
 
 ## Docker
@@ -95,8 +115,8 @@ docker compose -f .eng/docker/docker-compose.yml up
 ```
 
 Builds the image from `.eng/docker/Dockerfile` (multi-stage: `npm run build`, then served by
-nginx) and serves it on `http://localhost:8080`. nginx reverse-proxies `/api/...` to
-`API_UPSTREAM` (defaults to `https://code-ciir-api.home.arpa`; override via `.env` or
+nginx) and serves it on `http://localhost:8080`. nginx reverse-proxies `/api/...` and `/version`
+to `API_UPSTREAM` (defaults to `https://blogdoft.home.arpa/code-brain`; override via `.env` or
 `API_UPSTREAM=... docker compose up`, e.g. `http://host.docker.internal:5002` for a local API).
 
 ## CI/CD
