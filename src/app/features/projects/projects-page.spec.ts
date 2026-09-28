@@ -191,6 +191,19 @@ describe('ProjectsPage', () => {
     expect(component['projects']()).toEqual(projects);
   });
 
+  it('copies the project id to the clipboard', async () => {
+    setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+
+    component['copyProjectId'](projects[0]);
+    await fixture.whenStable();
+
+    expect(writeText).toHaveBeenCalledWith(PROJECT_1);
+    expect(toastService.success).toHaveBeenCalledWith('Project ID copied.');
+    vi.unstubAllGlobals();
+  });
+
   it('opens a delete confirmation with a Delete label', () => {
     setup();
     const ref = fakeDialogRef();

@@ -73,9 +73,9 @@ the front-end and API versions (the API version silently disappears if the call 
 
 - The user picks a **project** in a combobox and types a **question**. Both are required to ask; the
   question stays in place after each search.
-- **Filters** (a button that opens a side drawer, with *Filter* and *Clear*): *Kind* (exact text),
-  *Qualified name* (with an operator: equals, contains, not contains), *Min similarity* (0–1) and
-  *Limit*. Values persist across searches.
+- **Filters** (a button that opens a side drawer, with _Filter_ and _Clear_): _Kind_ (exact text),
+  _Qualified name_ (with an operator: equals, contains, not contains), _Min similarity_ (0–1) and
+  _Limit_. Values persist across searches.
 - Each search becomes an entry in the page's question-and-answer **history**, along with the filters
   used. Results appear in **the order the API returned them** (already sorted by reranking or
   similarity) — the front-end never re-sorts.
@@ -83,14 +83,18 @@ the front-end and API versions (the API version silently disappears if the call 
   the project has a git URL, there's a link to open the repository in a new tab.
 - **Clicking a result opens a popup** with the full content (`embeddingText`, multi-line, newlines
   preserved) and the snippet's **direct relations** (incoming/outgoing).
-- **Feedback:** each search has *Useful* / *Not useful* buttons. *Not useful* opens a popup for an
+- **Feedback:** each search has _Useful_ / _Not useful_ buttons. _Not useful_ opens a popup for an
   **optional** reason. After voting, the buttons are replaced by a static label. The user's name is
   asked for once (popup) and remembered; it is never guessed.
 
 ### 6.2 Projects — `/projects`
 
-- Lists projects (name, creation date) with client-side **search by name**.
-- **Add**, **edit** and **delete** (with confirmation). Fields: name (required), git URL and git raw URL (optional — blank values are sent as `null`, never `""`).
+- Lists projects (name, creation date) with client-side **search by name**. Each row in the grid also
+  has a button to **copy the project's id** to the clipboard.
+- **Add**, **edit** and **delete** (with confirmation). Fields: id (Guid), name (required), git URL and
+  git raw URL (optional — blank values are sent as `null`, never `""`). The id field is **not shown**
+  when creating a new project (the backend assigns it); it **is shown**, read-only, when editing an
+  existing project, and it **never receives focus**.
 - Pressing Escape while editing with pending changes asks for confirmation before discarding.
 - The same screen can be opened **in a popup** by other screens (see 6.3), without duplicating the
   implementation.
@@ -128,7 +132,7 @@ Everything is stored in `localStorage`:
 - **Export timezone** (default `America/Sao_Paulo`) — also used for the Reports date filters.
 - **Appearance** — follow the system, light or dark; applies immediately, no save button.
 
-The other fields have validation and a *Save* button.
+The other fields have validation and a _Save_ button.
 
 ### 6.6 Combos and fields
 

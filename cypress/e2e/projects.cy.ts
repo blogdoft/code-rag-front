@@ -46,6 +46,16 @@ describe('Projects page', () => {
       cy.get('table').should('not.exist');
     });
 
+    it('copies the project id from the grid', () => {
+      cy.visit('/projects');
+      cy.window().then((win) =>
+        cy.stub(win.navigator.clipboard, 'writeText').resolves().as('writeText'),
+      );
+      rowFor('orders-api').contains('button', 'Copy ID').click();
+      cy.get('@writeText').should('have.been.calledWith', PROJECT_IDS.orders);
+      cy.toast('Project ID copied.').should('be.visible');
+    });
+
     it('toasts the API problem detail when listing fails', () => {
       cy.stubBackend({ projectsStatus: 500 });
       cy.visit('/projects');
@@ -87,7 +97,7 @@ describe('Projects page', () => {
       cy.contains('button', 'Add project').click();
       cy.dialog().contains('h2', 'Add project');
       cy.dialog().contains('button', 'Save').should('be.disabled');
-      cy.get('#project-id').should('have.value', '').and('have.attr', 'readonly');
+      cy.get('#project-id').should('not.exist');
     });
 
     it('enables Save only when the name is set', () => {
@@ -236,7 +246,10 @@ describe('Projects page', () => {
       cy.visit('/projects');
       rowFor('billing-service').contains('button', 'Edit').click();
       cy.dialog().contains('h2', 'Edit project');
-      cy.get('#project-id').should('have.value', PROJECT_IDS.billing).and('have.attr', 'readonly');
+      cy.get('#project-id')
+        .should('have.value', PROJECT_IDS.billing)
+        .and('have.attr', 'readonly', 'readonly')
+        .and('have.attr', 'tabindex', '-1');
       cy.contains('label', 'Name').parent().find('input').should('have.value', 'billing-service');
       cy.contains('label', 'Git URL')
         .parent()

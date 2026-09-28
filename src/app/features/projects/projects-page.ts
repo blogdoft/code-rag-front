@@ -54,6 +54,13 @@ export class ProjectsPage {
     this.openForm(project);
   }
 
+  protected copyProjectId(project: Project): void {
+    navigator.clipboard.writeText(project.id).then(
+      () => this.toast.success('Project ID copied.'),
+      () => this.toast.error('Could not copy the project ID.'),
+    );
+  }
+
   protected deleteProject(project: Project): void {
     const confirmRef = this.popupService.open<boolean, ConfirmDialogData>(ConfirmDialog, {
       role: 'alertdialog',

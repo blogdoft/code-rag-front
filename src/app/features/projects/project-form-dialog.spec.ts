@@ -82,12 +82,9 @@ describe('ProjectFormDialog', () => {
       expect(component.isDirty()).toBe(true);
     });
 
-    it('shows a placeholder instead of an id before the project exists', () => {
-      const input: HTMLInputElement = fixture.nativeElement.querySelector('#project-id');
-      expect(input.value).toBe('');
-      expect(input.readOnly).toBe(true);
-      expect(input.placeholder).toBe('Generated when the project is saved');
-      expect(findButton('Copy').disabled).toBe(true);
+    it('does not show the id field before the project exists', () => {
+      const input: HTMLInputElement | null = fixture.nativeElement.querySelector('#project-id');
+      expect(input).toBeNull();
     });
 
     it('creates the project and stays open showing its generated id', () => {
@@ -152,12 +149,13 @@ describe('ProjectFormDialog', () => {
       expect(fixture.nativeElement.textContent).toContain('Edit project');
     });
 
-    it('shows the project id read-only and copies it to the clipboard', async () => {
+    it('shows the project id read-only, never focusable, and copies it to the clipboard', async () => {
       const writeText = vi.fn().mockResolvedValue(undefined);
       vi.stubGlobal('navigator', { clipboard: { writeText } });
       const input: HTMLInputElement = fixture.nativeElement.querySelector('#project-id');
       expect(input.value).toBe(PROJECT_1);
       expect(input.readOnly).toBe(true);
+      expect(input.tabIndex).toBe(-1);
 
       findButton('Copy').click();
       await fixture.whenStable();

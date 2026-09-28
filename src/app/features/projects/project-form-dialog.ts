@@ -73,10 +73,7 @@ export class ProjectFormDialog {
   }
 
   protected copyProjectId(): void {
-    const id = this.projectId();
-    if (!id) {
-      return;
-    }
+    const id = this.projectId()!;
     navigator.clipboard.writeText(id).then(
       () => this.toast.success('Project ID copied.'),
       () => this.toast.error('Could not copy the project ID.'),
