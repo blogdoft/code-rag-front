@@ -1,57 +1,83 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Combobox, type ComboboxOption } from './combobox';
+import { of } from 'rxjs';
+import { Combobox, type ComboboxOption, type ComboboxSearch } from './combobox';
+
+const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
+const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
+const SEARCH_DEBOUNCE_MS = 300;
 
 @Component({
   imports: [Combobox],
   template: `<app-combobox
     label="Project"
-    [options]="options()"
+    [search]="search"
+    [seedOptions]="seedOptions()"
     [disabled]="disabled()"
     [(value)]="value"
     (selected)="onSelected($event)"
   />`,
 })
 class HostComponent {
-  readonly options = signal<ComboboxOption[]>([
+  readonly allOptions: ComboboxOption[] = [
     { id: PROJECT_1, label: 'alpha' },
     { id: PROJECT_2, label: 'beta' },
-  ]);
+  ];
+  readonly seedOptions = signal<ComboboxOption[]>([]);
   readonly disabled = signal(false);
+  readonly searchCalls: string[] = [];
   value: string | null = null;
   selectedOption: ComboboxOption | null = null;
+
+  readonly search: ComboboxSearch = (query) => {
+    this.searchCalls.push(query);
+    const match = query.trim().toLowerCase();
+    const results = match
+      ? this.allOptions.filter((option) => option.label.toLowerCase().includes(match))
+      : this.allOptions;
+    return of(results);
+  };
 
   onSelected(option: ComboboxOption): void {
     this.selectedOption = option;
   }
 }
 
-const PROJECT_1 = '00000000-0000-4000-8000-000000000001';
-const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
-
 describe('Combobox', () => {
   let fixture: ComponentFixture<HostComponent>;
   let input: HTMLInputElement;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     fixture = TestBed.createComponent(HostComponent);
     fixture.detectChanges();
     input = fixture.nativeElement.querySelector('input');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function options(): HTMLLIElement[] {
     return Array.from(fixture.nativeElement.querySelectorAll('li[role="option"]'));
   }
 
+  function flush(): void {
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    fixture.detectChanges();
+  }
+
   function focus(): void {
     input.dispatchEvent(new Event('focus'));
     fixture.detectChanges();
+    flush();
   }
 
   function type(text: string): void {
     input.value = text;
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
+    flush();
   }
 
   function pressKey(key: string): void {
@@ -68,9 +94,20 @@ describe('Combobox', () => {
     expect(options().length).toBe(2);
   });
 
-  it('filters options as the user types', () => {
+  it('debounces the search request as the user types', () => {
     focus();
-    type('be');
+    fixture.componentInstance.searchCalls.length = 0;
+
+    input.value = 'b';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 50);
+    input.value = 'be';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    flush();
+
+    expect(fixture.componentInstance.searchCalls).toEqual(['be']);
     expect(options().length).toBe(1);
     expect(options()[0].textContent?.trim()).toBe('beta');
   });
@@ -92,6 +129,25 @@ describe('Combobox', () => {
     focus();
     type('zzz');
     expect(fixture.nativeElement.textContent).toContain('No matches');
+  });
+
+  it('shows a searching placeholder while the debounced request is pending', () => {
+    focus();
+    input.value = 'zzz';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Searching');
+  });
+
+  it('always offers the seed options alongside search results', () => {
+    fixture.componentInstance.seedOptions.set([{ id: 'all', label: 'All projects' }]);
+    fixture.detectChanges();
+
+    focus();
+
+    expect(options().length).toBe(3);
+    expect(options()[0].textContent?.trim()).toBe('All projects');
   });
 
   it('selects an option via mousedown and closes the list', () => {
@@ -127,22 +183,43 @@ describe('Combobox', () => {
     focus();
     type('garbage');
     input.dispatchEvent(new Event('blur'));
-    await new Promise((resolve) => setTimeout(resolve));
+    vi.advanceTimersByTime(0);
     fixture.detectChanges();
 
     expect(input.value).toBe('');
     expect(fixture.componentInstance.value).toBeNull();
   });
 
-  it('clears the value via the Escape-clearable directive', () => {
+  it('closes the list and clears the value on Escape', () => {
     focus();
     options()[0].dispatchEvent(new Event('mousedown', { bubbles: true }));
     fixture.detectChanges();
-    expect(input.value).toBe('alpha');
+    focus();
+    expect(input.value).toBe('');
+    expect(options().length).toBe(2);
 
     pressKey('Escape');
 
     expect(fixture.componentInstance.value).toBeNull();
+    expect(options().length).toBe(0);
+  });
+
+  it('closes a freshly focused, empty list on Escape', () => {
+    focus();
+    expect(options().length).toBe(2);
+
+    pressKey('Escape');
+
+    expect(options().length).toBe(0);
+  });
+
+  it('does not touch a closed, empty field on Escape, letting it bubble', () => {
+    const bubbled = vi.fn();
+    fixture.nativeElement.addEventListener('keydown', bubbled);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(bubbled).toHaveBeenCalled();
   });
 
   it('emits selected when an option is chosen via mousedown', () => {

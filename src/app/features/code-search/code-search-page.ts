@@ -9,6 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { map, tap } from 'rxjs';
 import { CodeQueriesService } from '../../core/services/code-queries.service';
 import { ConfigService } from '../../core/services/config.service';
 import {
@@ -21,7 +22,7 @@ import {
 import type { CodeQueryResult } from '../../core/models/code-query-result';
 import type { Project } from '../../core/models/project';
 import { ProjectsService } from '../../core/services/projects.service';
-import { Combobox, type ComboboxOption } from '../../shared/components/combobox/combobox';
+import { Combobox, type ComboboxSearch } from '../../shared/components/combobox/combobox';
 import { EscClearableDirective } from '../../shared/directives/esc-clearable.directive';
 import { PopupService } from '../../shared/services/popup.service';
 import { NotUsefulReasonDialog, type NotUsefulReasonDialogData } from './not-useful-reason-dialog';
@@ -58,8 +59,10 @@ export class CodeSearchPage {
   private readonly popupService = inject(PopupService);
   private readonly configService = inject(ConfigService);
 
-  protected readonly projectOptions = signal<ComboboxOption[]>([]);
-  private readonly projects = signal<Project[]>([]);
+  // Populated incrementally from searchProjects() results, since the Lookup ComboBox (SPEC.md 7.1)
+  // no longer preloads every project — submit() still needs the selected project's gitUrl, which the
+  // combobox's own selected-id/label pair doesn't carry.
+  private readonly projectsById = signal<Map<string, Project>>(new Map());
   protected readonly selectedProjectId = model<string | null>(null);
   protected readonly question = signal('');
   protected readonly isSubmitting = signal(false);
@@ -91,16 +94,22 @@ export class CodeSearchPage {
 
   private nextHistoryId = 0;
 
-  constructor() {
-    this.projectsService.list().subscribe({
-      next: (projects: Project[]) => {
-        this.projects.set(projects);
-        this.projectOptions.set(
-          projects.map((project) => ({ id: project.id, label: project.name })),
-        );
-      },
-    });
+  /** Lookup ComboBox search (SPEC.md 7.1): debounced by the combobox itself, one HTTP call per pause. */
+  protected readonly searchProjects: ComboboxSearch = (query) =>
+    this.projectsService.search(query).pipe(
+      tap((projects) => {
+        this.projectsById.update((byId) => {
+          const next = new Map(byId);
+          for (const project of projects) {
+            next.set(project.id, project);
+          }
+          return next;
+        });
+      }),
+      map((projects) => projects.map((project) => ({ id: project.id, label: project.name }))),
+    );
 
+  constructor() {
     afterNextRender(() => this.projectCombobox().focus());
   }
 
@@ -158,7 +167,7 @@ export class CodeSearchPage {
       return;
     }
 
-    const selectedProject = this.projects().find((project) => project.id === projectId);
+    const selectedProject = projectId ? this.projectsById().get(projectId) : undefined;
     const projectName = selectedProject?.name ?? 'All projects';
     const projectGitUrl = selectedProject?.gitUrl ?? null;
     const filters = this.buildFilters();

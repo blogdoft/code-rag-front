@@ -9,7 +9,8 @@
         <app-combobox
           label="Project"
           placeholder="Search projects..."
-          [options]="projectOptions()"
+          [search]="searchProjects"
+          [seedOptions]="allProjectsOption"
           [(value)]="selectedProjectId"
         />
       </div>

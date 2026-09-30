@@ -266,15 +266,29 @@ Every API-sourced string (`embeddingText`, `sourceFile`, `symbolContainer`, `sym
 never `[innerHTML]` or `bypassSecurityTrustHtml`. `embeddingText`'s embedded newlines are preserved
 with a `whitespace-pre-wrap` `<pre>` — not by converting `\n` to `<br>` via HTML.
 
-### Combobox
+### Combobox — the Lookup ComboBox (SPEC.md 7.1)
 
-`shared/components/combobox` fetches nothing itself — it filters a full `options: {id, label}[]` list
-client-side by substring match on `label`, and only lets the user commit a value that matches an existing
-option (reverts on blur otherwise). This is deliberately simpler than server-side type-ahead search:
-`ProjectsService.list()` fetches every project up front (looping `GET /api/indexer/projects`'s
-pagination internally, see the API contract section above) rather than wiring the combobox to
-server-side search — with the current project counts, fetching the full list once is enough. The
-API's own `name` partial-match filter on `GET /api/indexer/projects` isn't used by this app (and,
-same as on code-ciir-api before it, isn't even a declared query parameter in the live openapi doc
-despite being mentioned in the endpoint's description — confirmed on both services, still true after
-the 2026-09-18 move to the indexer service).
+`shared/components/combobox` is a **Lookup ComboBox**: it fetches nothing itself, taking a required
+`search: (query: string) => Observable<ComboboxOption[]>` input instead of a static `options` list.
+Typing (and focusing, with an empty query) pushes into an internal `Subject`, debounced 300ms
+(`SEARCH_DEBOUNCE_MS`) and `switchMap`'d into a call to `search()` — one HTTP request per pause, not
+per keystroke. Results replace `searchResults`; `seedOptions` (e.g. Reports' "All projects" sentinel)
+are always prepended on top, never filtered out by the query. A small `knownLabels` map (id → label,
+fed by every search response, `seedOptions`, and `select()`) is what lets the closed field show the
+current value's label even though the full catalog was never loaded — this is also why callers that
+need more than a label for the selected id (e.g. Code search's `gitUrl` lookup at submit time) keep
+their own `id → Project` cache populated from the same search responses, via `tap()`, rather than
+re-fetching by id.
+
+`ProjectsService.search(name)` backs this with `GET /api/indexer/projects?name=...&page=0` (one page,
+`MAX_PAGE_SIZE`, no pagination loop — unlike `list()`). **`name` is a best-effort use of an
+undocumented filter**: it isn't a declared query parameter in openapi.indexer.generated.json, despite
+being mentioned in the endpoint's description (confirmed on both services, still true after the
+2026-09-18 move to the indexer service) — if the server silently ignores it, `search()` just degrades
+to `list()`'s first page, which is still correct today given the current project counts. `list()`
+itself (full pagination loop, no filter) is unaffected and still used where the full set matters: CIIR
+upload's post-"Manage projects" check that the selected project wasn't deleted.
+
+Escape (SPEC.md section 4 and 7.1): a single press closes the open list and clears the value together
+— implemented directly on the component (`onEscape`), not via the shared `EscClearableDirective` used
+by plain text fields, since it also needs to know whether the list is open.

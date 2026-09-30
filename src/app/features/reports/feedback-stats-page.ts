@@ -1,6 +1,6 @@
 import { Component, computed, inject, model, signal } from '@angular/core';
+import { map, tap } from 'rxjs';
 import type { FeedbackStats } from '../../core/models/feedback-stats';
-import type { Project } from '../../core/models/project';
 import { ConfigService } from '../../core/services/config.service';
 import {
   FeedbackStatsService,
@@ -8,7 +8,11 @@ import {
 } from '../../core/services/feedback-stats.service';
 import { ProjectsService } from '../../core/services/projects.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Combobox, type ComboboxOption } from '../../shared/components/combobox/combobox';
+import {
+  Combobox,
+  type ComboboxOption,
+  type ComboboxSearch,
+} from '../../shared/components/combobox/combobox';
 import { EscClearableDirective } from '../../shared/directives/esc-clearable.directive';
 import { FeedbackTrendChart } from './feedback-trend-chart';
 
@@ -37,10 +41,15 @@ export class FeedbackStatsPage {
   private readonly toast = inject(ToastService);
   private readonly configService = inject(ConfigService);
 
-  protected readonly projectOptions = signal<ComboboxOption[]>([
+  protected readonly allProjectsOption: ComboboxOption[] = [
     { id: ALL_PROJECTS_ID, label: 'All projects' },
-  ]);
+  ];
   protected readonly selectedProjectId = model<string | null>(ALL_PROJECTS_ID);
+  // Labels seen so far, keyed by id - the Lookup ComboBox (SPEC.md 7.1) searches projects on demand
+  // rather than preloading them all, so the CSV filename fallback below needs its own small cache.
+  private readonly knownProjectNames = signal<Record<string, string>>({
+    [ALL_PROJECTS_ID]: 'All projects',
+  });
   protected readonly startDate = signal(toDateInput(weeksAgo(4)));
   protected readonly endDate = signal(toDateInput(new Date()));
   protected readonly isLoading = signal(false);
@@ -48,10 +57,23 @@ export class FeedbackStatsPage {
   protected readonly stats = signal<FeedbackStats | null>(null);
 
   protected readonly selectedProjectLabel = computed(
-    () =>
-      this.projectOptions().find((option) => option.id === this.selectedProjectId())?.label ??
-      'All projects',
+    () => this.knownProjectNames()[this.selectedProjectId() ?? ''] ?? 'All projects',
   );
+
+  /** Lookup ComboBox search (SPEC.md 7.1): debounced by the combobox itself, one HTTP call per pause. */
+  protected readonly searchProjects: ComboboxSearch = (query) =>
+    this.projectsService.search(query).pipe(
+      tap((projects) => {
+        this.knownProjectNames.update((names) => {
+          const next = { ...names };
+          for (const project of projects) {
+            next[project.id] = project.name;
+          }
+          return next;
+        });
+      }),
+      map((projects) => projects.map((project) => ({ id: project.id, label: project.name }))),
+    );
 
   protected readonly flatEntries = computed<FlatEntry[]>(() => {
     const stats = this.stats();
@@ -96,15 +118,6 @@ export class FeedbackStatsPage {
   );
 
   constructor() {
-    this.projectsService.list().subscribe({
-      next: (projects: Project[]) => {
-        this.projectOptions.set([
-          { id: ALL_PROJECTS_ID, label: 'All projects' },
-          ...projects.map((project) => ({ id: project.id, label: project.name })),
-        ]);
-      },
-    });
-
     this.fetchStats();
   }
 

@@ -17,7 +17,7 @@ const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
 describe('CodeSearchPage', () => {
   let fixture: ComponentFixture<CodeSearchPage>;
   let component: CodeSearchPage;
-  let projectsService: { list: ReturnType<typeof vi.fn> };
+  let projectsService: { search: ReturnType<typeof vi.fn> };
   let codeQueriesService: {
     ask: ReturnType<typeof vi.fn>;
     submitFeedback: ReturnType<typeof vi.fn>;
@@ -66,7 +66,7 @@ describe('CodeSearchPage', () => {
     askResult: Observable<CodeQueryResult[]> = of(results),
     userName = 'Ada Lovelace',
   ): void {
-    projectsService = { list: vi.fn(() => of(projects)) };
+    projectsService = { search: vi.fn(() => of(projects)) };
     codeQueriesService = {
       ask: vi.fn(() => askResult),
       submitFeedback: vi.fn(() => of(undefined)),
@@ -86,6 +86,9 @@ describe('CodeSearchPage', () => {
     fixture = TestBed.createComponent(CodeSearchPage);
     component = fixture.componentInstance;
     fixture.detectChanges();
+    // Mirrors the Lookup ComboBox's own focus-triggered search (SPEC.md 7.1), so submit() can
+    // resolve a selected id's name/gitUrl the same way it would after a real search.
+    component['searchProjects']('').subscribe();
   }
 
   it('focuses the project combobox as soon as the page loads', async () => {
@@ -112,10 +115,14 @@ describe('CodeSearchPage', () => {
     );
   });
 
-  it('loads projects into the combobox on construction', () => {
+  it('wires the combobox to a debounced ProjectsService search', () => {
     setup();
-    expect(projectsService.list).toHaveBeenCalled();
-    expect(component['projectOptions']()).toEqual([
+    let received: { id: string; label: string }[] = [];
+
+    component['searchProjects']('al').subscribe((options) => (received = options));
+
+    expect(projectsService.search).toHaveBeenCalledWith('al');
+    expect(received).toEqual([
       { id: PROJECT_1, label: 'alpha' },
       { id: PROJECT_2, label: 'beta' },
     ]);

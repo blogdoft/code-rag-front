@@ -37,7 +37,7 @@ const PROJECT_2 = '00000000-0000-4000-8000-000000000002';
 
 describe('FeedbackStatsPage', () => {
   let fixture: ComponentFixture<FeedbackStatsPage>;
-  let projectsService: { list: ReturnType<typeof vi.fn> };
+  let projectsService: { list: ReturnType<typeof vi.fn>; search: ReturnType<typeof vi.fn> };
   let feedbackStatsService: {
     getStats: ReturnType<typeof vi.fn>;
     exportCsv: ReturnType<typeof vi.fn>;
@@ -104,7 +104,7 @@ describe('FeedbackStatsPage', () => {
     // "date-range timezone conversion" describe block below for that.
     exportTimezone = 'UTC',
   ): void {
-    projectsService = { list: vi.fn(() => of(projects)) };
+    projectsService = { list: vi.fn(() => of(projects)), search: vi.fn(() => of(projects)) };
     feedbackStatsService = { getStats: vi.fn(getStats), exportCsv: vi.fn(exportCsv) };
     toastService = { success: vi.fn(), error: vi.fn() };
     configService = { exportTimezone: vi.fn(() => exportTimezone) };
@@ -125,6 +125,7 @@ describe('FeedbackStatsPage', () => {
   function combobox(): {
     options: () => { id: string; label: string }[];
     value: { set: (v: string | null) => void };
+    focus: () => void;
   } {
     return fixture.debugElement.query((debugEl) => debugEl.name === 'app-combobox')
       .componentInstance;
@@ -173,13 +174,23 @@ describe('FeedbackStatsPage', () => {
     return `${year}-${month}-${day}`;
   }
 
-  it('loads projects into the combobox with an "All projects" option first', () => {
+  it('always offers "All projects" first, then searches on focus', () => {
     setup();
-    expect(combobox().options()).toEqual([
-      { id: 'all', label: 'All projects' },
-      { id: PROJECT_1, label: 'alpha' },
-      { id: PROJECT_2, label: 'beta' },
-    ]);
+    vi.useFakeTimers();
+    try {
+      combobox().focus();
+      fixture.detectChanges();
+      vi.advanceTimersByTime(300);
+      fixture.detectChanges();
+
+      expect(combobox().options()).toEqual([
+        { id: 'all', label: 'All projects' },
+        { id: PROJECT_1, label: 'alpha' },
+        { id: PROJECT_2, label: 'beta' },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('pre-fills the date fields with the last 4 weeks (today and 4 weeks ago) and fetches with them', () => {

@@ -15,7 +15,7 @@ import type { ProblemDetails } from '../../core/models/problem-details';
 import { CiirUploadsService } from '../../core/services/ciir-uploads.service';
 import { ProjectsService } from '../../core/services/projects.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Combobox, type ComboboxOption } from '../../shared/components/combobox/combobox';
+import { Combobox, type ComboboxSearch } from '../../shared/components/combobox/combobox';
 import {
   ConfirmDialog,
   type ConfirmDialogData,
@@ -61,7 +61,6 @@ export class CiirUploadPage {
   private uploadSubscription: Subscription | null = null;
   private watchSubscription: Subscription | null = null;
 
-  protected readonly projectOptions = signal<ComboboxOption[]>([]);
   protected readonly selectedProjectId = model<string | null>(null);
   protected readonly file = signal<File | null>(null);
   protected readonly isDragging = signal(false);
@@ -146,9 +145,15 @@ export class CiirUploadPage {
 
   protected readonly formatBytes = formatBytes;
 
-  constructor() {
-    this.loadProjects();
+  /** Lookup ComboBox search (SPEC.md 7.1): debounced by the combobox itself, one HTTP call per pause. */
+  protected readonly searchProjects: ComboboxSearch = (query) =>
+    this.projectsService
+      .search(query)
+      .pipe(
+        map((projects) => projects.map((project) => ({ id: project.id, label: project.name }))),
+      );
 
+  constructor() {
     // Leaving the page (once confirmed via canLeave()) abandons whatever is in flight: aborts an
     // unfinished upload request, and stops polling an accepted one - which keeps processing
     // server-side regardless.
@@ -158,11 +163,11 @@ export class CiirUploadPage {
     });
   }
 
-  /** Opens the projects screen in a popup; on close, reloads the combobox with any changes made. */
+  /** Opens the projects screen in a popup; on close, clears the selection if it was deleted there. */
   protected manageProjects(): void {
     this.popupService
       .open<void, unknown, ProjectsDialog>(ProjectsDialog)
-      .closed.subscribe(() => this.loadProjects());
+      .closed.subscribe(() => this.checkSelectedProjectStillExists());
   }
 
   protected onFileInput(event: Event): void {
@@ -252,15 +257,19 @@ export class CiirUploadPage {
     }
   }
 
-  private loadProjects(): void {
+  /**
+   * The Lookup ComboBox (SPEC.md 7.1) searches projects on demand, so this is only about the
+   * selection possibly having been deleted while the Manage projects popup was open — not about
+   * feeding the combobox's own option list.
+   */
+  private checkSelectedProjectStillExists(): void {
+    const selected = this.selectedProjectId();
+    if (selected === null) {
+      return;
+    }
     this.projectsService.list().subscribe({
       next: (projects) => {
-        this.projectOptions.set(
-          projects.map((project) => ({ id: project.id, label: project.name })),
-        );
-        // The selected project may have been deleted while the projects popup was open.
-        const selected = this.selectedProjectId();
-        if (selected !== null && !projects.some((project) => project.id === selected)) {
+        if (!projects.some((project) => project.id === selected)) {
           this.selectedProjectId.set(null);
         }
       },

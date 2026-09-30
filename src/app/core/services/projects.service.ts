@@ -64,6 +64,19 @@ export class ProjectsService {
     );
   }
 
+  /**
+   * Backs the Lookup ComboBox's debounced search (SPEC.md 7.1): one page, filtered server-side by
+   * `name` (partial, case-insensitive per the endpoint's own description). This `name` parameter
+   * isn't actually declared in openapi.indexer.generated.json — see CLAUDE.md's API contract note —
+   * so this is a best-effort use of an undocumented filter; if the server ignores it, this just
+   * degrades to `list()`'s first page.
+   */
+  search(name: string): Observable<Project[]> {
+    return this.fetchPage(0, name.trim()).pipe(
+      map((response) => (response.items ?? []).map(toProject)),
+    );
+  }
+
   create(input: ProjectInput): Observable<Project> {
     return this.http.post<ProjectDto>('/api/indexer/projects', toDto(input)).pipe(map(toProject));
   }
@@ -78,8 +91,11 @@ export class ProjectsService {
     return this.http.delete<void>(`/api/indexer/projects/${id}`);
   }
 
-  private fetchPage(page: number): Observable<ProjectListResponseDto> {
-    const params = new HttpParams().set('page', page).set('page_size', MAX_PAGE_SIZE);
+  private fetchPage(page: number, name?: string): Observable<ProjectListResponseDto> {
+    let params = new HttpParams().set('page', page).set('page_size', MAX_PAGE_SIZE);
+    if (name) {
+      params = params.set('name', name);
+    }
     return this.http.get<ProjectListResponseDto>('/api/indexer/projects', { params });
   }
 }

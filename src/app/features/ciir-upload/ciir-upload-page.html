@@ -15,7 +15,7 @@
         <app-combobox
           label="Project"
           placeholder="Search projects..."
-          [options]="projectOptions()"
+          [search]="searchProjects"
           [disabled]="isBusy()"
           [(value)]="selectedProjectId"
         />

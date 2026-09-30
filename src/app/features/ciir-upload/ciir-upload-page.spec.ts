@@ -91,6 +91,7 @@ describe('CiirUploadPage', () => {
           provide: ProjectsService,
           useValue: {
             list: vi.fn(() => of([project(PROJECT_1, 'alpha'), project(PROJECT_2, 'beta')])),
+            search: vi.fn(() => of([project(PROJECT_1, 'alpha'), project(PROJECT_2, 'beta')])),
           },
         },
         { provide: CiirUploadsService, useValue: uploadsService },
@@ -142,11 +143,21 @@ describe('CiirUploadPage', () => {
     fixture.detectChanges();
   }
 
-  it('lists the projects from the API in the project combobox', () => {
-    expect(combobox().options()).toEqual([
-      { id: PROJECT_1, label: 'alpha' },
-      { id: PROJECT_2, label: 'beta' },
-    ]);
+  it('searches for projects when the combobox gains focus', () => {
+    vi.useFakeTimers();
+    try {
+      combobox().focus();
+      fixture.detectChanges();
+      vi.advanceTimersByTime(300);
+      fixture.detectChanges();
+
+      expect(combobox()['options']()).toEqual([
+        { id: PROJECT_1, label: 'alpha' },
+        { id: PROJECT_2, label: 'beta' },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   describe('choosing what to upload', () => {
@@ -393,25 +404,16 @@ describe('CiirUploadPage', () => {
       expect(popupService.open).toHaveBeenCalledWith(ProjectsDialog);
     });
 
-    it('reloads the project options once the dialog closes', () => {
+    it('does not check the selection when the dialog closes with nothing selected', () => {
       const projectsService = TestBed.inject(ProjectsService) as unknown as {
         list: ReturnType<typeof vi.fn>;
       };
-      projectsService.list.mockReturnValue(
-        of([project(PROJECT_1, 'alpha'), project(PROJECT_2, 'beta'), project('3', 'gamma')]),
-      );
 
       manageButton().click();
-      expect(projectsService.list).toHaveBeenCalledTimes(1);
       confirmClosed.next(undefined);
       fixture.detectChanges();
 
-      expect(projectsService.list).toHaveBeenCalledTimes(2);
-      expect(
-        combobox()
-          .options()
-          .map((o) => o.label),
-      ).toEqual(['alpha', 'beta', 'gamma']);
+      expect(projectsService.list).not.toHaveBeenCalled();
     });
 
     it('clears the selection when the selected project was deleted meanwhile', () => {
@@ -426,6 +428,22 @@ describe('CiirUploadPage', () => {
       fixture.detectChanges();
 
       expect(combobox().value()).toBeNull();
+    });
+
+    it('keeps the selection when it still exists after the dialog closes', () => {
+      chooseProject(PROJECT_1);
+      const projectsService = TestBed.inject(ProjectsService) as unknown as {
+        list: ReturnType<typeof vi.fn>;
+      };
+      projectsService.list.mockReturnValue(
+        of([project(PROJECT_1, 'alpha'), project(PROJECT_2, 'beta')]),
+      );
+
+      manageButton().click();
+      confirmClosed.next(undefined);
+      fixture.detectChanges();
+
+      expect(combobox().value()).toBe(PROJECT_1);
     });
 
     it('keeps the selection when it still exists', () => {

@@ -170,6 +170,42 @@ describe('ProjectsService', () => {
     });
   });
 
+  it('searches a single page, filtering server-side by name', () => {
+    let result: unknown;
+    service.search('demo').subscribe((projects) => (result = projects));
+
+    const req = httpMock.expectOne((r) => r.url === '/api/indexer/projects');
+    expect(req.request.params.get('page')).toBe('0');
+    expect(req.request.params.get('page_size')).toBe('100');
+    expect(req.request.params.get('name')).toBe('demo');
+    req.flush({
+      items: [projectDto(1)],
+      page: 0,
+      pageSize: 100,
+      totalCount: 1,
+      totalPages: 1,
+    });
+
+    expect(result).toEqual([
+      {
+        id: projectId(1),
+        name: 'project-1',
+        gitUrl: null,
+        gitRawUrl: null,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+    ]);
+  });
+
+  it('trims the query and omits the name param entirely when it is blank', () => {
+    service.search('  ').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === '/api/indexer/projects');
+    expect(req.request.params.has('name')).toBe(false);
+    req.flush({ items: [], page: 0, pageSize: 100, totalCount: 0, totalPages: 0 });
+  });
+
   it('deletes a project by id', () => {
     let completed = false;
     service.remove(PROJECT_1).subscribe(() => (completed = true));

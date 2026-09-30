@@ -53,7 +53,8 @@ front-end is served from the same gateway, at `https://blogdoft.home.arpa/code-b
 
 Implemented in one place (not per field/popup):
 
-1. With focus on a field that has a value, Escape **clears the field** and the event stops there.
+1. With focus on a field that has a value, Escape **clears the field** and the event stops there. (On
+   the Lookup ComboBox, section 7.1, this same press also closes the options list if it's open.)
 2. If the field is already empty (or not editable), Escape is redirected to the window/popup the
    component lives in.
 3. If there are changes in progress, the app asks whether the user wants to discard them.
@@ -136,6 +137,24 @@ The other fields have validation and a _Save_ button.
 
 ### 6.6 Combos and fields
 
-- Every lookup combo has **autocomplete**: the user types part of the name and can only commit a valid
-  entry from the list; leaving the field with a value that doesn't exist reverts it.
+- Every lookup combo is a **Lookup ComboBox** (section 7.1): autocomplete, debounced server-side search
+  and its own Escape behavior (close the open options list and clear the value in the same keypress).
 - Text fields follow the Escape rule (section 4).
+
+## 7. Visual components module
+
+Reusable UI components live in their own module (`shared/components/`) rather than being
+reimplemented per feature: **Lookup ComboBox**, confirm dialog, toasts, nav sidebar, popup coordinator.
+
+### 7.1 Lookup ComboBox
+
+- **Autocomplete**: the user types part of the name; only a value that exists in the list can be
+  committed. Leaving the field with a value that doesn't match an existing option reverts it.
+- **Debounced search**: typing doesn't filter an already-loaded list — it's **debounced**, and once the
+  user pauses, an HTTP request is made with the filter typed so far, so the options are fetched
+  gradually as the user narrows the search.
+- **Escape**: with focus on the combobox, a single Escape press **closes the options list** (if it's
+  open) **and clears the field's value** — both happen together as one action, not across two separate
+  presses. This is the combobox's own refinement of the general Escape rule (section 4).
+
+Used by the project combobox in Code search (6.1) and CIIR upload (6.3).
