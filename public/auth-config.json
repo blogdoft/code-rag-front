@@ -1,1 +1,1 @@
-{"enabled": true, "url": "https://keycloak.home.arpa", "realm": "k8s", "clientId": "code-brain"}
+{"enabled": true, "url": "https://keycloak.blogdoft.dev", "realm": "k8s", "clientId": "code-brain"}
