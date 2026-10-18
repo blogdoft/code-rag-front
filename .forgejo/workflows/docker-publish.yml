@@ -16,7 +16,8 @@
 # every trigger is already a unique, meaningful version.
 #
 # Requires, under Settings > Actions:
-#   - Variables: REGISTRY, REGISTRY_IMAGE (= code-rag-front), REGISTRY_USERNAME
+#   - Variables: REGISTRY, REGISTRY_IMAGE (= code-rag-front), REGISTRY_USERNAME,
+#     ARGO_SSH_KNOWN_HOSTS (pinned host key line(s) of forgejo.home.arpa:2222)
 #   - Secrets: REGISTRY_PASSWORD (a token with package-write scope for this registry),
 #     ARGO_DEPLOY_SSH_KEY (an SSH private key registered as a write-access deploy key on
 #     argo-local-apps.git)
@@ -150,17 +151,17 @@ jobs:
 
       # ARGO_DEPLOY_SSH_KEY is a repo secret: the private half of a deploy key with write
       # access added to sauron/argo-local-apps in Forgejo (Settings > Deploy keys, "Read and
-      # Write" enabled). ssh-keyscan trusts the host on first connect - argo-local-apps and
-      # this runner are on the same private network, so TOFU is acceptable here.
+      # Write" enabled). The host key of forgejo.home.arpa:2222 is pinned in the
+      # ARGO_SSH_KNOWN_HOSTS org/repo variable (known_hosts line(s)) and checked strictly.
       - name: Configure SSH
         run: |
           echo "${{ secrets.ARGO_DEPLOY_SSH_KEY }}" > "${{ github.workspace }}/.ssh-key"
           chmod 600 "${{ github.workspace }}/.ssh-key"
-          ssh-keyscan -p 2222 forgejo.home.arpa > "${{ github.workspace }}/.ssh-known-hosts" 2>/dev/null
+          echo "${{ vars.ARGO_SSH_KNOWN_HOSTS }}" > "${{ github.workspace }}/.ssh-known-hosts"
 
       - name: Sync manifests to argo-local-apps
         env:
-          GIT_SSH_COMMAND: ssh -i ${{ github.workspace }}/.ssh-key -o UserKnownHostsFile=${{ github.workspace }}/.ssh-known-hosts
+          GIT_SSH_COMMAND: ssh -i ${{ github.workspace }}/.ssh-key -o UserKnownHostsFile=${{ github.workspace }}/.ssh-known-hosts -o StrictHostKeyChecking=yes
         run: |
           WORKDIR=$(mktemp -d)
           git clone --depth 1 ssh://git@forgejo.home.arpa:2222/sauron/argo-local-apps.git "$WORKDIR"
