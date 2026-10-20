@@ -38,6 +38,11 @@ export class Combobox {
   readonly search = input.required<ComboboxSearch>();
   /** Options always offered alongside search results (e.g. an "All projects" entry). */
   readonly seedOptions = input<ComboboxOption[]>([]);
+  /**
+   * Labels for ids that may be set as the value before any search ran (e.g. an edit form opening
+   * with a stored id). Unlike `seedOptions`, they are never listed - only used to show the label.
+   */
+  readonly labelHints = input<ComboboxOption[]>([]);
   readonly label = input('');
   readonly placeholder = input('Type to search...');
   readonly disabled = input(false);
@@ -66,6 +71,7 @@ export class Combobox {
 
   constructor() {
     effect(() => this.rememberLabels(this.seedOptions()));
+    effect(() => this.rememberLabels(this.labelHints()));
 
     this.query$
       .pipe(

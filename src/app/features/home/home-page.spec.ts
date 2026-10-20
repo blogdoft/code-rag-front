@@ -18,7 +18,7 @@ describe('HomePage', () => {
     expect(fixture.nativeElement.textContent).toContain('Welcome to code-brain');
   });
 
-  it('links to all five sections', () => {
+  it('links to all seven sections', () => {
     const labels = Array.from(
       fixture.nativeElement.querySelectorAll('a span:first-child'),
     ) as HTMLElement[];
@@ -26,6 +26,8 @@ describe('HomePage', () => {
       'Rag',
       'Projects',
       'Upload',
+      'Documents',
+      'Master Data',
       'Reports',
       'Settings',
     ]);

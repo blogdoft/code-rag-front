@@ -1,0 +1,133 @@
+<div class="mb-1 flex items-center justify-between gap-2">
+  <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">{{ label() }}</span>
+  <button
+    type="button"
+    [disabled]="disabled() || (error() !== null && mode() === 'fields')"
+    (click)="toggleMode()"
+    class="text-xs text-sky-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-sky-400"
+  >
+    {{ mode() === 'fields' ? 'Edit as JSON' : 'Edit as fields' }}
+  </button>
+</div>
+
+@if (mode() === 'json') {
+  <textarea
+    rows="8"
+    spellcheck="false"
+    [attr.aria-label]="label() + ' as JSON'"
+    placeholder='{ "publisher": "ENCAT" }'
+    [disabled]="disabled()"
+    [value]="jsonText()"
+    (input)="jsonText.set($any($event.target).value)"
+    class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+  ></textarea>
+} @else {
+  <div class="flex flex-col gap-2">
+    @for (row of rows(); track row.id) {
+      <div class="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[10rem_6.5rem_1fr_auto]">
+        <input
+          type="text"
+          aria-label="Key"
+          placeholder="Key"
+          [disabled]="disabled()"
+          [value]="row.key"
+          (input)="patchRow(row.id, { key: $any($event.target).value })"
+          class="min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        />
+        <select
+          aria-label="Type"
+          [disabled]="disabled()"
+          [value]="row.type"
+          (change)="changeType(row, $any($event.target).value)"
+          class="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        >
+          @for (option of typeOptions; track option.value) {
+            <option [value]="option.value" [selected]="option.value === row.type">
+              {{ option.label }}
+            </option>
+          }
+        </select>
+
+        @switch (row.type) {
+          @case ('boolean') {
+            <select
+              aria-label="Value"
+              [disabled]="disabled()"
+              (change)="patchRow(row.id, { bool: $any($event.target).value === 'true' })"
+              class="col-span-2 rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 sm:col-span-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="true" [selected]="row.bool">true</option>
+              <option value="false" [selected]="!row.bool">false</option>
+            </select>
+          }
+          @case ('json') {
+            <textarea
+              rows="3"
+              spellcheck="false"
+              aria-label="Value"
+              placeholder='{ "a": 1 } or [1, 2] or null'
+              [disabled]="disabled()"
+              [value]="row.text"
+              (input)="patchRow(row.id, { text: $any($event.target).value })"
+              class="col-span-2 min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 sm:col-span-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            ></textarea>
+          }
+          @default {
+            <input
+              [type]="row.type === 'number' ? 'number' : 'text'"
+              step="any"
+              aria-label="Value"
+              placeholder="Value"
+              [disabled]="disabled()"
+              [value]="row.text"
+              (input)="patchRow(row.id, { text: $any($event.target).value })"
+              class="col-span-2 min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 sm:col-span-1 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          }
+        }
+
+        <button
+          type="button"
+          aria-label="Remove field"
+          [disabled]="disabled()"
+          (click)="removeRow(row.id)"
+          class="row-start-1 col-start-2 self-start rounded-md px-2 py-2 text-rose-700 hover:bg-rose-50 sm:col-start-4 sm:row-start-auto dark:text-rose-400 dark:hover:bg-rose-900/30"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            class="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+    } @empty {
+      <p class="text-sm text-slate-500 dark:text-slate-400">No fields yet.</p>
+    }
+
+    <button
+      type="button"
+      [disabled]="disabled()"
+      (click)="addRow()"
+      class="inline-flex items-center gap-1.5 self-start rounded-md px-2 py-1.5 text-sm text-sky-700 hover:bg-sky-50 disabled:opacity-50 dark:text-sky-400 dark:hover:bg-sky-900/30"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        class="h-4 w-4"
+        aria-hidden="true"
+      >
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+      Add field
+    </button>
+  </div>
+}

@@ -2,7 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 interface NavLink {
-  id: 'rag' | 'projects' | 'uploads' | 'reports' | 'settings';
+  id: 'rag' | 'projects' | 'uploads' | 'documents' | 'master-data' | 'reports' | 'settings';
   label: string;
   path: string;
 }
@@ -25,6 +25,8 @@ export class NavSidebar {
     { id: 'rag', label: 'Rag', path: '/rag' },
     { id: 'projects', label: 'Projects', path: '/projects' },
     { id: 'uploads', label: 'Upload', path: '/uploads' },
+    { id: 'documents', label: 'Documents', path: '/documents' },
+    { id: 'master-data', label: 'Master Data', path: '/master-data' },
     { id: 'reports', label: 'Reports', path: '/reports' },
     { id: 'settings', label: 'Settings', path: '/settings' },
   ];

@@ -64,8 +64,8 @@ Implemented in one place (not per field/popup):
 
 ## 5. Navigation
 
-Nav sidebar with: **Rag** (`/rag`), **Projects** (`/projects`), **Upload** (`/uploads`), **Reports**
-(`/reports`) and **Settings** (`/settings`). The root (`/`) is a landing page. The sidebar footer shows
+Nav sidebar with: **Rag** (`/rag`), **Projects** (`/projects`), **Upload** (`/uploads`), **Documents**
+(`/documents`), **Master Data** (`/master-data`), **Reports** (`/reports`) and **Settings** (`/settings`). The root (`/`) is a landing page. The sidebar footer shows
 the front-end and API versions (the API version silently disappears if the call fails).
 
 ## 6. Features
@@ -115,6 +115,37 @@ the front-end and API versions (the API version silently disappears if the call 
   safe — indexing continues in the background.
 - Upload errors (unknown project, file too large, server busy, lost connection) show clear messages,
   including when the API returns no body.
+
+### 6.3.1 Documents — `/documents`, `/documents/:id`
+
+Front for the Doc RAG Ingestion API (registering and sending documents; the question-answering side
+comes later and will live in this same module).
+
+- **List**: documents newest first, filterable by title (wildcard), type, language (both picked
+  from lookup comboboxes) and tag (all combined), with cursor pagination (**Load more**). Filters apply only on
+  **Search** (or Enter in a text field); **Clear** resets them and searches again. **+ Add document**
+  (top right) opens a form
+  (title, description, type and language picked from lookup comboboxes, comma-separated tags,
+  metadata edited as typed key/value fields) and then opens the new document. Each metadata
+  field has an explicit type (Text, Number, Boolean or JSON for objects, arrays and null), so values
+  keep their exact type; "Edit as JSON" swaps the fields for a raw editor and back.
+- **Detail**: the document's fields, tags and metadata; **Edit** sends only what changed, guarded by
+  the document's revision (a stale revision is rejected by the API and shown as a toast).
+- **Versions**: listed newest first with status (awaiting upload, uploading, uploaded, upload
+  failed), file name, size, short SHA-256 and validity dates. **Add version** registers an edition
+  (unique label, optional publication/validity dates) and sends its file in one go: PDF, Markdown,
+  plain text, HTML or DOCX, picked or dropped, with a progress bar and the same "storing" wait notice
+  as 6.3. A version still awaiting upload, or whose upload failed, offers **Upload file** to send
+  just the file. Closing the dialog mid-upload asks first and aborts it.
+- **Types and languages** are master data, managed at `/document-types` (name, unique ignoring case)
+  and `/document-languages` (BCP 47 code, unique ignoring case), reached from the **Master Data**
+  entry in the sidebar, a landing page (`/master-data`) with one clickable card per catalog.
+  Each has search, add, rename and delete (with confirmation). The two comboboxes
+  (`app-document-type-combobox`, `app-document-language-combobox`, in the shared components) search
+  as you type with the usual debounce; as the API has no name filter, they filter a cached copy of
+  the whole catalog in memory.
+- "Uploaded" only means the file was stored and queued; conversion and indexing happen later and
+  aren't reported by this API.
 
 ### 6.4 Reports — `/reports`
 

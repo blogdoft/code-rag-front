@@ -5,7 +5,7 @@ import {
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { baseUrlInterceptor } from './core/interceptors/base-url.interceptor';
@@ -15,7 +15,7 @@ import { KeycloakAuthService } from './core/services/keycloak-auth.service';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes, withComponentInputBinding()),
     // authInterceptor must run before baseUrlInterceptor: it matches on the request's original
     // '/api'-relative url, and baseUrlInterceptor rewrites that url to be prefixed with the
     // configured API base URL (e.g. '/code-brain/api/...' in production, since that's this app's

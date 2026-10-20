@@ -145,6 +145,34 @@ fix point is the DTO interfaces + mapper functions in `core/services/projects.se
   statuses: `pending`/`running`/`resolving_relations`/`completed`/`failed`/`cancelled`). A few
   transient poll failures are retried; a 404 is not. Bodies are camelCase; `projectId` is a UUID
   string and the int64 counters are normalized through `Number(...)` like the Projects DTOs.
+- **Doc RAG Ingestion API** (third service behind the same gateway, `.../code-brain/api/doc-rag`;
+  contract at `.../code-brain/api/doc-rag/swagger/v1/swagger.json`, not checked in; backing
+  `features/documents`). Requests are made as `/api/doc-rag/api/v1/documents...` (the service's own
+  routes carry a second `/api/v1`), so the existing `/api` interceptors and dev proxy cover it;
+  `nginx.conf.template` has a dedicated `/api/doc-rag/` block, unbuffered with no body limit, since
+  files are streamed. Flow:
+  `POST /documents` → `POST /documents/{id}/versions` → `POST .../versions/{versionId}/files` (the
+  **raw bytes** as the body, `Content-Type` from the file extension via `contentTypeFor`,
+  `Content-Disposition: attachment; filename=...`, no multipart; `201` = stored + queued, not
+  indexed). Gotchas: documents are paged under `data` but versions under `items`; pagination is an
+  opaque `cursor`; `PATCH` is a JSON Merge Patch that **requires `If-Match` with the ETag** returned
+  by GET/POST/PATCH (`VersionedDocument.etag`) and removes metadata keys only via `null`
+  (`features/documents/metadata-patch.ts`); every POST takes an `Idempotency-Key` (the dialogs keep
+  one per step so retries replay); only `400` has a `ProblemDetails` body (401/403/404/503 are empty),
+  so the file upload opts out of the error toast and `VersionUploadDialog` maps statuses itself.
+  `DocumentDetailPage` reads `:id` (and `MasterDataPage` its route `data.kind`) through
+  `withComponentInputBinding()`.
+  **Type and language are master data** (`/api/v1/document-types`, `/api/v1/document-languages`:
+  full CRUD, `PUT` to rename, names/codes unique ignoring case): documents carry `typeId`/
+  `languageId` (the response also echoes the `type` name and `language` code) and list filters take
+  the ids. Neither list endpoint has a name filter, so `MasterDataStore`
+  (`core/services/master-data-store.ts`) fetches every cursor page once, caches it (dropped on any
+  write) and implements `search()` in memory; `DocumentTypeCombobox`/`DocumentLanguageCombobox`
+  wrap the generic `Combobox` over it, using its `labelHints` input to show the label of a preset id
+  without listing it. `features/document-master-data` is one generic page + form dialog driven by a
+  `MasterDataConfig`.
+  Document `metadata` is edited with `shared/components/metadata-editor` (typed key/value rows, never
+  guessing a type from the text, plus a raw-JSON mode); the form diffs it with `metadataPatch`.
 - `GET /version` → `{ version }`, unversioned (no `/api` prefix), served by code-ciir-api, for
   deploy tooling/diagnostics. **Not unauthenticated** despite that unversioned-ness suggesting
   otherwise: when Keycloak is enabled (see `KEYCLOAK_ENABLED`/

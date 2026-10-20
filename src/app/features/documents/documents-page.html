@@ -1,0 +1,157 @@
+<div class="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8">
+  <header class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Documents</h1>
+    <button
+      type="button"
+      (click)="addDocument()"
+      class="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        class="h-4 w-4"
+        aria-hidden="true"
+      >
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+      Add document
+    </button>
+  </header>
+
+  <section
+    aria-label="Search documents"
+    class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+  >
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      @for (field of textFilterFields; track field.key) {
+        <div>
+          <label
+            [for]="'doc-filter-' + field.key"
+            class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >{{ field.label }}</label
+          >
+          <input
+            [id]="'doc-filter-' + field.key"
+            type="text"
+            [placeholder]="field.key === 'title' ? 'Search by title...' : ''"
+            [value]="filters()[field.key]"
+            [appEscClearable]="filters()[field.key]"
+            (cleared)="setFilter(field.key, '')"
+            (input)="setFilter(field.key, $any($event.target).value)"
+            (keydown.enter)="search()"
+            class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+      }
+      <app-document-type-combobox
+        [value]="filters().typeId || null"
+        (valueChange)="setFilter('typeId', $event ?? '')"
+      />
+      <app-document-language-combobox
+        [value]="filters().languageId || null"
+        (valueChange)="setFilter('languageId', $event ?? '')"
+      />
+    </div>
+
+    <!-- Search precedes Clear in the DOM (so it is first in tab order); row-reverse keeps Clear drawn on its left. -->
+    <div class="flex flex-row-reverse justify-start gap-2">
+      <button
+        type="button"
+        [disabled]="isLoading()"
+        (click)="search()"
+        class="inline-flex items-center gap-1.5 rounded-md border border-sky-600 px-4 py-2 text-sm font-medium text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-sky-400 dark:hover:bg-sky-900/30"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          class="h-4 w-4"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        Search
+      </button>
+      <button
+        type="button"
+        (click)="clearFilters()"
+        class="rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+      >
+        Clear
+      </button>
+    </div>
+  </section>
+
+  <section
+    class="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+  >
+    @if (documents().length === 0) {
+      <p class="text-sm text-slate-500 dark:text-slate-400">
+        {{ isLoading() ? 'Loading documents...' : 'No documents found.' }}
+      </p>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr
+              class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400"
+            >
+              <th class="py-2 pr-3">Title</th>
+              <th class="py-2 pr-3">Type</th>
+              <th class="py-2 pr-3">Language</th>
+              <th class="py-2 pr-3">Tags</th>
+              <th class="py-2 pr-3">Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (document of documents(); track document.id) {
+              <tr class="border-b border-slate-100 dark:border-slate-700">
+                <td class="py-2 pr-3 font-medium">
+                  <a
+                    [routerLink]="['/documents', document.id]"
+                    class="text-sky-700 hover:underline dark:text-sky-400"
+                    >{{ document.title }}</a
+                  >
+                </td>
+                <td class="py-2 pr-3 text-slate-600 dark:text-slate-300">{{ document.type }}</td>
+                <td class="py-2 pr-3 text-slate-600 dark:text-slate-300">
+                  {{ document.language }}
+                </td>
+                <td class="py-2 pr-3">
+                  <div class="flex flex-wrap gap-1">
+                    @for (tag of document.tags; track tag) {
+                      <span
+                        class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                        >{{ tag }}</span
+                      >
+                    }
+                  </div>
+                </td>
+                <td class="py-2 pr-3 text-slate-600 dark:text-slate-300">
+                  {{ document.updatedAt | date: 'medium' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (hasMore()) {
+        <button
+          type="button"
+          [disabled]="isLoading()"
+          (click)="loadMore()"
+          class="self-center rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          {{ isLoading() ? 'Loading...' : 'Load more' }}
+        </button>
+      }
+    }
+  </section>
+</div>

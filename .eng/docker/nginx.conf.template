@@ -58,6 +58,25 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Doc RAG Ingestion API (features/documents). Original files are streamed as raw request bodies
+    # to .../files, so this prefix drops the same limits as the CIIR upload block above (no 1 MB
+    # cap, no disk spooling of the request body). A longer prefix than /api/ below, so it wins.
+    location /api/doc-rag/ {
+        proxy_pass ${API_UPSTREAM}/api/doc-rag/;
+        proxy_ssl_verify off;
+
+        client_max_body_size 0;
+        proxy_request_buffering off;
+        proxy_http_version 1.1;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # The API's /version endpoint is deliberately unversioned (no /api prefix) - see
     # .specs/2026-09-04-version-display.md - so it needs its own proxy block; an exact match since
     # the API only exposes this one literal path, unlike /api/ which fans out to many sub-routes.

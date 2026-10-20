@@ -23,6 +23,32 @@ export const routes: Routes = [
     canDeactivate: [(page: CiirUploadPage) => page.canLeave()],
   },
   {
+    path: 'documents',
+    loadComponent: () => import('./features/documents/documents-page').then((m) => m.DocumentsPage),
+  },
+  {
+    path: 'documents/:id',
+    loadComponent: () =>
+      import('./features/documents/document-detail-page').then((m) => m.DocumentDetailPage),
+  },
+  {
+    path: 'master-data',
+    loadComponent: () =>
+      import('./features/master-data/master-data-home-page').then((m) => m.MasterDataHomePage),
+  },
+  {
+    path: 'document-types',
+    loadComponent: () =>
+      import('./features/document-master-data/master-data-page').then((m) => m.MasterDataPage),
+    data: { kind: 'type' },
+  },
+  {
+    path: 'document-languages',
+    loadComponent: () =>
+      import('./features/document-master-data/master-data-page').then((m) => m.MasterDataPage),
+    data: { kind: 'language' },
+  },
+  {
     path: 'settings',
     loadComponent: () => import('./features/settings/settings-page').then((m) => m.SettingsPage),
   },

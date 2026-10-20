@@ -36,7 +36,7 @@ describe('NavSidebar', () => {
     fixture.detectChanges();
   }
 
-  it('renders the five navigation links in order', async () => {
+  it('renders the seven navigation links in order', async () => {
     await setup(true);
     const links = Array.from(
       fixture.nativeElement.querySelectorAll('nav a'),
@@ -45,6 +45,8 @@ describe('NavSidebar', () => {
       'Rag',
       'Projects',
       'Upload',
+      'Documents',
+      'Master Data',
       'Reports',
       'Settings',
     ]);
@@ -64,8 +66,16 @@ describe('NavSidebar', () => {
     const links = Array.from(
       fixture.nativeElement.querySelectorAll('nav a'),
     ) as HTMLAnchorElement[];
-    expect(links.map((a) => a.textContent?.trim())).toEqual(['', '', '', '', '']);
-    expect(links.map((a) => a.title)).toEqual(['Rag', 'Projects', 'Upload', 'Reports', 'Settings']);
+    expect(links.map((a) => a.textContent?.trim())).toEqual(['', '', '', '', '', '', '']);
+    expect(links.map((a) => a.title)).toEqual([
+      'Rag',
+      'Projects',
+      'Upload',
+      'Documents',
+      'Master Data',
+      'Reports',
+      'Settings',
+    ]);
   });
 
   describe('version footer', () => {
