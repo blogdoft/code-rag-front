@@ -70,6 +70,7 @@ describe('KeycloakAuthService', () => {
       onLoad: 'login-required',
       pkceMethod: 'S256',
       checkLoginIframe: false,
+      scope: 'openid ingestion:read ingestion:write',
     });
     expect(service.enabled()).toBe(true);
     expect(service.username()).toBe('jdoe');

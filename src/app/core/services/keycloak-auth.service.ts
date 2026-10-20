@@ -4,6 +4,13 @@ import { firstValueFrom } from 'rxjs';
 import { AuthConfigService } from './auth-config.service';
 
 /**
+ * The Doc RAG Ingestion API answers 403 unless the token carries `ingestion:read` (GETs) or
+ * `ingestion:write` (POST/PATCH). They're optional client scopes of the `code-brain` Keycloak
+ * client, so they only reach the token when requested at login.
+ */
+const LOGIN_SCOPES = 'openid ingestion:read ingestion:write';
+
+/**
  * Wraps keycloak-js so the rest of the app only deals in signals/methods, not the adapter's own
  * API. See .specs/2026-09-21-keycloak-conditional-login.md for the design (why login-required +
  * PKCE, why checkLoginIframe is off, why disabled is the fallback).
@@ -39,6 +46,7 @@ export class KeycloakAuthService {
       onLoad: 'login-required',
       pkceMethod: 'S256',
       checkLoginIframe: false,
+      scope: LOGIN_SCOPES,
     });
 
     keycloak.onTokenExpired = () => {
