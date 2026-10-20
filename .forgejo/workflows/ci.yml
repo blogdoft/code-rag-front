@@ -1,0 +1,70 @@
+# Continuous integration: everything that validates the code and publishes nothing. Runs on
+# PRs and is called by cd.yml on every push to main, so the release is gated by the exact same
+# checks. To add a check, add a step to `test` or a new job here -
+# cd.yml needs no change, it waits for every job of this workflow.
+#
+# The `ciir` job analyzes this repository with the published code-brain-angular npm CLI (dogfooding,
+# same idea as that repository's own `ciir` job in its ci.yml) and runs in parallel with `test`.
+# Only the run on main (the release path) sends the resulting ciir.jsonl to the code-ciir-indexer, and only when
+# CIIR_BASE_URL is configured, so a repository without the indexer settings still gets a green
+# pipeline. Needs the repo/org variables CIIR_BASE_URL, CIIR_PROJECT_ID (this repository's own
+# project id in the indexer) and CIIR_CLIENT_ID, and the repo secret CIIR_CLIENT_SECRET (a
+# confidential Keycloak client with Service accounts enabled) - see
+# .specs/2026-09-28-self-indexing-ci.md.
+#
+# No artifact-upload step here on purpose: this self-hosted runner's cached node binary
+# (actions/setup-node's tool_cache) can go missing again by the time a later step needs it - the
+# `test` job's own Post-checkout/Post-setup-node cleanup hits the same "no such file" error and
+# survives it (post-step failures don't fail a job), but a *main* step depending on node run after
+# the CLI (e.g. an artifact upload) does fail the job for real.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm test -- --watch=false
+
+  ciir:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Without node_modules, imports of npm packages end up as unresolved relations
+      # (code-brain-angular's own README).
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Analyze this repository with code-brain-angular
+        env:
+          CIIR_BASE_URL: ${{ vars.CIIR_BASE_URL }}
+          CIIR_PROJECT_ID: ${{ vars.CIIR_PROJECT_ID }}
+          CIIR_CLIENT_ID: ${{ vars.CIIR_CLIENT_ID }}
+          CIIR_CLIENT_SECRET: ${{ secrets.CIIR_CLIENT_SECRET }}
+          CIIR_NOLOGO: "1"
+        run: |
+          args=(. --output ciir-output --fail-on-error --no-progress)
+          if [[ "$GITHUB_REF" == "refs/heads/main" && -n "$CIIR_BASE_URL" ]]; then
+            args+=(--send "$CIIR_BASE_URL" --projectId "$CIIR_PROJECT_ID" --clientId "$CIIR_CLIENT_ID" --clientSecret "$CIIR_CLIENT_SECRET" --insecure)
+          fi
+          npx --yes code-brain-angular@latest "${args[@]}"
+        shell: bash
